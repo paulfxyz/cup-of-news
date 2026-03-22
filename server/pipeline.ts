@@ -88,7 +88,7 @@ async function callOpenRouter(messages: any[], apiKey: string): Promise<string> 
       "X-Title": "Espresso Morning Digest",
     },
     body: JSON.stringify({
-      model: "google/gemini-flash-1.5",
+      model: "google/gemini-2.0-flash-001",
       messages,
       response_format: { type: "json_object" },
       temperature: 0.4,
@@ -127,6 +127,7 @@ export async function runDailyPipeline(apiKey: string): Promise<{ digestId: numb
     console.log(`📰 Only ${allLinks.length} user link(s) — fetching ${needed}+ trending stories to fill gaps…`);
     try {
       const trends = await fetchTrendingStories(needed);
+      // Extract trend content in small sequential batches to avoid timeouts
       for (const t of trends) {
         try {
           const extracted = await extractViaJina(t.url);
@@ -138,9 +139,12 @@ export async function runDailyPipeline(apiKey: string): Promise<{ digestId: numb
             ogImage: null,
           });
         } catch {
-          // If Jina fails for a trend, use title as stub
-          trendItems.push({ url: t.url, title: t.title, source: t.source, text: t.title, ogImage: null });
+          // Jina failed — use the RSS headline + description as text (still useful for AI ranking)
+          const stubText = `${t.title}. Source: ${t.source}. Published: ${new Date().toISOString().split('T')[0]}.`;
+          trendItems.push({ url: t.url, title: t.title, source: t.source, text: stubText, ogImage: null });
         }
+        // Stop once we have enough trend items
+        if (trendItems.length >= 20) break;
       }
     } catch (e) {
       console.warn("⚠️  Trend fetch failed:", e);
@@ -203,7 +207,9 @@ export async function runDailyPipeline(apiKey: string): Promise<{ digestId: numb
     }
   }
 
-  if (processed.length === 0) throw new Error("No content could be extracted from submitted links.");
+  // Note: allProcessed is assembled later after merging with trendItems
+  // This check is now redundant but kept as a guard for user links only
+  if (processed.length === 0 && trendItems.length === 0) throw new Error("No content available — Jina extraction failed for all links and no trend items available.");
 
   // 3. Load previously used story hashes to avoid 72h dedup
   const recentDigests = storage.getAllDigests()
@@ -244,6 +250,10 @@ export async function runDailyPipeline(apiKey: string): Promise<{ digestId: numb
   }));
 
   const allProcessed = [...processed, ...trendProcessed];
+
+  if (allProcessed.length === 0) {
+    throw new Error("No content available to generate a digest. Submit some links or check your network connection.");
+  }
 
   // Build content payload for AI
   const contentItems = allProcessed.map((p, idx) => ({
