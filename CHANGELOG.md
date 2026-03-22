@@ -22,6 +22,28 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) · Versioning: 
 - 🌍 **Multilingual summaries** — generate in user's preferred language
 
 
+## [0.4.0] — 2026-03-22
+
+**Reader overhaul, 25 RSS sources, auth fixes.**
+
+### ✨ New Features
+
+- **Swipeable card reader** — complete UX overhaul. Instead of a static grid, stories now display one at a time in a full-screen card carousel. Left/right arrow navigation. Touch swipe on mobile. Progress dots in header (clickable). Grid overview overlay (⊞ icon) for scanning all stories at once. Closes with the Closing Quote card in editorial inverted-colour style.
+- **25 RSS fallback sources** — up from 7. New additions: AFP, The Guardian, The Telegraph, The Independent, Economist Finance, Le Monde (EN), Der Spiegel (EN), Euronews, MIT Tech Review, The Verge, Nature, Scientific American, Bloomberg, Al Jazeera, South China Morning Post, The Atlantic. Grouped by category with notes on each source.
+- **Header logo navigates home** — clicking the E logo / "Espresso" in the header resets to card 0 (first story). Previously had no click action.
+
+### 🐛 Fixed
+
+- **Login with "admin" now works** — live Fly.io DB had `espresso-admin` as password while UI showed "default: admin". Fixed by resetting live password to `admin` and improving the login flow to always show the default hint.
+- **Login UX** — pressing Enter with empty field now uses "admin" as default. Clearer error message on wrong password.
+- **Duplicate `formatDate` function** — was defined twice in DigestView, causing a TypeScript warning.
+
+### 📝 Documentation
+
+- **README completely rewritten** — engineering narrative explaining every technology choice and why, a full "Struggles" section documenting the bugs found and fixed, architecture diagram updated for 25 sources.
+
+---
+
 ## [0.3.0] — 2026-03-22
 
 **Visual & UX release — Economist redesign, admin auth, password management.**

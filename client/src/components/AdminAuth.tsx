@@ -115,22 +115,24 @@ function LoginScreen({ onSuccess }: { onSuccess: (key: string) => void }) {
     setError("");
     setLoading(true);
 
+    // Use the actual password, or "admin" if field is empty (default)
+    const key = password.trim() || "admin";
+
     try {
-      // Test the password against a protected endpoint
       const r = await apiRequest("GET", "/api/links", undefined, {
-        "x-admin-key": password,
+        "x-admin-key": key,
       });
 
-      if (r.ok || r.status === 200) {
-        onSuccess(password);
+      if (r.ok) {
+        onSuccess(key);
       } else if (r.status === 401) {
-        setError("Incorrect password.");
+        setError("Incorrect password. Default is \"admin\" on a fresh install.");
       } else {
-        // If no admin key is set, any password works — accept it
-        onSuccess(password);
+        // Non-auth error (500, etc.) — still let through, error will show in panel
+        onSuccess(key);
       }
     } catch {
-      setError("Connection error. Try again.");
+      setError("Connection error. Check your internet and try again.");
     } finally {
       setLoading(false);
     }
@@ -165,7 +167,7 @@ function LoginScreen({ onSuccess }: { onSuccess: (key: string) => void }) {
                   type={showPw ? "text" : "password"}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder={!status?.adminKeySet ? "admin (default)" : "Enter password"}
+                  placeholder="admin"
                   autoFocus
                   data-testid="login-password"
                   className="w-full text-sm px-3 py-2.5 pr-10 border border-border bg-background focus:outline-none focus:border-[#E3120B] focus:ring-1 focus:ring-[#E3120B] font-ui"
@@ -178,11 +180,9 @@ function LoginScreen({ onSuccess }: { onSuccess: (key: string) => void }) {
                   {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
               </div>
-              {!status?.adminKeySet && (
-                <p className="text-xs text-muted-foreground mt-1.5 font-ui">
-                  No password set yet — default is <code className="bg-muted px-1">admin</code>
-                </p>
-              )}
+              <p className="text-xs text-muted-foreground mt-1.5 font-ui">
+                Default password: <code className="bg-muted px-1 rounded text-xs">admin</code>
+              </p>
             </div>
 
             {error && (
