@@ -1,0 +1,56 @@
+# fly.toml — Espresso β deployment configuration
+# App: paulfxyz-espresso
+# Author: Paul Fleury <hello@paulfleury.com>
+#
+# Fly.io config for the Espresso morning digest service.
+# Single shared-cpu-1x machine, persistent volume for SQLite.
+#
+# Required secrets (set via `fly secrets set`):
+#   OPENROUTER_KEY=sk-or-v1-...
+#   ADMIN_KEY=your-secret-key
+#
+# Volume:
+#   fly volumes create espresso_data --size 1 --app app-lively-haze-690
+#   Then SQLite lives at /data/espresso.db — survives restarts and deploys.
+
+app = "app-lively-haze-690"
+primary_region = "mad"   # Madrid — closest to Lisbon
+
+[build]
+  # Uses the Dockerfile in the repo root
+
+[env]
+  PORT = "8080"
+  NODE_ENV = "production"
+  DB_PATH = "/data/espresso.db"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 25
+    soft_limit = 20
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
+
+[[mounts]]
+  source = "espresso_data"
+  destination = "/data"
+  initial_size = "1gb"
+
+[checks]
+  [checks.health]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    path = "/api/health"
+    port = 8080
+    timeout = "5s"
+    type = "http"
