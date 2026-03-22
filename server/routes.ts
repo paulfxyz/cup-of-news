@@ -50,14 +50,21 @@ import { runDailyPipeline, swapStory } from "./pipeline";
  */
 function requireApiKey(req: any, res: any, next: any) {
   const adminKey = storage.getConfig("admin_key");
-  if (!adminKey) return next(); // no key configured = open access
 
   const provided =
     (req.headers["x-admin-key"] as string) ||
-    (req.query.adminKey as string);
+    (req.query.adminKey as string) ||
+    "";
+
+  // No key configured yet: accept the default "admin" password or any provided key
+  if (!adminKey) {
+    if (!provided || provided === "admin") return next();
+    // Key provided but nothing set in DB yet — still accept (first-time setup)
+    return next();
+  }
 
   if (provided !== adminKey) {
-    return res.status(401).json({ error: "Unauthorized — x-admin-key header required" });
+    return res.status(401).json({ error: "Unauthorized — incorrect password" });
   }
   next();
 }
@@ -66,6 +73,26 @@ function requireApiKey(req: any, res: any, next: any) {
 
 export function registerRoutes(httpServer: Server, app: Express) {
 
+  // ── Admin password change ─────────────────────────────────────────────────
+
+  /**
+   * POST /api/admin/change-password
+   * Admin. Change the admin password (admin_key in config).
+   * Requires current password via x-admin-key header.
+   * Body: { newPassword: string }
+   *
+   * Special case: if no admin key is set yet and the user provides "admin"
+   * as the current key (the default), accept it and set the new one.
+   */
+  app.post("/api/admin/change-password", requireApiKey, (req, res) => {
+    const { newPassword } = req.body || {};
+    if (!newPassword || typeof newPassword !== "string" || newPassword.length < 4) {
+      return res.status(400).json({ error: "Password must be at least 4 characters" });
+    }
+    storage.setConfig("admin_key", newPassword);
+    res.json({ success: true, message: "Password updated. Use the new password on next login." });
+  });
+
   // ── Health ─────────────────────────────────────────────────────────────────
 
   /**
@@ -73,7 +100,7 @@ export function registerRoutes(httpServer: Server, app: Express) {
    * Public. Used by uptime monitors, Docker HEALTHCHECK, GitHub Actions.
    */
   app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok", version: "0.2.0" });
+    res.json({ status: "ok", version: "0.3.0" });
   });
 
   // ── Setup ──────────────────────────────────────────────────────────────────

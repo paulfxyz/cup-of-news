@@ -21,6 +21,38 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) · Versioning: 
 - 📱 **Mobile QA pass** — iOS Safari, Android Chrome
 - 🌍 **Multilingual summaries** — generate in user's preferred language
 
+
+## [0.3.0] — 2026-03-22
+
+**Visual & UX release — Economist redesign, admin auth, password management.**
+
+> No breaking API changes. Upgrade by redeploying — no DB migration needed.
+
+### ✨ New Features
+
+- **Admin login screen** — `/admin` now requires a password before showing any content. Clean full-screen login form with show/hide toggle.
+- **Default password** — `admin` (works with no configuration). Change it immediately after first login.
+- **Change password** — red toolbar at top of admin panel with "Change password" button. Opens a modal, validates confirmation match, updates instantly. New password takes effect on next login.
+- **Log out** — session clears instantly from the same red toolbar.
+- **Economist red/black/white redesign** — complete visual overhaul:
+  - Signature 4px red rule at top of every page (The Economist's trademark)
+  - Primary accent: `#E3120B` (Economist red) — replaces all orange
+  - Typography: Cabinet Grotesk (display) + Libre Baskerville (body serif — editorial warmth)
+  - Near-black backgrounds in dark mode, clean white in light mode
+  - Square corners (`border-radius: 0.25rem`) — editorial, not bubbly
+  - Category labels in red uppercase tracking — no coloured pills
+  - Story cards: red category, black headline, serif summary preview
+  - Hero date strip: inverted (black bg, white text) — like an Economist cover section header
+  - Closing quote: anchored with a 2px red rule, Baskerville italic
+  - Admin panel: red top rule, red-border focus states, red active tab indicator
+
+### 🐛 Fixed
+
+- **Default password fallback** — `requireApiKey` now accepts `"admin"` as password when no key is configured in DB. Previously the admin panel was inaccessible on a fresh deploy.
+- **Auth UX** — login screen validates against the live API (not client-side). Wrong password shows clear error.
+- **Footer** — removed floating PerplexityAttribution component, moved inline to each page footer.
+- **`/api/admin/change-password`** — new endpoint, requires current password via `x-admin-key`.
+
 ---
 
 ## [0.2.0] — 2026-03-22

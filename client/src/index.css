@@ -2,93 +2,128 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800&f[]=satoshi@400,500,700&display=swap');
+/**
+ * @file index.css
+ * @author Paul Fleury <hello@paulfleury.com>
+ * @version 0.3.0
+ *
+ * Espresso — Design System
+ *
+ * Palette: The Economist-inspired editorial design.
+ * Red, black, white — no orange, no teal, no gradients.
+ * Typography: Cabinet Grotesk (display) + Libre Baskerville (body serif, editorial feel)
+ *
+ * The Economist uses:
+ *   - Deep red (#E3120B) as primary accent
+ *   - Near-black (#121212) for text and surfaces
+ *   - Clean white for content backgrounds
+ *   - Generous whitespace, strong typographic hierarchy
+ */
 
-/* ── Espresso Design System ────────────────────────────────────────────────── */
-/* Dark editorial palette — deep ink backgrounds, amber accent, warm neutrals */
+@import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
+
+/* ── Economist Colour System ─────────────────────────────────────────────── */
 
 :root {
-  /* Typography */
-  --font-display: 'Cabinet Grotesk', 'Inter', sans-serif;
-  --font-body:    'Satoshi', 'Inter', sans-serif;
-
-  /* Type scale (fluid) */
-  --text-xs:   clamp(0.75rem,  0.7rem  + 0.25vw, 0.875rem);
-  --text-sm:   clamp(0.875rem, 0.8rem  + 0.35vw, 1rem);
-  --text-base: clamp(1rem,     0.95rem + 0.25vw, 1.125rem);
-  --text-lg:   clamp(1.125rem, 1rem    + 0.75vw, 1.5rem);
-  --text-xl:   clamp(1.5rem,   1.2rem  + 1.25vw, 2.25rem);
-
-  /* Spacing */
-  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem;
-  --space-4: 1rem;    --space-6: 1.5rem; --space-8: 2rem;
-  --space-10: 2.5rem; --space-12: 3rem;  --space-16: 4rem;
-
-  /* Light mode */
-  --background:    16 20% 97%;
-  --foreground:    220 25% 8%;
-  --card:          0 0% 100%;
-  --card-foreground: 220 25% 8%;
-  --popover:       0 0% 100%;
-  --popover-foreground: 220 25% 8%;
-  --primary:       38 92% 50%;
-  --primary-foreground: 0 0% 5%;
-  --secondary:     220 15% 94%;
-  --secondary-foreground: 220 25% 8%;
-  --muted:         220 12% 92%;
-  --muted-foreground: 220 12% 45%;
-  --accent:        220 12% 92%;
-  --accent-foreground: 220 25% 8%;
-  --destructive:   0 84% 60%;
-  --destructive-foreground: 0 0% 98%;
-  --border:        220 12% 86%;
-  --input:         220 12% 86%;
-  --ring:          38 92% 50%;
-  --radius: 0.5rem;
+  --economist-red:   #E3120B;
+  --economist-red-dark: #B50D08;
+  --font-display: 'Cabinet Grotesk', 'Helvetica Neue', sans-serif;
+  --font-body:    'Libre Baskerville', 'Georgia', serif;
+  --font-ui:      'Cabinet Grotesk', 'Helvetica Neue', sans-serif;
 }
 
+/* Light mode — white paper, black ink, red accent */
+:root, [data-theme="light"] {
+  --background:             0 0% 98%;
+  --foreground:             0 0% 7%;
+  --card:                   0 0% 100%;
+  --card-foreground:        0 0% 7%;
+  --popover:                0 0% 100%;
+  --popover-foreground:     0 0% 7%;
+  --primary:                3 94% 47%;    /* #E3120B economist red */
+  --primary-foreground:     0 0% 100%;
+  --secondary:              0 0% 95%;
+  --secondary-foreground:   0 0% 15%;
+  --muted:                  0 0% 94%;
+  --muted-foreground:       0 0% 45%;
+  --accent:                 0 0% 94%;
+  --accent-foreground:      0 0% 7%;
+  --destructive:            3 94% 47%;
+  --destructive-foreground: 0 0% 100%;
+  --border:                 0 0% 88%;
+  --input:                  0 0% 88%;
+  --ring:                   3 94% 47%;
+  --radius:                 0.25rem;       /* Economist uses tight, square corners */
+}
+
+/* Dark mode — deep ink, near-black, red accent stays vibrant */
 .dark {
-  /* Dark ink editorial mode */
-  --background:    220 20% 7%;
-  --foreground:    35 15% 90%;
-  --card:          220 18% 10%;
-  --card-foreground: 35 15% 90%;
-  --popover:       220 18% 10%;
-  --popover-foreground: 35 15% 90%;
-  --primary:       38 92% 50%;
-  --primary-foreground: 0 0% 5%;
-  --secondary:     220 16% 14%;
-  --secondary-foreground: 35 15% 80%;
-  --muted:         220 16% 14%;
-  --muted-foreground: 220 10% 55%;
-  --accent:        220 16% 14%;
-  --accent-foreground: 35 15% 90%;
-  --destructive:   0 62% 45%;
-  --destructive-foreground: 35 15% 90%;
-  --border:        220 14% 18%;
-  --input:         220 14% 18%;
-  --ring:          38 92% 50%;
+  --background:             0 0% 6%;
+  --foreground:             0 0% 93%;
+  --card:                   0 0% 9%;
+  --card-foreground:        0 0% 93%;
+  --popover:                0 0% 9%;
+  --popover-foreground:     0 0% 93%;
+  --primary:                3 94% 47%;
+  --primary-foreground:     0 0% 100%;
+  --secondary:              0 0% 13%;
+  --secondary-foreground:   0 0% 85%;
+  --muted:                  0 0% 13%;
+  --muted-foreground:       0 0% 52%;
+  --accent:                 0 0% 13%;
+  --accent-foreground:      0 0% 93%;
+  --destructive:            3 94% 47%;
+  --destructive-foreground: 0 0% 100%;
+  --border:                 0 0% 16%;
+  --input:                  0 0% 16%;
+  --ring:                   3 94% 47%;
 }
 
-/* ── Base ──────────────────────────────────────────────────────────────────── */
+/* ── Base ─────────────────────────────────────────────────────────────────── */
 
 * {
   box-sizing: border-box;
   border-color: hsl(var(--border));
 }
 
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
-  font-family: var(--font-body);
-  font-size: var(--text-base);
+  font-family: var(--font-ui);
   line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
 }
 
-.font-display { font-family: var(--font-display) !important; }
+/* Editorial body text uses serif */
+.font-editorial {
+  font-family: var(--font-body) !important;
+}
 
-/* ── Utilities ─────────────────────────────────────────────────────────────── */
+.font-display {
+  font-family: var(--font-display) !important;
+}
+
+.font-ui {
+  font-family: var(--font-ui) !important;
+}
+
+/* ── Economist-style rule line ───────────────────────────────────────────── */
+/* A thick red top border is The Economist's signature mark */
+.economist-rule {
+  border-top: 4px solid var(--economist-red);
+}
+
+.economist-rule-thin {
+  border-top: 1px solid var(--economist-red);
+}
+
+/* ── Utilities ───────────────────────────────────────────────────────────── */
 
 .line-clamp-2 {
   display: -webkit-box;
@@ -102,4 +137,22 @@ body {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.line-clamp-4 {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── Story card hover ─────────────────────────────────────────────────────── */
+.story-card:hover .story-title {
+  color: var(--economist-red);
+}
+
+/* ── Admin sidebar active ────────────────────────────────────────────────── */
+.tab-active {
+  border-bottom: 2px solid var(--economist-red);
+  color: hsl(var(--foreground));
 }
