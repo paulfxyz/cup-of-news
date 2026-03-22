@@ -10,11 +10,11 @@
 #   ADMIN_KEY=your-secret-key
 #
 # Volume:
-#   fly volumes create espresso_data --size 1 --app app-lively-haze-690
+#   fly volumes create espresso_data --size 1 --app paulflxyz-espresso
 #   Then SQLite lives at /data/espresso.db — survives restarts and deploys.
 
-app = "app-lively-haze-690"
-primary_region = "mad"   # Madrid — closest to Lisbon
+app = "paulflxyz-espresso"
+primary_region = "cdg"   # Paris — closest available region to Lisbon
 
 [build]
   # Uses the Dockerfile in the repo root
