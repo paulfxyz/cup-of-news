@@ -7,14 +7,14 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-07405E?style=for-the-badge&logo=sqlite&logoColor=white)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-0.4.0-orange?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-0.5.0-orange?style=for-the-badge)
 ![Status](https://img.shields.io/badge/status-beta-orange?style=for-the-badge)
 
 **Your personal AI-powered morning news digest. Self-hosted. One API key. Inspired by The Economist Espresso.**
 
 > ⚠️ **Beta.** Works end-to-end. Real-world QA ongoing. Feedback shapes v1.0.0.
 
-🔴 **Live demo:** [paulflxyz-espresso.fly.dev](https://paulflxyz-espresso.fly.dev)
+🔴 **Live:** [news.paulfleury.com](https://news.paulfleury.com) · [paulflxyz-espresso.fly.dev](https://paulflxyz-espresso.fly.dev)
 
 </div>
 
