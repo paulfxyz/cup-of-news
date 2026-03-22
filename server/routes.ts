@@ -19,7 +19,7 @@ function requireApiKey(req: any, res: any, next: any) {
 export function registerRoutes(httpServer: Server, app: Express) {
   // ─── Health ──────────────────────────────────────────────────────────────
   app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok", version: "1.0.0" });
+    res.json({ status: "ok", version: "0.1.0-beta" });
   });
 
   // ─── Setup ───────────────────────────────────────────────────────────────
