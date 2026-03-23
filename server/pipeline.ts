@@ -516,14 +516,18 @@ HARD LIMITS (violating any of these is a failure):
 - Maximum 3 stories per category (World, Politics, Business, Technology, etc.)
 - If two articles are about the same underlying event — pick ONE, drop the other entirely
 
-REQUIRED COVERAGE — your 20 stories MUST include at least:
-- 2 stories about Technology or Science (AI, climate, medicine, space, research)
-- 2 stories about Business or Economics (markets, companies, trade, finance)
-- 1 story about Culture, Arts, or Society
-- 1 story about Health, Environment, or Science
-- Stories from at least 4 distinct geographic regions (e.g. Europe, Asia, Americas, Middle East, Africa)
-- At least 1 story from Africa or Latin America
-- No more than 5 stories total from the Middle East/Iran/Israel conflict
+REQUIRED COVERAGE — these are MANDATORY, not optional. A digest missing any of these is incomplete:
+- AT LEAST 2 stories: Technology or Science (AI, medicine, space, research, climate tech)
+- AT LEAST 2 stories: Business or Economics (markets, trade, companies, finance)
+- AT LEAST 1 story: Sports (football, tennis, athletics, motorsport, Olympics — any sport)
+- AT LEAST 1 story: Culture, Arts, or Entertainment (film, music, books, exhibitions)
+- AT LEAST 1 story: Health or Environment (medicine, climate, nature, food)
+- AT LEAST 1 story from Africa
+- AT LEAST 1 story from Asia (excluding Middle East)
+- AT LEAST 1 story from the Americas (North or South)
+- AT LEAST 1 story from Europe
+- No more than 4 stories total about the Middle East/Iran/Israel conflict
+- No more than 2 stories from any single country
 
 QUALITY:
 - Each summary: maximum 200 words, active voice, editorial confidence — no hedging

@@ -20,6 +20,67 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) · Versioning: 
 
 ---
 
+## [1.5.0] — 2026-03-23
+
+**Sources modal per story, paragraph spacing, mandatory category coverage.**
+
+### Engineering notes — bottlenecks and decisions this version
+
+**The "sources" terminology confusion.**
+Users expect "Read sources" to show them what went into that specific story's summary — not
+the global RSS list. The UI had one RSS button in the header for the global feed list, and a
+"Read full story" inline link per card. These two things were conflated in the UX. Solution:
+each story card now has a "Read sources" button that opens a per-story modal showing the
+original article title, domain, and a prominent CTA to read the full source. The global
+RSS list (the 25 fallback feeds) moves to the Rss icon in the header, separate concern.
+
+**Line spacing vs. line-height — CSS confusion.**
+`line-height` controls the space between lines *within* a paragraph. `leading-[2.4]` was
+already very generous (240% of font size). The issue was that Libre Baskerville at large
+sizes (text-lg/xl/2xl) has tight internal metrics, making even high line-height feel cramped.
+The real fix is two-fold: increase `line-height` to 2.6 AND add `word-spacing: 0.04em` and
+`letter-spacing: 0.01em` to open up the horizontal rhythm. Together these create the
+"airy editorial" feel of a quality print magazine body text.
+
+**AI diversity — the Iran problem.**
+The Middle East conflict dominated every single digest. The AI was following its "pick the
+most important stories" instruction literally — and the most-covered news globally was Iran.
+Three iterations of diversity rules were needed:
+v1.4.0: max 3 per region (still got 7 Middle East)
+v1.4.3: max 2 per conflict (got to 5 Middle East)
+v1.5.0: max 4 Middle East total + MANDATORY slots for Sports, Culture, Africa, Asia, Americas, Europe
+The mandatory slots approach is far more robust than caps alone, because it forces the AI
+to go looking for non-dominant content rather than just stopping when it hits a cap.
+
+**Why we didn't use AI image generation.**
+Tested `google/gemini-3.1-flash-image-preview` via OpenRouter. The model exists but the
+API returns `content: null` — image output via the standard chat completions endpoint is
+not reliably supported. The `/images/generations` endpoint (OpenAI-style) is not exposed
+by OpenRouter. Rather than ship a broken feature, we implemented `generateCategoryImage()`:
+an inline SVG generator that creates a styled, colour-coded editorial card per category
+(Politics=red, Technology=blue, Business=amber, etc.) with grid texture and the story
+headline. It's instant, zero-cost, always works, and looks intentionally designed.
+
+### ✨ Features
+
+- **Per-story Sources modal** — "Read sources" button on each story card opens a modal
+  showing the original article title, source domain, and direct link to the full article.
+  Includes a note that the summary is an AI editorial interpretation.
+- **Improved paragraph spacing** — `leading-[2.6]` + `word-spacing: 0.04em` +
+  `letter-spacing: 0.01em` on the body text. Creates genuine print-magazine airiness.
+- **Mandatory Sports coverage** — every digest now guaranteed to include ≥1 Sports story
+- **Mandatory Culture coverage** — ≥1 Culture/Arts/Entertainment story per digest
+- **Mandatory geographic diversity** — ≥1 story each from Africa, Asia (ex-Middle East),
+  Americas, Europe — hard requirement, not a suggestion
+- **Middle East cap** — maximum 4 stories about Iran/Israel/Middle East conflict per digest
+
+### 🐛 Fixed
+
+- "Read full story" was a plain external link, easy to miss. Replaced with a prominent
+  "Read sources" button that surfaces source attribution clearly.
+
+---
+
 ## [1.1.0] — 2026-03-23
 
 **20-story digest, full documentation overhaul, line height improvements.**

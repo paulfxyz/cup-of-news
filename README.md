@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.4.0-red?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-1.5.0-red?style=for-the-badge)
 ![Status](https://img.shields.io/badge/status-stable-brightgreen?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
 ![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
@@ -347,6 +347,10 @@ Full history: **[CHANGELOG.md](./CHANGELOG.md)**
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| **1.5.0** | 2026-03-23 | Per-story sources modal, paragraph spacing, mandatory Sports/Culture/geographic coverage |
+| 1.4.x | 2026-03-23 | Smart images, diversity rules, editorial SVGs, sources modal |
+| 1.3.0 | 2026-03-23 | Editorial prompt (personalisation) |
+| 1.2.0 | 2026-03-23 | Rename to Cup of News, PWA/Capacitor, news.paulfleury.com |
 | **1.1.0** | 2026-03-23 | 20 stories per digest, full docs rewrite, line height improvements |
 | 0.5.2 | 2026-03-23 | Increased line heights |
 | 0.5.1 | 2026-03-23 | Quote card cleanup, logo text removed, bigger desktop type |

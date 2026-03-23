@@ -255,6 +255,85 @@ export default function DigestView() {
   );
 }
 
+// ─── Story Source Modal ─────────────────────────────────────────────────────────
+
+function SourcesStoryModal({ story }: { story: DigestStory }) {
+  const [open, setOpen] = useState(false);
+  const domain = (() => { try { return new URL(story.sourceUrl).hostname.replace("www.", ""); } catch { return story.sourceUrl; } })();
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-2 mt-8 text-sm font-bold font-ui text-[#E3120B] hover:underline underline-offset-2"
+        data-testid="read-sources-btn"
+      >
+        <Rss size={13} /> Read sources
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm px-0 sm:px-6">
+          <div className="bg-card w-full sm:max-w-lg border border-border sm:rounded-none shadow-2xl">
+            {/* Header */}
+            <div className="border-b-2 border-[#E3120B] px-6 py-4 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#E3120B] font-ui mb-1">{story.category}</p>
+                <h3 className="font-black text-base font-display leading-snug">{story.title}</h3>
+              </div>
+              <button onClick={() => setOpen(false)} className="flex-shrink-0 w-8 h-8 flex items-center justify-center hover:bg-accent rounded text-muted-foreground hover:text-foreground mt-0.5">
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Source entry */}
+            <div className="px-6 py-5 space-y-4">
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground font-ui">Primary Source</p>
+
+              <a
+                href={story.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-start gap-4 p-4 border border-border hover:border-[#E3120B] transition-colors group"
+              >
+                <div className="w-10 h-10 bg-[#E3120B]/10 flex items-center justify-center flex-shrink-0 group-hover:bg-[#E3120B]/20 transition-colors">
+                  <Rss size={16} className="text-[#E3120B]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold font-display leading-snug group-hover:text-[#E3120B] transition-colors line-clamp-2">
+                    {story.sourceTitle || story.title}
+                  </p>
+                  <p className="text-xs text-muted-foreground font-ui mt-1 flex items-center gap-1">
+                    {domain} <ArrowUpRight size={10} />
+                  </p>
+                </div>
+              </a>
+
+              <p className="text-xs text-muted-foreground font-editorial leading-relaxed">
+                This story was curated and summarised by the AI from the source above. The summary is an editorial interpretation — always read the original for full context.
+              </p>
+            </div>
+
+            {/* Full article CTA */}
+            <div className="border-t border-border px-6 py-4 flex items-center justify-between">
+              <a
+                href={story.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-sm font-bold font-ui bg-[#E3120B] text-white px-5 py-2.5 hover:bg-[#B50D08] transition-colors"
+              >
+                Read full article <ArrowUpRight size={13} />
+              </a>
+              <button onClick={() => setOpen(false)} className="text-sm text-muted-foreground hover:text-foreground font-ui transition-colors">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 // ─── Story Card ───────────────────────────────────────────────────────────────
 // Mobile-first: big type, generous padding, image above the fold
 
@@ -295,21 +374,12 @@ function StoryCard({ story, index, total }: { story: DigestStory; index: number;
       <div className="w-10 h-0.5 bg-[#E3120B] mb-6" />
 
       {/* Summary — editorial serif, comfortable reading size on mobile */}
-      <p className="text-lg sm:text-xl lg:text-2xl font-editorial leading-[2.4] text-foreground/85">
+      <p className="text-lg sm:text-xl lg:text-2xl font-editorial leading-[2.6] text-foreground/85" style={{wordSpacing: "0.04em", letterSpacing: "0.01em"}}>
         {story.summary}
       </p>
 
-      {/* Source link */}
-      <a
-        href={story.sourceUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 mt-8 text-sm font-bold font-ui
-                   text-[#E3120B] hover:underline underline-offset-2"
-        data-testid="read-source-link"
-      >
-        Read full story <ArrowUpRight size={14} />
-      </a>
+      {/* Sources — opens modal with source details */}
+      <SourcesStoryModal story={story} />
 
     </article>
   );
