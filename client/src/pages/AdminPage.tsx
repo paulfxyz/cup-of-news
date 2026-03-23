@@ -3,7 +3,7 @@
  * @author Paul Fleury <hello@paulfleury.com>
  * @version 0.3.0
  *
- * Espresso — Admin Panel
+ * Cup of News — Admin Panel
  *
  * Three tabs: Overview, Links, Digest.
  * Auth is handled by AdminAuthGate (wraps this component in App.tsx).
@@ -184,7 +184,7 @@ function OverviewTab({ headers }: { headers: Record<string, string> }) {
       {/* API reference */}
       <div className="border border-border bg-card p-6">
         <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground font-ui mb-4">Submit Links via API</h2>
-        <pre className="bg-muted text-xs p-4 overflow-x-auto rounded font-mono leading-relaxed">{`curl -X POST https://paulflxyz-espresso.fly.dev/api/links \\
+        <pre className="bg-muted text-xs p-4 overflow-x-auto rounded font-mono leading-relaxed">{`curl -X POST https://cup-of-news.fly.dev/api/links \\
   -H "Content-Type: application/json" \\
   -H "x-admin-key: YOUR_PASSWORD" \\
   -d '{"url": "https://example.com/article"}'`}</pre>

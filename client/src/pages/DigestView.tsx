@@ -3,7 +3,7 @@
  * @author Paul Fleury <hello@paulfleury.com>
  * @version 0.5.0
  *
- * Espresso — Public Digest Reader
+ * Cup of News — Public Digest Reader
  *
  * UX MODEL:
  *   Full-screen card reader — one story per screen.
@@ -133,7 +133,7 @@ export default function DigestView() {
             aria-label="First story"
           >
             <div className="w-8 h-8 bg-[#E3120B] flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-black text-sm font-display tracking-tight">E</span>
+              <span className="text-white font-black text-sm font-display tracking-tight">C</span>
             </div>
           </button>
 
@@ -179,13 +179,7 @@ export default function DigestView() {
             >
               {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
             </button>
-            <a
-              href="/#/admin"
-              className="hidden sm:flex w-9 h-9 items-center justify-center text-xs text-muted-foreground hover:text-[#E3120B] transition-colors font-ui"
-              aria-label="Admin"
-            >
-              ⚙
-            </a>
+
           </div>
         </div>
       </header>
@@ -452,19 +446,13 @@ function EmptyView() {
       <div className="flex-1 flex items-center justify-center px-6 text-center">
         <div className="max-w-sm space-y-5">
           <div className="w-14 h-14 bg-[#E3120B] mx-auto flex items-center justify-center">
-            <span className="text-white font-black text-2xl font-display">E</span>
+            <span className="text-white font-black text-2xl font-display">C</span>
           </div>
           <h2 className="text-2xl font-black font-display">No digest yet</h2>
           <p className="text-base text-muted-foreground font-editorial leading-[1.9]">
             Submit links, generate a digest, and publish it to start reading.
           </p>
-          <a
-            href="/#/admin"
-            className="inline-flex items-center gap-2 text-sm font-bold bg-[#E3120B] text-white
-                       px-6 py-3 hover:bg-[#B50D08] transition-colors font-ui"
-          >
-            Go to Admin <ArrowUpRight size={14} />
-          </a>
+  
         </div>
       </div>
     </div>

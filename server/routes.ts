@@ -3,7 +3,7 @@
  * @author Paul Fleury <hello@paulfleury.com>
  * @version 0.2.0
  *
- * Espresso — REST API Routes
+ * Cup of News — REST API Routes
  *
  * Context:
  *   All HTTP endpoints are registered here via registerRoutes().
@@ -100,7 +100,7 @@ export function registerRoutes(httpServer: Server, app: Express) {
    * Public. Used by uptime monitors, Docker HEALTHCHECK, GitHub Actions.
    */
   app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok", version: "1.1.0" });
+    res.json({ status: "ok", version: "1.2.0" });
   });
 
   // ── Setup ──────────────────────────────────────────────────────────────────

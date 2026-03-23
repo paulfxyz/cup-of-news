@@ -3,7 +3,7 @@
  * @author Paul Fleury <hello@paulfleury.com>
  * @version 0.2.0
  *
- * Espresso — Shared Data Schema
+ * Cup of News — Shared Data Schema
  *
  * Context:
  *   This file is the single source of truth for all data structures used

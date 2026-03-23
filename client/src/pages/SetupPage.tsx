@@ -23,7 +23,7 @@ export default function SetupPage() {
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
           <Coffee size={40} className="text-amber-500 mx-auto" />
-          <h1 className="text-xl font-bold font-display">Welcome to Espresso</h1>
+          <h1 className="text-xl font-bold font-display">Welcome to Cup of News</h1>
           <p className="text-sm text-muted-foreground">Configure your morning digest in seconds.</p>
         </div>
 

@@ -3,7 +3,7 @@
  * @author Paul Fleury <hello@paulfleury.com>
  * @version 0.3.0
  *
- * Espresso — Admin Authentication Gate
+ * Cup of News — Admin Authentication Gate
  *
  * Wraps the admin panel with a password login screen.
  * The password is stored in React state (session only, no localStorage).
@@ -148,10 +148,10 @@ function LoginScreen({ onSuccess }: { onSuccess: (key: string) => void }) {
           {/* Logo */}
           <div className="flex items-center gap-3 mb-8">
             <div className="w-10 h-10 bg-[#E3120B] flex items-center justify-center">
-              <span className="text-white font-bold text-lg font-display">E</span>
+              <span className="text-white font-bold text-lg font-display">C</span>
             </div>
             <div>
-              <h1 className="font-bold text-base font-display uppercase tracking-wide">Espresso</h1>
+              <h1 className="font-bold text-base font-display uppercase tracking-wide">Cup of News</h1>
               <p className="text-xs text-muted-foreground font-ui">Admin panel</p>
             </div>
           </div>

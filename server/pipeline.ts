@@ -3,10 +3,10 @@
  * @author Paul Fleury <hello@paulfleury.com>
  * @version 0.2.0
  *
- * Espresso — Daily Digest Generation Pipeline
+ * Cup of News — Daily Digest Generation Pipeline
  *
  * Context:
- *   This is the core of Espresso. It runs once per day (triggered by cron or
+ *   This is the core of Cup of News. It runs once per day (triggered by cron or
  *   manually from the admin panel) and produces a structured 10-story digest
  *   with editorial summaries and a closing quote.
  *
@@ -157,7 +157,7 @@ async function extractViaJina(
   const res = await fetch(jinaUrl, {
     headers: {
       Accept: "text/markdown",
-      "User-Agent": "Espresso-Bot/0.2",
+      "User-Agent": "CupOfNews-Bot/0.2",
       "X-Return-Format": "markdown",
       // Request og:image in the response header section
       "X-With-Images-Summary": "true",
@@ -211,8 +211,8 @@ async function callOpenRouter(
   const headers = {
     Authorization: `Bearer ${apiKey}`,
     "Content-Type": "application/json",
-    "HTTP-Referer": "https://github.com/paulfxyz/espresso",
-    "X-Title": "Espresso Morning Digest",
+    "HTTP-Referer": "https://github.com/paulfxyz/cup-of-news",
+    "X-Title": "Cup of News",
   };
 
   // Attempt 1
@@ -424,7 +424,7 @@ export async function runDailyPipeline(
     trendSource: p.link.notes || undefined,
   }));
 
-  const systemPrompt = `You are the editorial AI for "Espresso" — a curated morning news digest inspired by The Economist Espresso. Your writing is intelligent, slightly opinionated, and respects the reader's time.
+  const systemPrompt = `You are the editorial AI for "Cup of News" — a curated morning news digest inspired by The Economist Espresso. Your writing is intelligent, slightly opinionated, and respects the reader's time.
 
 Your task: from the provided list of articles, select exactly 20 that together form the best morning briefing. Prioritize newsworthiness, recency, diversity of topics, and global relevance.
 
@@ -589,7 +589,7 @@ export async function swapStory(
     [
       {
         role: "system",
-        content: `You are the editorial AI for "Espresso" morning digest. Summarize the provided article with intelligence and editorial confidence.`,
+        content: `You are the editorial AI for "Cup of News" morning digest. Summarize the provided article with intelligence and editorial confidence.`,
       },
       {
         role: "user",

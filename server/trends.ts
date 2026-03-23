@@ -3,10 +3,10 @@
  * @author Paul Fleury <hello@paulfleury.com>
  * @version 0.4.0
  *
- * Espresso — RSS Trend Fallback Engine
+ * Cup of News — RSS Trend Fallback Engine
  *
  * WHY THIS EXISTS:
- *   Espresso is most useful when you feed it your own links. But a great morning
+ *   Cup of News is most useful when you feed it your own links. But a great morning
  *   briefing shouldn't fail just because you didn't bookmark anything this week.
  *   This module provides a safety net: 25 trusted RSS sources that ensure every
  *   morning edition has at least 10 stories worth reading, even on lazy weeks.
@@ -329,7 +329,7 @@ async function fetchFeed(source: RSSSource): Promise<TrendStory[]> {
   try {
     const res = await fetch(source.url, {
       headers: {
-        "User-Agent": "Espresso-Bot/0.4 (RSS; https://github.com/paulfxyz/espresso)",
+        "User-Agent": "CupOfNews-Bot/0.4 (RSS; https://github.com/paulfxyz/cup-of-news)",
         "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml, */*",
       },
       signal: AbortSignal.timeout(10000),

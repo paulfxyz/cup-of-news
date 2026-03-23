@@ -3,10 +3,10 @@
  * @author Paul Fleury <hello@paulfleury.com>
  * @version 0.2.0
  *
- * Espresso — SQLite Storage Layer
+ * Cup of News — SQLite Storage Layer
  *
  * Context:
- *   All application state lives in a single SQLite file (espresso.db).
+ *   All application state lives in a single SQLite file (cup-of-news.db).
  *   This file is the sole persistence layer — no Redis, no external DB.
  *   Drizzle ORM provides type-safe queries; better-sqlite3 is synchronous
  *   (no async/await needed for DB ops).
@@ -29,8 +29,8 @@
  *   All queries return synchronously — no connection pool needed.
  *
  * Design decision — why SQLite and not Postgres:
- *   Espresso is a personal tool. One user, one digest per day, ~100 links/month.
- *   SQLite is zero-infrastructure, file-based (easy backup: cp espresso.db),
+ *   Cup of News is a personal tool. One user, one digest per day, ~100 links/month.
+ *   SQLite is zero-infrastructure, file-based (easy backup: cp cup-of-news.db),
  *   and perfectly sufficient at this scale. Switching to Postgres later would
  *   require changing only this file and the schema — the rest of the app is
  *   storage-agnostic through the IStorage interface.
@@ -53,7 +53,7 @@ import path from "path";
 // ─── Database Initialisation ──────────────────────────────────────────────────
 
 const DB_PATH =
-  process.env.DB_PATH || path.join(process.cwd(), "espresso.db");
+  process.env.DB_PATH || path.join(process.cwd(), "cup-of-news.db");
 
 const sqlite = new Database(DB_PATH);
 

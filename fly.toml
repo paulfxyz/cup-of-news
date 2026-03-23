@@ -1,20 +1,20 @@
-# fly.toml — Espresso β deployment configuration
-# App: paulfxyz-espresso
+# fly.toml — Cup of News deployment configuration
+# App: cup-of-news → app.cupof.news
 # Author: Paul Fleury <hello@paulfleury.com>
 #
-# Fly.io config for the Espresso morning digest service.
+# Fly.io config for Cup of News morning digest service.
 # Single shared-cpu-1x machine, persistent volume for SQLite.
 #
 # Required secrets (set via `fly secrets set`):
 #   OPENROUTER_KEY=sk-or-v1-...
-#   ADMIN_KEY=your-secret-key
+#   ADMIN_KEY=your-secure-password
 #
 # Volume:
-#   fly volumes create espresso_data --size 1 --app paulflxyz-espresso
-#   Then SQLite lives at /data/espresso.db — survives restarts and deploys.
+#   fly volumes create cup_of_news_data --size 1 --app cup-of-news --region cdg
+#   SQLite lives at /data/cup-of-news.db — survives restarts and deploys.
 
-app = "paulflxyz-espresso"
-primary_region = "cdg"   # Paris — closest available region to Lisbon
+app = "cup-of-news"
+primary_region = "cdg"   # Paris — closest to Lisbon
 
 [build]
   # Uses the Dockerfile in the repo root
@@ -22,7 +22,7 @@ primary_region = "cdg"   # Paris — closest available region to Lisbon
 [env]
   PORT = "8080"
   NODE_ENV = "production"
-  DB_PATH = "/data/espresso.db"
+  DB_PATH = "/data/cup-of-news.db"
 
 [http_service]
   internal_port = 8080
@@ -41,9 +41,8 @@ primary_region = "cdg"   # Paris — closest available region to Lisbon
   memory = "256mb"
 
 [[mounts]]
-  source = "espresso_data"
+  source = "cup_of_news_data"
   destination = "/data"
-  initial_size = "1gb"
 
 [checks]
   [checks.health]
