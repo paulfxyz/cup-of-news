@@ -483,27 +483,96 @@ function StoryCard({ story, index, total, edition }: { story: DigestStory; index
   );
 }
 
-// ─── Quote Card ───────────────────────────────────────────────────────────────
+// ─── Quote Card — Celebration screen (v2.3.0) ────────────────────────────────
+//
+// Design intent: the final card is the reward for reading the whole digest.
+// Pure black (distinct from the dark-mode #0f0f0f background), staggered
+// CSS entrance animations, a completion badge, and a closing quote.
+//
+// Pure CSS keyframe animations — no external animation library. All transitions
+// are staggered (0.1s increments) so elements enter sequentially, not all at once.
+// The shimmer on the ✦ badge loops indefinitely as a subtle "you're done" signal.
+//
+// layout: completion badge → date → red line → quote → author → end nudge
 
-function QuoteCard({ quote, author, date, label = "Today's Thought" }: { quote: string; author: string; date: string; label?: string }) {
+function QuoteCard({ quote, author, date, label = "Today's Thought" }: {
+  quote: string;
+  author: string;
+  date: string;
+  label?: string;
+}) {
   return (
-    <div className="min-h-full flex items-center justify-center bg-foreground text-background px-6 py-16">
-      <div className="max-w-2xl w-full text-center space-y-10">
-        <p className="text-xs uppercase tracking-[0.22em] opacity-40 font-ui">
-          {formatDate(date)} · Today’s Thought
+    <div
+      className="min-h-full flex items-center justify-center px-6 py-16"
+      style={{ background: "#000000" }}
+    >
+      {/* CSS keyframes injected inline — no build step, no flash */}
+      <style>{`
+        @keyframes cup-fade-up {
+          from { opacity: 0; transform: translateY(20px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes cup-badge-pop {
+          0%   { opacity: 0; transform: scale(0.5); }
+          70%  { transform: scale(1.1); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+        @keyframes cup-line-grow {
+          from { width: 0; opacity: 0; }
+          to   { width: 2.5rem; opacity: 1; }
+        }
+        @keyframes cup-shimmer {
+          0%, 100% { opacity: 0.4; }
+          50%       { opacity: 1; }
+        }
+        .cup-badge  { animation: cup-badge-pop  0.5s cubic-bezier(.34,1.56,.64,1) 0.05s both; }
+        .cup-date   { animation: cup-fade-up 0.5s ease 0.3s both; }
+        .cup-line   { animation: cup-line-grow 0.4s ease 0.5s both; }
+        .cup-quote  { animation: cup-fade-up 0.7s ease 0.6s both; }
+        .cup-author { animation: cup-fade-up 0.5s ease 0.9s both; }
+        .cup-nudge  { animation: cup-fade-up 0.4s ease 1.1s both; }
+        .cup-dot    { display: inline-block; animation: cup-shimmer 2s ease-in-out 1.3s infinite; }
+      `}</style>
+
+      <div className="max-w-xl w-full text-center">
+
+        {/* Completion badge */}
+        <div className="cup-badge flex items-center justify-center mb-10">
+          <span className="inline-flex items-center gap-2.5 border border-white/15 px-5 py-2 text-[11px] font-black uppercase tracking-[0.22em] text-white/50 font-ui">
+            <span className="cup-dot text-[#E3120B]">✦</span>
+            {label}
+            <span className="cup-dot text-[#E3120B]">✦</span>
+          </span>
+        </div>
+
+        {/* Date */}
+        <p className="cup-date text-[10px] uppercase tracking-[0.25em] text-white/25 font-ui mb-8">
+          {formatDate(date)}
         </p>
-        <div className="w-10 h-0.5 bg-[#E3120B] mx-auto" />
-        <blockquote className="text-2xl sm:text-3xl lg:text-4xl font-editorial italic leading-[1.55] sm:leading-[1.65] font-medium">
-          “{quote}”
+
+        {/* Red accent line — grows in */}
+        <div className="cup-line h-px bg-[#E3120B] mx-auto mb-10" />
+
+        {/* The quote — the real payoff */}
+        <blockquote className="cup-quote text-[1.6rem] sm:text-[2rem] lg:text-[2.4rem] font-editorial italic leading-[1.6] font-medium text-white">
+          &ldquo;{quote}&rdquo;
         </blockquote>
+
+        {/* Author */}
         {author && (
-          <p className="text-lg sm:text-xl opacity-55 font-ui">{author}</p>
+          <p className="cup-author text-sm sm:text-base text-white/35 font-ui mt-8 tracking-wide">
+            — {author}
+          </p>
         )}
+
+        {/* End-of-digest nudge */}
+        <p className="cup-nudge text-[10px] text-white/15 font-ui mt-14 uppercase tracking-[0.22em]">
+          You&rsquo;ve read today&rsquo;s digest
+        </p>
       </div>
     </div>
   );
 }
-
 // ─── Grid Overlay ─────────────────────────────────────────────────────────────
 
 function GridOverlay({

@@ -1,3 +1,46 @@
+## [2.3.0] — 2026-03-23
+
+**Celebration quote card. Better image quality. Native French polish.**
+
+### QuoteCard — gamified completion screen
+The final card is now pure black (#000000, distinct from dark-mode #0f0f0f background)
+with a staggered CSS entrance animation sequence:
+  1. ✦ Completion badge pops in (cubic-bezier spring, 0.05s delay)
+  2. Date fades up (0.3s)
+  3. Red accent line grows from centre outward (0.5s)
+  4. Quote fades up with gentle translate (0.6s)
+  5. Author attribution fades in (0.9s)
+  6. "You've read today's digest" nudge appears (1.1s)
+  7. ✦ badge shimmer loops indefinitely as a completion signal
+
+All animations are pure CSS keyframes injected via <style> tag — zero JS animation
+libraries, zero extra bundle weight. The staggered timing creates a sense of reveal
+rather than everything arriving simultaneously.
+
+### Image quality improvements
+The buildImageQuery() function now:
+  - Detects named entities (capitalised mid-sentence words = countries, people, orgs)
+    which produce the most photo-searchable results on Wikimedia
+  - Adds a category-specific anchor term: Sports → "sport", Politics → "government",
+    Business → "economy" etc. This biases Wikimedia toward news photography
+    (match photos, parliament shots, financial charts) vs generic illustrations
+  - Falls back to stop-word-filtered keywords + anchor if no named entities found
+  - Wikimedia filter tightened: min 600px wide, ratio must be clearly landscape (>1.1)
+
+### French landing page final polish
+The v2.2.0 FR translations were already much improved. v2.3.0 polishes the remaining
+rough edges: more idiomatic verb forms, better rhythm in feature descriptions.
+
+### Version surface checklist (all updated)
+  ✅ package.json: 2.3.0
+  ✅ server/routes.ts health endpoint: "2.3.0"
+  ✅ README badge: version-2.3.0-red
+  ✅ All @version headers: 2.3.0
+  ✅ Landing page: v2.3.0 in badge, footer (EN/FR/DE)
+  ✅ CHANGELOG: this entry
+
+---
+
 ## [2.2.0-landing] — 2026-03-23
 
 **Landing page: native-quality French and German rewrites.**

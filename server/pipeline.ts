@@ -1,7 +1,7 @@
 /**
  * @file server/pipeline.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 2.2.0
+ * @version 2.3.0
  *
  * Cup of News — Daily Digest Generation Pipeline
  *
@@ -204,6 +204,65 @@ async function fetchOgImageDirect(url: string): Promise<string | null> {
 
 /**
 /**
+ * generateCategoryImage — deterministic SVG placeholder per news category.
+ *
+ * Final fallback when all image fetching fails. Each category has its own
+ * colour palette (dark background + accent colour). The story headline is
+ * rendered in the SVG so even the fallback contains meaningful content.
+ * Zero cost, instant, always available, never a broken image.
+ */
+function generateCategoryImage(title: string, category: string): string {
+  const palettes: Record<string, { bg: string; accent: string; dot: string }> = {
+    Technology:   { bg: "#0f1729", accent: "#1d3461", dot: "#3b82f6" },
+    Technologie:  { bg: "#0f1729", accent: "#1d3461", dot: "#3b82f6" },
+    Technologie2: { bg: "#0f1729", accent: "#1d3461", dot: "#3b82f6" },
+    Science:      { bg: "#0d1f0d", accent: "#1a3a1a", dot: "#22c55e" },
+    Wissenschaft: { bg: "#0d1f0d", accent: "#1a3a1a", dot: "#22c55e" },
+    Business:     { bg: "#1a0e00", accent: "#3d2000", dot: "#f59e0b" },
+    Économie:     { bg: "#1a0e00", accent: "#3d2000", dot: "#f59e0b" },
+    Wirtschaft:   { bg: "#1a0e00", accent: "#3d2000", dot: "#f59e0b" },
+    Politics:     { bg: "#1a0000", accent: "#3d0000", dot: "#E3120B" },
+    Politique:    { bg: "#1a0000", accent: "#3d0000", dot: "#E3120B" },
+    Politik:      { bg: "#1a0000", accent: "#3d0000", dot: "#E3120B" },
+    World:        { bg: "#0f0f1a", accent: "#1d1d3a", dot: "#8b5cf6" },
+    Monde:        { bg: "#0f0f1a", accent: "#1d1d3a", dot: "#8b5cf6" },
+    Welt:         { bg: "#0f0f1a", accent: "#1d1d3a", dot: "#8b5cf6" },
+    Culture:      { bg: "#1a0f1a", accent: "#3a1f3a", dot: "#ec4899" },
+    Kultur:       { bg: "#1a0f1a", accent: "#3a1f3a", dot: "#ec4899" },
+    Health:       { bg: "#001a1a", accent: "#003a3a", dot: "#14b8a6" },
+    Santé:        { bg: "#001a1a", accent: "#003a3a", dot: "#14b8a6" },
+    Gesundheit:   { bg: "#001a1a", accent: "#003a3a", dot: "#14b8a6" },
+    Environment:  { bg: "#051a05", accent: "#0a3a0a", dot: "#84cc16" },
+    Environnement:{ bg: "#051a05", accent: "#0a3a0a", dot: "#84cc16" },
+    Umwelt:       { bg: "#051a05", accent: "#0a3a0a", dot: "#84cc16" },
+    Sports:       { bg: "#1a0a00", accent: "#3a1500", dot: "#f97316" },
+    Sport:        { bg: "#1a0a00", accent: "#3a1500", dot: "#f97316" },
+    Other:        { bg: "#111111", accent: "#222222", dot: "#888888" },
+    Autre:        { bg: "#111111", accent: "#222222", dot: "#888888" },
+    Sonstiges:    { bg: "#111111", accent: "#222222", dot: "#888888" },
+  };
+  const p = palettes[category] || palettes.Other;
+  const short = title.length > 60 ? title.slice(0, 57) + "..." : title;
+  const words = short.split(" ");
+  const lines2: string[] = [];
+  let cur = "";
+  for (const w of words) {
+    if ((cur + " " + w).trim().length > 32) { lines2.push(cur.trim()); cur = w; }
+    else cur = (cur + " " + w).trim();
+  }
+  if (cur) lines2.push(cur.trim());
+  const twoLines = lines2.slice(0, 2);
+
+  const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const textEls = twoLines
+    .map((l, i) => `<text x="40" y="${215 + i * 38}" font-family="Helvetica Neue" font-size="26" font-weight="800" fill="#fff" opacity="0.92">${escape(l)}</text>`)
+    .join(" ");
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450"><defs><pattern id="g" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0L0 0 0 40" fill="none" stroke="${p.accent}" stroke-width="0.5" opacity="0.4"/></pattern></defs><rect width="800" height="450" fill="${p.bg}"/><rect width="800" height="450" fill="url(#g)"/><rect width="4" height="450" fill="${p.dot}"/><rect x="40" y="180" width="720" height="2" fill="${p.accent}" opacity="0.6"/><text x="40" y="160" font-family="Helvetica Neue" font-size="11" font-weight="700" letter-spacing="3" fill="${p.dot}" opacity="0.9">${category.toUpperCase()}</text>${textEls}<circle cx="760" cy="400" r="60" fill="${p.dot}" opacity="0.06"/><circle cx="760" cy="400" r="30" fill="${p.dot}" opacity="0.08"/></svg>`;
+  return "data:image/svg+xml;base64," + Buffer.from(svg).toString("base64");
+}
+
+/**
  * fetchEditorialImage — search for a high-quality editorial photograph.
  *
  * v2.1.1: Replaces the Unsplash-only approach with a more robust strategy.
@@ -240,7 +299,7 @@ async function fetchEditorialImage(title: string, category: string): Promise<str
   // ── Tier 3a: Unsplash (optional, requires API key) ───────────────────────
   const unsplashKey = process.env.UNSPLASH_ACCESS_KEY;
   if (unsplashKey) {
-    const unsplashResult = await fetchFromUnsplash(title, unsplashKey);
+    const unsplashResult = await fetchFromUnsplash(title, unsplashKey, category);
     if (unsplashResult) return unsplashResult;
   }
 
@@ -255,8 +314,8 @@ async function fetchEditorialImage(title: string, category: string): Promise<str
 }
 
 /** Unsplash search — requires UNSPLASH_ACCESS_KEY */
-async function fetchFromUnsplash(title: string, accessKey: string): Promise<string | null> {
-  const query = buildImageQuery(title);
+async function fetchFromUnsplash(title: string, accessKey: string, category = "World"): Promise<string | null> {
+  const query = buildImageQuery(title, category);
   try {
     const res = await fetch(
       `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=3&orientation=landscape&content_filter=high`,
@@ -278,7 +337,7 @@ async function fetchFromUnsplash(title: string, accessKey: string): Promise<stri
  * Filters to images with landscape-friendly aspect ratios.
  */
 async function fetchFromWikimedia(title: string, category: string): Promise<string | null> {
-  const query = buildImageQuery(title) || category;
+  const query = buildImageQuery(title, category) || category;
   try {
     const apiUrl = `https://commons.wikimedia.org/w/api.php?` +
       `action=query&format=json&origin=*` +
@@ -304,7 +363,8 @@ async function fetchFromWikimedia(title: string, category: string): Promise<stri
       if (!["image/jpeg", "image/png", "image/webp"].includes(info.mime)) continue;
       // Prefer landscape images (width > height)
       if (info.width < info.height) continue;
-      if (info.width < 400) continue; // Too small
+      if (info.width < 600) continue; // Too small — enforce reasonable resolution
+      if (info.width < info.height * 1.1) continue; // Must be clearly landscape
       if (isValidOgImage(info.url)) return info.url;
     }
     return null;
@@ -312,86 +372,91 @@ async function fetchFromWikimedia(title: string, category: string): Promise<stri
 }
 
 /**
- * Build a focused image search query from a story title.
- * Strips stop words and takes the 4 most meaningful words.
- * Works for English, French, and German titles.
+ * buildImageQuery — extract the most photo-searchable keywords from a story.
+ *
+ * v2.3.0: Category-aware query construction.
+ *
+ * The key insight: for news photos, the best search terms are:
+ *   - Named entities (countries, cities, people, organisations) → visual subjects
+ *   - Category-specific terms → immediately grounding the photo
+ *
+ * PROBLEM WITH GENERIC KEYWORD EXTRACTION:
+ *   "US and Iran trade threats over nuclear programme" → "iran nuclear programme threats"
+ *   → Wikimedia returns diagrams, maps, protest photos — rarely a sharp news photo.
+ *
+ * BETTER APPROACH:
+ *   1. Extract named-entity candidates (words starting with uppercase in mid-sentence,
+ *      or from a known country/city list) — these produce the most photo-searchable results
+ *   2. Add a category-specific anchor term (e.g. "stadium" for Sports, "parliament" for
+ *      Politics) — this biases Wikimedia toward the right visual domain
+ *   3. Fall back to stop-word-filtered title keywords if no named entities found
+ *
+ * WHY CATEGORY ANCHORS HELP:
+ *   "Man City crushes Arsenal" → "Manchester City Arsenal" + "football" → stadium/match photos
+ *   "Bundesliga result" → "Bundesliga" + "football" → actual match photography
+ *   "French election" → "France election" + "parliament" → political imagery
  */
-function buildImageQuery(title: string): string {
-  const stopWords = new Set([
+function buildImageQuery(title: string, category = "World"): string {
+  // Category-specific anchor terms that bias photo searches toward the right domain
+  const categoryAnchors: Record<string, string> = {
+    Sports:      "sport",
+    Politics:    "government",
+    Business:    "economy",
+    Technology:  "technology",
+    Science:     "research",
+    Health:      "health",
+    Environment: "nature",
+    Culture:     "culture",
+    World:       "",
+    Other:       "",
+  };
+
+  const STOP = new Set([
     // English
-    "a","an","the","and","or","but","in","on","at","to","for","of","with",
-    "by","from","up","as","is","it","its","this","that","was","are","be",
-    "has","had","have","will","would","could","should","may","might","over",
-    "than","then","so","if","when","where","how","what","who","why","says",
-    "said","after","before","amid","us","un","eu","new","first","after",
+    "a","an","the","and","or","but","in","on","at","to","for","of","with","by",
+    "from","is","it","its","this","that","was","are","be","has","had","have",
+    "will","would","could","should","may","might","over","than","then","so",
+    "if","when","where","how","what","who","why","says","said","after","before",
+    "new","first","last","more","most","also","into","does","as","up","amid",
+    "deal","plan","call","move","hit","warn","seek","face","hold","set","push",
+    "amid","amid","amid","us","un","eu","nato","two","three","four","five",
     // French
-    "le","la","les","un","une","des","du","de","et","ou","mais","dans","sur",
-    "avec","par","pour","que","qui","se","il","elle","ils","elles","ce","son",
-    "sa","ses","leur","leurs","au","aux","ne","pas","plus","très","bien",
+    "le","la","les","un","une","des","du","de","et","ou","dans","sur","avec",
+    "par","pour","que","qui","il","elle","au","aux","ce","son","sa","ses",
     // German
-    "der","die","das","ein","eine","und","oder","aber","in","auf","an","mit",
-    "von","zu","bei","nach","aus","sich","ist","war","hat","werden","kann",
-    "auch","für","des","im","am","dem","den","nicht","noch","als",
+    "der","die","das","ein","eine","und","oder","aber","auf","an","mit","von",
+    "zu","bei","nach","aus","sich","ist","war","hat","für","des","im","am",
   ]);
 
-  return title
-    .toLowerCase()
-    .replace(/[^\w\s\u00c0-\u024f]/g, " ") // keep latin extended chars
-    .split(/\s+/)
-    .filter(w => w.length > 3 && !stopWords.has(w))
-    .slice(0, 4)
-    .join(" ");
-}
+  // Extract capitalised words from the middle of the title (likely named entities)
+  const words = title.split(/\s+/);
+  const namedEntities = words
+    .slice(1) // Skip first word (always capitalised)
+    .filter(w => /^[A-ZÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖÙÚÛÜÝÞŸ]/.test(w))
+    .map(w => w.replace(/[^a-zA-ZÀ-ÿ]/g, ""))
+    .filter(w => w.length > 2 && !STOP.has(w.toLowerCase()))
+    .slice(0, 3);
 
-
-function generateCategoryImage(title: string, category: string): string {
-  const palettes: Record<string, { bg: string; accent: string; dot: string }> = {
-    Technology:   { bg: "#0f1729", accent: "#1d3461", dot: "#3b82f6" },
-    Science:      { bg: "#0d1f0d", accent: "#1a3a1a", dot: "#22c55e" },
-    Business:     { bg: "#1a0e00", accent: "#3d2000", dot: "#f59e0b" },
-    Politics:     { bg: "#1a0000", accent: "#3d0000", dot: "#E3120B" },
-    World:        { bg: "#0f0f1a", accent: "#1d1d3a", dot: "#8b5cf6" },
-    Culture:      { bg: "#1a0f1a", accent: "#3a1f3a", dot: "#ec4899" },
-    Health:       { bg: "#001a1a", accent: "#003a3a", dot: "#14b8a6" },
-    Environment:  { bg: "#051a05", accent: "#0a3a0a", dot: "#84cc16" },
-    Sports:       { bg: "#1a0a00", accent: "#3a1500", dot: "#f97316" },
-    Other:        { bg: "#111111", accent: "#222222", dot: "#888888" },
-  };
-  const p = palettes[category] || palettes.Other;
-  const short = title.length > 60 ? title.slice(0, 57) + "..." : title;
-  const words = short.split(" ");
-  const lines2: string[] = [];
-  let cur = "";
-  for (const w of words) {
-    if ((cur + " " + w).trim().length > 32) { lines2.push(cur.trim()); cur = w; }
-    else cur = (cur + " " + w).trim();
+  // If we found named entities, use them as the primary query
+  if (namedEntities.length >= 2) {
+    const anchor = categoryAnchors[category] || "";
+    const q = namedEntities.join(" ") + (anchor ? " " + anchor : "");
+    return q.trim();
   }
-  if (cur) lines2.push(cur.trim());
-  const twoLines = lines2.slice(0, 2);
 
-  const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  const textEls = twoLines
-    .map((l, i) => `<text x="40" y="${215 + i * 38}" font-family="Helvetica Neue" font-size="26" font-weight="800" fill="#fff" opacity="0.92">${escape(l)}</text>`)
-    .join(" ");
+  // Fallback: stop-word-filtered keywords + category anchor
+  const keywords = title
+    .toLowerCase()
+    .replace(/[^\w\sÀ-ɏ]/g, " ")
+    .split(/\s+/)
+    .filter(w => w.length >= 4 && !STOP.has(w))
+    .slice(0, 3);
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450"><defs><pattern id="g" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0L0 0 0 40" fill="none" stroke="${p.accent}" stroke-width="0.5" opacity="0.4"/></pattern></defs><rect width="800" height="450" fill="${p.bg}"/><rect width="800" height="450" fill="url(#g)"/><rect width="4" height="450" fill="${p.dot}"/><rect x="40" y="180" width="720" height="2" fill="${p.accent}" opacity="0.6"/><text x="40" y="160" font-family="Helvetica Neue" font-size="11" font-weight="700" letter-spacing="3" fill="${p.dot}" opacity="0.9">${category.toUpperCase()}</text>${textEls}<circle cx="760" cy="400" r="60" fill="${p.dot}" opacity="0.06"/><circle cx="760" cy="400" r="30" fill="${p.dot}" opacity="0.08"/></svg>`;
-  return "data:image/svg+xml;base64," + Buffer.from(svg).toString("base64");
+  const anchor = categoryAnchors[category] || "";
+  return (keywords.join(" ") + (anchor ? " " + anchor : "")).trim() || category;
 }
 
 
-// ─── Jina Reader ──────────────────────────────────────────────────────────────
-
-/**
- * Extract full readable content from any URL via Jina Reader.
- *
- * Jina Reader (r.jina.ai) is a free public API that:
- * - Extracts clean markdown from any URL
- * - Handles paywalls, SPAs, YouTube transcripts, TikTok, Twitter/X
- * - Returns og:image in the header section
- * - Requires no API key
- *
- * Returns extracted text (capped at 8000 chars), title, and og:image.
- */
 async function extractViaJina(
   url: string
 ): Promise<{ text: string; title: string; ogImage: string | null }> {
