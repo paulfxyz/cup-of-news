@@ -1,217 +1,205 @@
-# 📋 CHANGELOG — Espresso β
+# 📋 CHANGELOG — Espresso
 
 All notable changes documented here.
-Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) · Versioning: [SemVer](https://semver.org/)
+Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) · Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
-## [Unreleased] — Planned for v1.0.0
+## [Unreleased] — Roadmap for v2.0.0
 
-- 📧 **Email delivery** — formatted HTML email at generation time (Postmark / Resend / SMTP)
+- 📧 **Email delivery** — formatted HTML digest at 6 AM via Postmark / Resend / SMTP
 - 📱 **Telegram bot** — `/add <url>` to submit links, `/digest` to read today's edition
-- 🔔 **Webhooks on publish** — POST digest JSON to any URL when published
-- 🗂️ **Multiple channels** — separate feeds (Tech, World, Finance) with independent pools
-- 🔖 **Read-it-later integration** — Pocket, Instapaper, Readwise Reader as auto-sources
+- 🔔 **Webhooks** — POST digest JSON to any URL on publish
+- 🗂️ **Multiple channels** — separate Tech / World / Finance feeds with independent pools
+- 🔖 **Pocket / Readwise** — auto-pull saved articles as link sources
 - 🌐 **Browser extension** — one-click save from any page
-- 📄 **PDF export** — download digest as printable PDF
-- 🔍 **Digest search** — full-text search across past editions
+- 📄 **PDF export** — print-ready digest download
+- 🌍 **Multilingual** — generate summaries in user's preferred language
 - 🛡️ **Rate limiting** — built-in API protection for public deployments
-- 📊 **Reading stats** — track which stories you open
-- ✅ **Full deployment QA** — tested end-to-end on Fly.io, Railway, VPS
-- 📱 **Mobile QA pass** — iOS Safari, Android Chrome
-- 🌍 **Multilingual summaries** — generate in user's preferred language
+- 👥 **Multi-user** — team digests, shared link pools, per-user publish
 
+---
+
+## [1.1.0] — 2026-03-23
+
+**20-story digest, full documentation overhaul, line height improvements.**
+
+### ✨ Features
+
+- **20 stories per digest** (up from 10) — the AI now selects and summarizes 20 stories per edition. `max_tokens` raised to 8192 to accommodate longer responses. `MIN_LINKS_BEFORE_TRENDS` raised to 20 accordingly. The digest is now a proper full briefing, not just a quick scan.
+- **Increased line heights** — headline `leading-[1.15]`, body summary `leading-[2.0]`, quote `leading-[1.6]`, grid cards `leading-[1.4]`. Significantly more comfortable for longer reading sessions.
+
+### 📝 Documentation — Complete Rewrite
+
+- **README.md** — full rewrite with:
+  - All version badges (version, status, license, Node, React, TypeScript, SQLite, Fly.io, self-hosted)
+  - Complete architecture diagram
+  - "Technology Choices — The Why" section explaining every stack decision with educational detail
+  - "The Bugs We Fixed" table — 10 real bugs with symptom + fix
+  - Full feature table
+  - Complete API reference with curl examples
+  - Apple Shortcuts + bookmarklet instructions
+  - Full project structure tree
+  - Stack table with cost/rationale
+  - Version history table
+  - Roadmap for v2.0.0
+- **INSTALL.md** — complete rewrite with:
+  - All platform guides: Fly.io, Railway, Render, VPS/systemd, Docker
+  - Custom domain + SSL guide (Fly.io)
+  - GitHub Actions cron setup
+  - Link submission methods (API, Apple Shortcuts, bookmarklet)
+  - AI model switching guide with cost comparison table
+  - Security checklist
+  - Complete troubleshooting section
+- **CHANGELOG.md** — complete version history from v0.1.0-beta to v1.1.0
+
+---
+
+## [0.5.2] — 2026-03-23
+
+**Line height pass.**
+
+- Headline: `leading-tight` → `leading-[1.15]` (more breathing room at large sizes)
+- Body summary: `leading-[1.8]` → `leading-[2.0]` (comfortable long-form reading)
+- Quote blockquote: `leading-[1.4]` → `leading-[1.6]`
+- Grid card titles: `leading-snug` → `leading-[1.4]`
+
+---
+
+## [0.5.1] — 2026-03-23
+
+**Quote card cleanup + bigger desktop type.**
+
+- Quote card: removed Admin link and "Built with Perplexity Computer" footer — just the quote and author, clean
+- Quote text: `text-2xl sm:text-3xl` → `text-3xl sm:text-4xl lg:text-5xl`
+- Quote container: `max-w-xl` → `max-w-2xl`
+- Logo: removed "Espresso" text from header and empty view — red E square only
+- Story headline: added `lg:text-5xl`
+- Story summary: added `lg:text-2xl`, wider column on desktop (`lg:max-w-3xl`, `lg:px-12 lg:py-14`)
+
+---
+
+## [0.5.0] — 2026-03-23
+
+**Keyboard navigation, mobile-first type scale, custom domain.**
+
+### Features
+- **Keyboard navigation** — `ArrowLeft`/`ArrowRight`/`ArrowUp`/`ArrowDown` work anywhere on the page. Implemented via `useEffect` + `window.addEventListener('keydown')`. Ignores keypresses when focus is inside `INPUT`/`TEXTAREA`. `goNext`/`goPrev` wrapped in `useCallback` to prevent stale closure in the effect.
+- **Mobile-first type scale** — complete size overhaul:
+  - Story headline: `text-xl sm:text-2xl` → `text-3xl sm:text-4xl` (`font-black`)
+  - Body summary: default → `text-lg sm:text-xl` (Libre Baskerville serif)
+  - Quote: `text-xl sm:text-2xl` → `text-2xl sm:text-3xl`
+  - Navigation touch targets: min 44px (WCAG AA)
+  - Red rule: `h-1` → `h-1.5`
+- **Smarter touch swipe** — now tracks both X and Y on `touchStart`. Only triggers if horizontal delta > vertical delta (prevents accidental swipes while scrolling vertically).
+- **Custom domain** — `news.paulfleury.com` configured on Fly.io with dedicated SSL cert via Let's Encrypt.
+
+---
 
 ## [0.4.0] — 2026-03-22
 
-**Reader overhaul, 25 RSS sources, auth fixes.**
+**Swipeable card reader, 25 RSS sources, auth fixes.**
 
-### ✨ New Features
+### Features
+- **Swipeable card reader** — replaced static grid with full-screen carousel. One story per screen. Left/right arrow navigation. Touch swipe. Progress dots in header (clickable). Grid overview overlay (⊞) to scan all stories. Final card: closing quote in editorial inverted-colour style.
+- **25 RSS fallback sources** — expanded from 7. Added: AFP, The Guardian, The Telegraph, The Independent, Economist Finance, Le Monde (EN), Der Spiegel (EN), Euronews, MIT Tech Review, The Verge, Nature, Scientific American, Bloomberg, Al Jazeera, South China Morning Post, The Atlantic.
+- **Logo click** — resets to first story card.
 
-- **Swipeable card reader** — complete UX overhaul. Instead of a static grid, stories now display one at a time in a full-screen card carousel. Left/right arrow navigation. Touch swipe on mobile. Progress dots in header (clickable). Grid overview overlay (⊞ icon) for scanning all stories at once. Closes with the Closing Quote card in editorial inverted-colour style.
-- **25 RSS fallback sources** — up from 7. New additions: AFP, The Guardian, The Telegraph, The Independent, Economist Finance, Le Monde (EN), Der Spiegel (EN), Euronews, MIT Tech Review, The Verge, Nature, Scientific American, Bloomberg, Al Jazeera, South China Morning Post, The Atlantic. Grouped by category with notes on each source.
-- **Header logo navigates home** — clicking the E logo / "Espresso" in the header resets to card 0 (first story). Previously had no click action.
+### Fixed
+- Live Fly.io DB had `espresso-admin` as password while UI showed "default: admin". Reset live password to `admin`.
+- Login: empty field now defaults to `admin`. Clearer 401 error message. Always-visible default hint.
+- Duplicate `formatDate` function in DigestView (TypeScript warning).
 
-### 🐛 Fixed
-
-- **Login with "admin" now works** — live Fly.io DB had `espresso-admin` as password while UI showed "default: admin". Fixed by resetting live password to `admin` and improving the login flow to always show the default hint.
-- **Login UX** — pressing Enter with empty field now uses "admin" as default. Clearer error message on wrong password.
-- **Duplicate `formatDate` function** — was defined twice in DigestView, causing a TypeScript warning.
-
-### 📝 Documentation
-
-- **README completely rewritten** — engineering narrative explaining every technology choice and why, a full "Struggles" section documenting the bugs found and fixed, architecture diagram updated for 25 sources.
+### Documentation
+- README rewritten with "The Struggles" section documenting all bugs found and fixed during development.
 
 ---
 
 ## [0.3.0] — 2026-03-22
 
-**Visual & UX release — Economist redesign, admin auth, password management.**
+**Economist redesign, admin auth, password management.**
 
-> No breaking API changes. Upgrade by redeploying — no DB migration needed.
+### Features
+- **Economist red/black/white palette** — complete redesign. `#E3120B` accent (Economist red). 4px red rule at top of every page (signature Economist mark). Cabinet Grotesk display + Libre Baskerville body serif. Square corners. Near-black dark mode, clean white light mode. Category labels: red uppercase tracking. Hero date strip: inverted black/white section header. Closing quote: 2px red rule, Baskerville italic.
+- **Admin login screen** — full-page password gate before any admin content. Default: `admin`.
+- **Change password** — red toolbar at top of admin panel. Modal with confirmation. Updates immediately. New password takes effect on next login.
+- **Log out** — session clears from toolbar.
+- **`POST /api/admin/change-password`** — new endpoint, requires current password.
 
-### ✨ New Features
-
-- **Admin login screen** — `/admin` now requires a password before showing any content. Clean full-screen login form with show/hide toggle.
-- **Default password** — `admin` (works with no configuration). Change it immediately after first login.
-- **Change password** — red toolbar at top of admin panel with "Change password" button. Opens a modal, validates confirmation match, updates instantly. New password takes effect on next login.
-- **Log out** — session clears instantly from the same red toolbar.
-- **Economist red/black/white redesign** — complete visual overhaul:
-  - Signature 4px red rule at top of every page (The Economist's trademark)
-  - Primary accent: `#E3120B` (Economist red) — replaces all orange
-  - Typography: Cabinet Grotesk (display) + Libre Baskerville (body serif — editorial warmth)
-  - Near-black backgrounds in dark mode, clean white in light mode
-  - Square corners (`border-radius: 0.25rem`) — editorial, not bubbly
-  - Category labels in red uppercase tracking — no coloured pills
-  - Story cards: red category, black headline, serif summary preview
-  - Hero date strip: inverted (black bg, white text) — like an Economist cover section header
-  - Closing quote: anchored with a 2px red rule, Baskerville italic
-  - Admin panel: red top rule, red-border focus states, red active tab indicator
-
-### 🐛 Fixed
-
-- **Default password fallback** — `requireApiKey` now accepts `"admin"` as password when no key is configured in DB. Previously the admin panel was inaccessible on a fresh deploy.
-- **Auth UX** — login screen validates against the live API (not client-side). Wrong password shows clear error.
-- **Footer** — removed floating PerplexityAttribution component, moved inline to each page footer.
-- **`/api/admin/change-password`** — new endpoint, requires current password via `x-admin-key`.
+### Fixed
+- `requireApiKey` now accepts `"admin"` as default when no key is configured. Fresh deploys were inaccessible.
 
 ---
 
 ## [0.2.0] — 2026-03-22
 
-**Structural release — full internal audit, all bugs fixed, every file documented.**
+**Internal audit — 10 bugs fixed, every file documented.**
 
-> No breaking API changes. Safe to pull on an existing deployment.
+### Audit Findings Fixed
 
-### 🔍 Audit & Critical Bug Fixes
+| # | Issue | Fix |
+|---|-------|-----|
+| 1 | `source.unsplash.com` shut down 2023 — broken images | → `picsum.photos/seed/{hash}` — deterministic, stable |
+| 2 | Double HTTP fetch per link (Jina + raw HTML) | Parse OG image from Jina markdown header instead |
+| 3 | Trend URL-only dedup — same wire story on Reuters + AP | Added normalized title-prefix similarity pass |
+| 4 | `swapStory` captured `oldLinkId` after array mutation | Capture before mutation — old link now freed to pool |
+| 5 | Sequential trend extraction — up to 100s with 20 items | Batched parallel (4 concurrent), same as user links |
+| 6 | No OpenRouter retry — one 503 = dead generation | Single retry with 2s backoff on 429/5xx |
+| 7 | ReDoS risk in RSS XML parser | `MAX_FEED_BYTES=100KB` guard + non-crossing `[^<]*` regex |
+| 8 | FT + Economist links empty (Atom `href=` format) | Added `extractAtomLink()` + `atomStyle` flag on sources |
+| 9 | AI `idx` out-of-bounds → undefined story entries | Null guard + warning log |
+| 10 | Trend pool dominated by one source | Round-robin interleave across all sources before truncation |
 
-Ten issues were found during a systematic code review and fixed in this release.
-The full audit document is in [`AUDIT.md`](./AUDIT.md).
+### Improvements
+- SQLite indexes: `idx_links_processed`, `idx_digests_date`, `idx_digests_status`
+- `foreign_keys = ON` pragma
+- URL validation on `POST /api/links`
+- 409 Conflict (not 500) when today's digest is already published
+- `max_tokens: 4096` on OpenRouter call
+- `sourceType` detection expanded: reddit, substack
+- `swapStory` now frees old link back to unprocessed pool
 
-- **FIXED: Broken image fallback** — `source.unsplash.com` was shut down by Unsplash in
-  2023 and returns 404 for all requests. Every story without an OG image had a broken
-  image tag. Replaced with `picsum.photos/seed/{hash}/800/450` — deterministic (same URL
-  always gets the same image), stable, free, no API key. (Issues #1 and #9)
-
-- **FIXED: Double HTTP fetch per link** — the pipeline called `extractViaJina(url)` and
-  then `fetchRaw(url)` a second time just to extract the OG image. Jina already returns
-  `Image: https://...` on line 3 of its markdown output. Now parsed directly from the
-  Jina response — one less HTTP request per link. (Issue #2)
-
-- **FIXED: `swapStory` stale variable bug** — `oldStory` was captured *after*
-  `stories[storyIdx]` was mutated to `newStory`, so `oldLinkId` pointed to the *new*
-  story's link, not the old one. The replaced link was never freed back to the unprocessed
-  pool. Now captures `oldLinkId` *before* the array mutation. (Issue #4)
-
-- **FIXED: Sequential trend extraction** — trend items were extracted one-by-one in a
-  `for` loop. With 20 items at ~5s each = up to 100s worst case. Now uses the same
-  `extractAllLinks()` batched parallel function as user links (4 concurrent). (Issue #5)
-
-- **FIXED: No OpenRouter retry** — a single transient 429 or 503 killed the entire
-  generation with no recovery. Added one retry with 2s backoff on 429/5xx (not 401).
-  Observed ~2% failure rate on first attempt during peak hours in testing. (Issue #6)
-
-- **FIXED: ReDoS risk in RSS XML parser** — `[\s\S]*?` greedy regex on unbounded XML
-  can catastrophically backtrack on malformed feeds. Added `MAX_FEED_BYTES = 100,000`
-  guard before any regex work, and switched inner tag match from `[\s\S]*?` to `[^<]*`
-  (non-crossing — cannot backtrack across tag boundaries). (Issue #7)
-
-- **FIXED: FT and Economist links returning empty** — these feeds use Atom-style
-  `<link rel="alternate" href="..."/>` attribute form, not `<link>url</link>` text-node
-  form. Our parser only handled the text-node form, so FT and Economist URLs were always
-  empty. Added `extractAtomLink()` fallback and `atomStyle: true` flag on affected
-  sources. (Issue #10)
-
-- **FIXED: AI `idx` out-of-bounds crash** — if the AI returned an `idx` value outside
-  the `allProcessed` array range (occasionally happens when the prompt is truncated),
-  it produced silent `undefined` entries in the stories array. Now logs a warning and
-  filters null entries with a type guard. (New finding)
-
-- **FIXED: Trend dedup was URL-only** — Reuters and AP frequently publish the same wire
-  story under different URLs. URL dedup alone didn't catch this. Added title-prefix
-  similarity dedup: normalize title to lowercase, strip punctuation, compare first 60
-  chars. (Issue #3)
-
-### ✨ Improvements
-
-- **Trend pool diversity** — stories now interleaved round-robin across sources before
-  truncation (1 from Reuters, 1 from BBC, 1 from Economist…). Previously a prolific
-  source could fill the entire pool before others were sampled.
-
-- **`X-With-Images-Summary` Jina header** — explicitly requests Jina to include image
-  URLs in the response, improving OG image extraction reliability.
-
-- **Jina content stripping** — header block (Title/URL Source/Image lines) is now
-  stripped before storing extracted text. AI receives clean article content without
-  Jina metadata noise.
-
-- **URL validation on link submission** — `POST /api/links` now validates each URL with
-  `new URL()` before inserting. Returns 400 with clear error if no valid URLs.
-
-- **Better HTTP status codes** — `/api/digest/generate` returns 409 Conflict (not 500)
-  when today's digest already exists published. Reorder validates storyIds type.
-
-- **`max_tokens: 4096`** added to OpenRouter call — prevents truncated JSON responses
-  when processing large article lists.
-
-- **`sourceType` detection expanded** — now detects `reddit` and `substack` URLs in
-  addition to youtube/tiktok/tweet.
-
-- **SQLite indexes added** — `idx_links_processed`, `idx_digests_date`,
-  `idx_digests_status` — speeds up the 3 most frequent queries at scale.
-
-- **`foreign_keys = ON` SQLite pragma** — good practice for future schema work.
-
-- **`swapStory` now frees old link** — when a story is swapped, the replaced link's
-  `processedAt` and `digestId` are reset to null, returning it to the pool for future use.
-
-### 📝 Documentation
-
-- **Every file has a full JSDoc file header** — `@file`, `@author`, `@version`, context
-  explanation, design decisions, audit notes
-- **Every function has a doc comment** — what it does, why it exists, v0.2.0 changes
-- **Inline reasoning throughout** — constants documented with the rationale behind
-  chosen values (why `EXTRACTION_BATCH_SIZE=4`, why `MAX_TEXT_PER_ARTICLE=3000`, etc.)
-- **`AUDIT.md` added** — documents all 10 issues found in review, with fix status
-- **`shared/schema.ts`** — every column has a doc comment explaining lifecycle and use
-- **`server/storage.ts`** — IStorage interface documented; SQLite design decision explained
-- **`server/routes.ts`** — every endpoint documented with method, auth, body, behaviour
+### Documentation
+- Full JSDoc `@file` header on every server file and `shared/schema.ts`
+- Every function documented with context, design decisions, audit notes
+- `AUDIT.md` — 10-item finding log
 
 ---
 
 ## [0.1.0-beta] — 2026-03-22
 
-**First beta release. The pipeline works end-to-end. Deployment QA in progress.**
+**Initial release. Full pipeline working end-to-end.**
 
-### 🎉 Added
+### Added
+- Full AI generation pipeline: Jina Reader → OpenRouter → digest
+- RSS trend fallback from 7 trusted sources (Reuters, BBC, FT, NYT, Economist, WSJ, AP)
+- Link submission via admin panel and API (`POST /api/links`)
+- 72-hour deduplication — same story won't repeat for 3 days
+- Story swapping — replace any story from unused link pool
+- Story editing — manual title/summary/category changes
+- Story reordering
+- SQLite storage via Drizzle ORM — auto-migrates on boot
+- React + Vite + Tailwind CSS + shadcn/ui frontend
+- Dark mode — system preference + manual toggle
+- Admin panel — Overview / Links / Digest tabs
+- GitHub Actions cron at 6:00 AM GMT
+- Dockerfile — multi-stage build, persistent `/data` volume
+- README, INSTALL, CHANGELOG
 
-- Full AI generation pipeline (Jina Reader → OpenRouter → digest)
-- RSS trend fallback from 7 trusted sources
-- Link submission via admin panel and API
-- 72-hour deduplication
-- Story swapping, editing, reordering
-- SQLite storage via Drizzle ORM (auto-migrates on boot)
-- React + Tailwind + shadcn/ui frontend — dark editorial design
-- Admin panel with Overview / Links / Digest tabs
-- GitHub Actions daily cron at 6:00 AM GMT
-- README, INSTALL, CHANGELOG documentation
-
-### 🐛 Fixed (during beta session)
-
+### Fixed (during beta session)
 - `PerplexityAttribution` missing `default` export → Vite build failure
 - `throwIfResNotOk` throwing on 404/401 → React crash on empty digest state
-- `DigestView` crash when `digest` is null — `.stories.length` on undefined
+- `DigestView` crash on undefined `digest.stories.length`
 - Trend pipeline erroring instead of using stub text when Jina fails
 - Empty `allProcessed` guard checked too early (before trend merge)
 
 ---
 
-## Versioning Philosophy
+## Versioning
 
-- **MAJOR** (x.0.0) — breaking API changes or architecture rewrites
-- **MINOR** (0.x.0) — new features, integrations, delivery methods
-- **PATCH** (0.0.x) — bug fixes, performance, docs
-- **Pre-release** (x.x.x-beta) — functional but not production-hardened
+- **MAJOR** (x.0.0) — breaking API changes or complete architecture rewrites
+- **MINOR** (x.x.0) — new features, integrations, UX improvements
+- **PATCH** (x.x.x) — bug fixes, performance, documentation
 
 ---
 

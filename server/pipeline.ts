@@ -56,10 +56,10 @@ const JINA_PREFIX = "https://r.jina.ai/";
 /**
  * If the user has submitted fewer links than this threshold, the pipeline
  * supplements with RSS trending stories from trusted outlets.
- * Rationale: 10 links gives the AI enough to pick a diverse top 10.
+ * Rationale: 20 links gives the AI enough to pick a diverse top 20.
  * With fewer, it would just repeat the same handful of stories.
  */
-const MIN_LINKS_BEFORE_TRENDS = 10;
+const MIN_LINKS_BEFORE_TRENDS = 20;
 
 /**
  * Parallel batch size for Jina extraction.
@@ -205,7 +205,7 @@ async function callOpenRouter(
     messages,
     response_format: { type: "json_object" },
     temperature: 0.4,
-    max_tokens: 4096,
+    max_tokens: 8192,
   });
 
   const headers = {
@@ -426,7 +426,7 @@ export async function runDailyPipeline(
 
   const systemPrompt = `You are the editorial AI for "Espresso" — a curated morning news digest inspired by The Economist Espresso. Your writing is intelligent, slightly opinionated, and respects the reader's time.
 
-Your task: from the provided list of articles, select exactly 10 that together form the best morning briefing. Prioritize newsworthiness, recency, diversity of topics, and global relevance.
+Your task: from the provided list of articles, select exactly 20 that together form the best morning briefing. Prioritize newsworthiness, recency, diversity of topics, and global relevance.
 
 Editorial rules:
 - STRONGLY prefer user-submitted content (isTrend=false) over auto-fetched trends
@@ -437,7 +437,7 @@ Editorial rules:
 - Cover diverse categories where possible (don't publish 8 World + 2 Business)
 - Return ONLY valid JSON matching the schema. No markdown fences, no extra keys.`;
 
-  const userPrompt = `Here are ${contentItems.length} articles. Select the 10 best and summarize them. Then add a closing quote.
+  const userPrompt = `Here are ${contentItems.length} articles. Select the 20 best and summarize them. Then add a closing quote.
 
 ARTICLES:
 ${JSON.stringify(contentItems, null, 2)}
@@ -446,7 +446,7 @@ Required JSON response:
 {
   "stories": [
     {
-      "idx": <integer, original idx from above, 1-based>,
+      "idx": <integer, original idx from above, 1-based, select 20>,
       "title": "<headline, max 80 chars, strong and specific>",
       "summary": "<editorial summary, max 200 words, active voice>",
       "category": "<exactly one of: Technology|Science|Business|Politics|World|Culture|Health|Environment|Sports|Other>"
@@ -482,7 +482,7 @@ Required JSON response:
   // ── Step 7: Assemble stories with images ─────────────────────────────────
 
   const stories: DigestStory[] = aiResult.stories
-    .slice(0, 10)
+    .slice(0, 20)
     .map((s: any): DigestStory | null => {
       // Guard against AI returning out-of-bounds idx
       const original = allProcessed[s.idx - 1];

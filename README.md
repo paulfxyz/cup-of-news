@@ -1,18 +1,19 @@
-# ☕ Espresso β
+# ☕ Espresso
 
 <div align="center">
 
-![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
-![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
-![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
-![SQLite](https://img.shields.io/badge/SQLite-07405E?style=for-the-badge&logo=sqlite&logoColor=white)
-![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-0.5.0-orange?style=for-the-badge)
-![Status](https://img.shields.io/badge/status-beta-orange?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-1.1.0-red?style=for-the-badge)
+![Status](https://img.shields.io/badge/status-stable-brightgreen?style=for-the-badge)
+![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
+![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-18-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-3-07405E?style=for-the-badge&logo=sqlite&logoColor=white)
+![Fly.io](https://img.shields.io/badge/Deployed_on-Fly.io-7C3AED?style=for-the-badge)
+![Self-hosted](https://img.shields.io/badge/self--hosted-one_API_key-blue?style=for-the-badge)
 
-**Your personal AI-powered morning news digest. Self-hosted. One API key. Inspired by The Economist Espresso.**
-
-> ⚠️ **Beta.** Works end-to-end. Real-world QA ongoing. Feedback shapes v1.0.0.
+**Your personal AI-powered morning news digest.**
+**Self-hosted. One API key. Inspired by The Economist Espresso.**
 
 🔴 **Live:** [news.paulfleury.com](https://news.paulfleury.com) · [paulflxyz-espresso.fly.dev](https://paulflxyz-espresso.fly.dev)
 
@@ -20,105 +21,171 @@
 
 ---
 
-## 👨‍💻 The Story Behind This
+## 👨‍💻 The Story
 
-I'm **Paul Fleury** — a French internet entrepreneur living in Lisbon. I consume a lot of internet. Reuters, FT, tech blogs, Substack, YouTube deep-dives — by the time I've had my first coffee I've usually spent 30 minutes just *finding* what's worth reading, and another 30 reading things that weren't.
+I'm **Paul Fleury** — a French internet entrepreneur living in Lisbon. I consume a lot of internet. Reuters, FT, tech blogs, Substack, YouTube deep-dives, TikTok rabbit holes. By the time I've had my first coffee I've usually spent 30 minutes just *finding* what's worth reading, and another 30 reading things that weren't.
 
-I wanted something like **The Economist Espresso app** — that compact, curated, authoritative morning format — but fed by *my own* content diet rather than someone else's editorial team. Something I could throw links into all week and wake up to a proper briefing.
+I wanted something like **The Economist Espresso app** — that compact, curated, authoritative morning format — but fed by *my own* content diet. Something I could throw links into all week and wake up to a proper briefing, beautifully presented, on any device.
 
-**This project was designed and built in collaboration with [Perplexity Computer](https://www.perplexity.ai/computer)** — from architecture to every line of code, from debugging the Fly.io volume mount issue to the Economist palette redesign.
-
----
-
-## 🏗️ Architecture — How It Works
-
-```
-You submit links all week
-       │
-       ▼
-POST /api/links          ← API or admin panel
-       │
- SQLite DB (links table)  ← Every URL you've ever submitted
-       │
- ── EVERY MORNING AT 6:00 AM GMT ──────────────────────────────
-       │
-       ├── User has ≥10 links? → use them (always priority)
-       │
-       └── User has <10 links? → fill from 25 RSS sources:
-               Reuters · AP · AFP · BBC · Guardian · NYT · WSJ
-               FT · Telegraph · Economist · Le Monde · Spiegel
-               Euronews · Ars Technica · Wired · MIT Tech Review
-               The Verge · Nature · Scientific American · Bloomberg
-               Al Jazeera · SCMP · The Atlantic + more
-       │
-       ▼
-Jina Reader (r.jina.ai)   ← Full text extraction, free, no key
-       │
-       ▼
-OpenRouter (one LLM call) ← Rank top 10 + summarize + quote
-       │
-       ▼
-SQLite (digests table)    ← Stored as structured JSON
-       │
-       ▼
-Admin review → Publish → Public reader
-```
-
-### Why These Technology Choices
-
-**SQLite over Postgres**
-The temptation with every new project is to reach for Postgres. But Espresso is a single-user personal tool generating one digest per day and storing ~100 links per month. SQLite is zero-infrastructure (one file, no process, no connection pool), trivially backupable with `cp`, and perfectly capable at this scale. If Espresso ever grows to multi-user SaaS, swapping out the storage layer is straightforward — everything talks through the `IStorage` interface.
-
-**OpenRouter over direct OpenAI/Anthropic**
-I didn't want to be tied to one model provider, and I didn't want to manage multiple API keys. OpenRouter gives access to 400+ models through a single OpenAI-compatible endpoint. The whole pipeline costs less than $0.01 per daily digest at Gemini Flash rates. If the model quality isn't right, one line change switches to Claude or GPT-4o.
-
-**Jina Reader over custom scraping**
-The original plan was to use `@mozilla/readability` + `jsdom` for content extraction. This works, but it breaks on SPAs (TikTok, Twitter), fails on paywalls, and requires maintaining selectors per site. Jina Reader handles all of this — it's a free public API (`https://r.jina.ai/{url}`) that returns clean LLM-ready markdown for any URL. The trade-off is dependency on an external service, but for a personal tool this is fine.
-
-**RSS fallback over a news API**
-I evaluated NewsAPI.org, GDELT, and Bing News Search. All require API keys, have rate limits, and cost money at scale. Public RSS feeds from 25 trusted outlets cover the same ground for free — and I can inspect exactly which sources feed the AI. Transparency over convenience.
-
-**Express + Vite over Next.js**
-Next.js is excellent but heavy for this use case. The app is a simple backend API + a React SPA. Express handles the API routes, Vite serves the frontend with HMR in dev and builds to static files in prod. One port, one process, deployable anywhere Node runs. No framework magic to debug at 6am when the cron fails.
-
-**Fly.io over Railway/Render for deployment**
-Fly.io has persistent volumes for SQLite (one file, survives restarts and deploys), no cold starts on the always-on plan, and the machine runs in Paris (cdg) — close to Lisbon. Railway and Render would work but their free tiers don't provide persistent storage, which means the SQLite database disappears on every redeploy.
+This project was designed and built entirely in collaboration with **[Perplexity Computer](https://www.perplexity.ai/computer)** — from architecture to every line of code, through a live debugging session that included a Fly.io app name mismatch, a broken Unsplash API, a stale variable bug in story swapping, and a full editorial redesign from scratch.
 
 ---
 
-## 🚧 The Struggles
+## 🌟 What It Does
 
-Building this exposed a few non-obvious problems:
+**Espresso** is a self-hosted morning digest service. You feed it URLs — articles, YouTube videos, TikToks, tweets, newsletters, anything. Every day at 6:00 AM GMT, it:
 
-**The Unsplash debacle.** The original fallback for missing OG images used `source.unsplash.com`. This service was quietly shut down by Unsplash in 2023. Every story without an image had a silent 404. Replaced with `picsum.photos/seed/{hash}` — deterministic (same story always gets the same placeholder image) and stable.
+1. Reads everything you've submitted that week
+2. Auto-fills from 25 trusted RSS sources if you haven't submitted enough
+3. Sends it all to an AI through [OpenRouter](https://openrouter.ai)
+4. AI selects the **20 most important, distinct stories**
+5. Writes a **200-word editorial summary** for each
+6. Pulls the hero image from each story's OG metadata
+7. Generates a **closing quote** thematically relevant to the day
+8. Saves a draft digest for your review
 
-**The stale story reference bug.** The `swapStory` function captured `oldLinkId` *after* mutating the stories array. So when story at index 3 was replaced, `oldStory` was reading the *new* story's data. The replaced link was never freed back to the unprocessed pool. A classic mutation-before-capture mistake.
-
-**Sequential vs parallel extraction.** The first version of trend extraction ran in a `for` loop — one Jina request at a time. With 20 trend items at ~5 seconds each = 100 seconds worst case. Fixed by chunking into batches of 4 parallel requests.
-
-**RSS XML and ReDoS.** The XML parser used `[\s\S]*?` (greedy, crosses newlines) on unbounded feed XML. On a malformed 500KB feed from a misconfigured CMS, this pattern can catastrophically backtrack. Fixed with `MAX_FEED_BYTES = 100KB` slicing before regex, and switching to `[^<]*` (non-crossing) for tag content matching.
-
-**Atom vs RSS link formats.** FT and The Economist use Atom-style `<link rel="alternate" href="..."/>` attribute syntax. Our first RSS parser only handled `<link>url</link>` text-node form. FT and Economist links were always empty strings. Required a dedicated `extractAtomLink()` fallback.
-
-**The Fly.io app name mystery.** When connecting the GitHub repo to Fly.io through the dashboard, Fly auto-generates a random app name (`app-lively-haze-690`). The `fly.toml` we'd committed said `paulfxyz-espresso`. Name mismatch = `app not found` on every deploy attempt. Fixed by reading the actual app name from the Fly dashboard and updating `fly.toml`.
-
-**The admin password that never was.** The first deploy set `ADMIN_KEY=espresso-admin` via CLI secrets. The setup endpoint then stored this in the SQLite DB. The frontend showed "default password: admin". But the DB had `espresso-admin`. Login with `admin` → 401. Fixed by resetting the live DB password to `admin` via the API and making the login hint always visible.
+You open the admin panel, swap any stories you don't like, and publish. Done.
 
 ---
 
 ## ✨ Features
 
-- **Feed it anything** — articles, YouTube, TikTok, tweets, Reddit, Substack, any URL
-- **AI editorial pipeline** — OpenRouter selects top 10, writes 200-word summaries, generates closing quote
-- **25 RSS sources** — auto-fills when you haven't submitted enough (Reuters, BBC, FT, NYT, Economist, AP, Guardian, Wired, Nature + 16 more)
-- **72-hour deduplication** — same story won't repeat for 3 days
-- **Swipeable card reader** — one story per screen, left/right navigation, touch support, grid overview
-- **Economist red/black/white design** — 4px red rule, Cabinet Grotesk + Libre Baskerville, editorial typography
-- **Admin auth** — password login, change password, log out
-- **Story swapping** — replace any story with another from your pool (one click)
-- **Dark/light mode** — system preference + manual toggle
-- **REST API** — submit links from Apple Shortcuts, bots, scripts, automations
-- **One paid service** — only OpenRouter (~$0.01/day at Gemini Flash rates)
+| Feature | Details |
+|---------|---------|
+| **20 stories per digest** | AI selects the 20 most important from your pool |
+| **Swipeable card reader** | One story per screen — arrows, keyboard, touch swipe |
+| **Keyboard navigation** | ← → ↑ ↓ keys work anywhere on the page |
+| **25 RSS fallback sources** | Reuters, AP, BBC, FT, Guardian, Economist, NYT, WSJ, Wired, Nature + 15 more |
+| **72-hour deduplication** | Same story won't repeat for 3 days |
+| **Story swapping** | Replace any story with one from your pool |
+| **Admin auth** | Password login, change password, log out |
+| **Economist design** | Red/black/white, Cabinet Grotesk + Libre Baskerville, 4px red rule |
+| **Dark/light mode** | Follows system preference, manual toggle |
+| **REST API** | Submit links from Shortcuts, scripts, bots, anything |
+| **One paid service** | OpenRouter only (~$0.02/day at Gemini Flash rates) |
+| **Custom domain** | Full HTTPS, runs on your own domain |
+
+---
+
+## 🏗️ Architecture
+
+```
+You submit links all week (API or admin panel)
+              │
+              ▼
+     SQLite DB — links table
+              │
+    ┌─────────┴──────────────────────────────────────┐
+    │         DAILY PIPELINE — 6:00 AM GMT            │
+    └─────────┬──────────────────────────────────────┘
+              │
+    ┌─────────▼──────────┐    ┌─────────────────────────┐
+    │  User links (≥20)  │    │  RSS fallback (<20 links)│
+    │  Always priority   │    │  25 trusted sources      │
+    └─────────┬──────────┘    └──────────┬──────────────┘
+              └──────────┬───────────────┘
+                         │
+                         ▼
+              Jina Reader (r.jina.ai)
+              Free URL→Markdown extraction
+              Handles paywalls, YouTube, TikTok
+                         │
+                         ▼
+              OpenRouter — 1 API call
+              Model: Gemini 2.0 Flash
+              Output: 20 ranked stories
+                      + 200-word summaries
+                      + closing quote
+                         │
+                         ▼
+              OG image extraction
+              (from each URL's <meta og:image>)
+                         │
+                         ▼
+              SQLite — digests table
+              Stored as structured JSON
+                         │
+                         ▼
+              Admin review → Publish
+                         │
+                         ▼
+              Public reader at your domain
+```
+
+---
+
+## 🧠 Technology Choices — The Why
+
+This section explains every technology decision. If you're learning web development or building something similar, this is where the real education is.
+
+### SQLite over Postgres
+
+The temptation with every new project is to reach for Postgres. We considered it. But Espresso is a single-user personal tool: one digest per day, ~100 links per month, one admin. SQLite is zero-infrastructure (a single file, no process to manage, no connection string), trivially backupable with `cp`, and handles this workload with zero overhead. The entire database is <1MB after months of use.
+
+The key architectural decision: everything talks through an `IStorage` interface. If you ever want to scale to multi-user and need Postgres, you only change `server/storage.ts` — nothing else touches the DB directly.
+
+**Lesson:** choose the simplest database that fits your actual scale, not your imagined future scale.
+
+### OpenRouter over direct OpenAI/Anthropic
+
+We didn't want to be locked to one model provider, and we didn't want to manage multiple API keys. OpenRouter gives access to 400+ models through a single OpenAI-compatible endpoint. The whole pipeline runs on Gemini 2.0 Flash — fast (~10 seconds for 20 stories), cheap (~$0.02/digest), and excellent at editorial summarization. Switching to Claude or GPT-4o is a one-line change.
+
+The single structured API call design matters: instead of one AI call per story (20 calls × $X), we send all articles in one prompt with `response_format: json_object` and get back the full ranked+summarized digest in one shot.
+
+**Lesson:** batch AI calls wherever possible. N separate calls = N× the cost and N× the latency.
+
+### Jina Reader over custom scraping
+
+The original plan was `@mozilla/readability` + `jsdom`. This works for simple articles but breaks on SPAs (TikTok, Twitter/X), fails silently on paywalls, and requires maintaining custom extraction logic per site.
+
+Jina Reader (`https://r.jina.ai/{url}`) is a free public API that returns clean LLM-ready markdown for any URL. It handles YouTube transcripts, TikTok captions, Twitter threads, PDFs, and paywalled content. It also returns the OG image URL in its response header — which eliminated a second HTTP fetch per link (an early performance bug).
+
+The trade-off: dependency on an external free service. For a personal tool, this is fine. For production SaaS, you'd want a fallback.
+
+**Lesson:** don't build what you can use for free, especially for infrastructure concerns.
+
+### RSS Fallback over a News API
+
+We evaluated NewsAPI.org, GDELT, and Bing News Search. All require API keys, have rate limits, and cost money. Public RSS feeds from 25 trusted outlets (Reuters, BBC, FT, Economist, Guardian, NYT, WSJ, AP, Wired, Nature, Bloomberg, Al Jazeera + more) cover the same ground for free.
+
+More importantly: the source list is explicit and inspectable. You know exactly what feeds the AI. No black-box news ranking algorithms.
+
+**Lesson:** transparency over convenience when it comes to content sources.
+
+### Express + Vite over Next.js
+
+Next.js is excellent but adds framework complexity (SSR/SSG decisions, App Router vs Pages Router, server components) that adds cognitive overhead for a project this size. The app is a simple backend API + a React SPA. Express handles routes, Vite serves the frontend with HMR in dev and builds to static files in production. One port, one process, zero framework magic.
+
+The entire server is ~400 lines. The entire frontend is ~5 files. This is intentional.
+
+**Lesson:** framework overhead compounds over time. Choose the simplest thing that works.
+
+### Fly.io over Railway/Render
+
+Three reasons: **persistent volumes** for SQLite (one file that survives restarts and deploys), **no cold starts** on the always-on hobby plan, and **geographic proximity** (Paris CDG region — close to Lisbon). Railway and Render work fine but their free tiers don't offer persistent storage, which means the SQLite database disappears on every redeploy.
+
+One deploy friction we hit: Fly auto-generates a random app name (`app-lively-haze-690`). Our `fly.toml` had a different name. This caused an `app not found` error on every deploy until we read the actual app name from the dashboard. Document your Fly app name.
+
+**Lesson:** read what the platform actually created, not what you think you created.
+
+---
+
+## 🔧 The Bugs We Fixed
+
+A record of real problems found during development — useful if you fork this project.
+
+| Bug | Symptom | Fix |
+|-----|---------|-----|
+| Dead Unsplash API | Every story without OG image had a broken 404 image | `source.unsplash.com` was shut down in 2023. Replaced with `picsum.photos/seed/{hash}` — deterministic, stable |
+| `swapStory` stale ref | Replaced link never freed back to pool | `oldLinkId` was captured *after* array mutation. Fixed: capture before |
+| Sequential trend extraction | Pipeline took up to 100s with 20 trends | Items extracted one-by-one in for-loop. Fixed: batched parallel (4 concurrent) |
+| No OpenRouter retry | One transient 503 = dead generation | Added single retry with 2s backoff on 429/5xx |
+| RSS ReDoS risk | Malformed XML feed could hang parser | `[\s\S]*?` on unbounded XML. Fixed: `MAX_FEED_BYTES` + non-crossing `[^<]*` regex |
+| FT/Economist links empty | These feeds use Atom `href=` not text-node | Added `extractAtomLink()` fallback for Atom-style feeds |
+| AI idx out-of-bounds | Undefined story entries in digest | AI occasionally returns idx outside array. Added null guard |
+| Admin "admin" password | `admin` didn't work on live Fly deploy | Live DB had `espresso-admin` from setup. Reset to `admin`, improved login hint |
+| Fly.io app name mismatch | `app not found` on every deploy | Auto-generated name vs fly.toml name. Fixed: read name from dashboard |
+| Double HTTP fetch per link | 2× network requests per link for OG image | Jina already returns OG image in its response. Eliminated second fetch |
 
 ---
 
@@ -132,57 +199,127 @@ npm run dev
 # → http://localhost:5000
 ```
 
-Visit `http://localhost:5000/#/setup` → enter your OpenRouter key.
+Visit `http://localhost:5000/#/setup` — enter your [OpenRouter](https://openrouter.ai) API key.
 
-Then `http://localhost:5000/#/admin` → password `admin` → Generate Today's Digest.
-
----
-
-## 🔑 Default Password
-
-The default admin password is **`admin`**.
-
-Change it immediately: Admin panel → red toolbar → **"Change password"**.
+Then `http://localhost:5000/#/admin` — password **`admin`** — click **Generate Today's Digest**.
 
 ---
 
-## 📡 API
+## 🔑 Admin Password
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `GET` | `/api/digest/latest` | Public | Latest published digest |
-| `POST` | `/api/links` | Admin | Submit URL(s) |
-| `POST` | `/api/digest/generate` | Admin | Trigger pipeline |
-| `POST` | `/api/digest/:id/publish` | Admin | Publish draft |
-| `PATCH` | `/api/digest/:id/story/:id/swap` | Admin | Swap story |
-| `POST` | `/api/admin/change-password` | Admin | Change password |
-| `GET` | `/api/health` | Public | Health check |
+Default: **`admin`**
 
-Full API reference in [INSTALL.md](./INSTALL.md).
+Change it: Admin panel → red toolbar at top → **"Change password"**
 
 ---
 
-## ⏰ Daily Generation
+## ⏰ Automatic Daily Generation at 6 AM GMT
 
-GitHub Actions cron fires at **6:00 AM GMT** every day. Set two repo secrets:
+GitHub Actions cron is included (`.github/workflows/daily-digest.yml`). Add two secrets to your repo:
 
 | Secret | Value |
 |--------|-------|
-| `ESPRESSO_URL` | `https://your-app.fly.dev` |
+| `ESPRESSO_URL` | `https://news.yourdomain.com` |
 | `ESPRESSO_ADMIN_KEY` | Your admin password |
+
+---
+
+## 📡 API Reference
+
+All write endpoints require `x-admin-key: your-password` header.
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `GET` | `/api/digest/latest` | Public | Latest published digest (20 stories) |
+| `GET` | `/api/digest/:id` | Public | Any digest by ID |
+| `GET` | `/api/digests` | Admin | All digests list |
+| `POST` | `/api/digest/generate` | Admin | Trigger AI pipeline |
+| `POST` | `/api/digest/:id/publish` | Admin | Publish a draft |
+| `POST` | `/api/digest/:id/unpublish` | Admin | Revert to draft |
+| `PATCH` | `/api/digest/:id/story/:id/swap` | Admin | Swap one story |
+| `PATCH` | `/api/digest/:id/story/:id` | Admin | Edit story manually |
+| `PATCH` | `/api/digest/:id/quote` | Admin | Edit closing quote |
+| `POST` | `/api/digest/:id/reorder` | Admin | Reorder stories |
+| `POST` | `/api/links` | Admin | Submit URL(s) |
+| `GET` | `/api/links` | Admin | List all links |
+| `DELETE` | `/api/links/:id` | Admin | Delete a link |
+| `POST` | `/api/admin/change-password` | Admin | Change password |
+| `GET` | `/api/health` | Public | Health + version check |
+| `POST` | `/api/setup` | — | First-run configuration |
+| `GET` | `/api/setup/status` | Public | Check if configured |
+
+### Submit links from anywhere
+
+```bash
+# Single URL
+curl -X POST https://news.yourdomain.com/api/links \
+  -H "Content-Type: application/json" \
+  -H "x-admin-key: your-password" \
+  -d '{"url": "https://example.com/article"}'
+
+# Multiple URLs
+curl -X POST https://news.yourdomain.com/api/links \
+  -H "Content-Type: application/json" \
+  -H "x-admin-key: your-password" \
+  -d '{"urls": ["https://...", "https://..."]}'
+```
+
+**Apple Shortcuts:** Create a Share Sheet shortcut that POSTs `location.href` to `/api/links`. Share any Safari page directly into Espresso.
+
+**Browser bookmarklet:**
+```javascript
+javascript:(function(){fetch('https://news.yourdomain.com/api/links',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':'your-password'},body:JSON.stringify({url:location.href})}).then(()=>alert('☕ Saved to Espresso'));})();
+```
 
 ---
 
 ## 🔧 Deployment
 
-See [INSTALL.md](./INSTALL.md) for complete platform guides.
+### Fly.io (recommended)
 
-**Fly.io (recommended — persistent SQLite volume):**
 ```bash
-fly launch
-fly volumes create espresso_data --size 1
-fly secrets set OPENROUTER_KEY=sk-or-... ADMIN_KEY=your-password
+fly launch                         # creates the app
+fly volumes create espresso_data --size 1 --region cdg
+fly secrets set \
+  OPENROUTER_KEY=sk-or-... \
+  ADMIN_KEY=your-password \
+  DB_PATH=/data/espresso.db
 fly deploy
+```
+
+Full guide: [INSTALL.md](./INSTALL.md)
+
+---
+
+## 🗂️ Project Structure
+
+```
+espresso/
+├── server/
+│   ├── index.ts          # Express server entry point
+│   ├── routes.ts         # All API endpoints (thin layer, no business logic)
+│   ├── pipeline.ts       # Daily digest generation pipeline
+│   ├── trends.ts         # 25 RSS sources — fallback content engine
+│   ├── storage.ts        # SQLite storage layer (IStorage interface)
+│   └── vite.ts           # Vite dev server integration
+├── client/src/
+│   ├── App.tsx           # Router + providers
+│   ├── pages/
+│   │   ├── DigestView.tsx    # Public reader (swipeable cards)
+│   │   ├── AdminPage.tsx     # Admin panel (3 tabs)
+│   │   └── SetupPage.tsx     # First-run wizard
+│   ├── components/
+│   │   ├── AdminAuth.tsx     # Login gate + change password
+│   │   └── ThemeProvider.tsx # Dark/light mode context
+│   └── index.css         # Economist design system
+├── shared/
+│   └── schema.ts         # Drizzle schema + TypeScript types (shared frontend/backend)
+├── .github/workflows/
+│   └── daily-digest.yml  # 6 AM GMT cron
+├── fly.toml              # Fly.io deployment config
+├── Dockerfile            # Multi-stage Node.js build
+├── INSTALL.md            # Full deployment guide
+└── CHANGELOG.md          # Complete version history
 ```
 
 ---
@@ -191,15 +328,16 @@ fly deploy
 
 | Layer | Technology | Why |
 |-------|-----------|-----|
-| Runtime | Node.js + Express | Runs anywhere, no cold-start surprises |
-| Frontend | React + Vite + Tailwind + shadcn/ui | Fast, tree-shakeable, great DX |
-| Database | SQLite (Drizzle ORM) | Zero infrastructure, one file, easy backup |
-| AI | OpenRouter | 400+ models, one API key, $0.01/day |
-| Content extraction | Jina Reader (free) | Handles paywalls, YouTube, TikTok, no key |
+| Runtime | Node.js 20 + Express | Runs anywhere, no cold-start surprises, minimal abstraction |
+| Frontend | React 18 + Vite + Tailwind CSS + shadcn/ui | Fast builds, great DX, tree-shakeable |
+| Database | SQLite via Drizzle ORM | Zero infrastructure, one file, trivially backupable |
+| AI | OpenRouter (Gemini 2.0 Flash) | 400+ models, one API key, ~$0.02/digest |
+| Content extraction | Jina Reader — free, no key | Handles paywalls, YouTube, TikTok |
 | Images | OG metadata from source URLs | Zero cost, always contextual |
-| RSS fallback | 25 trusted sources | Free, transparent, no API key |
-| Scheduling | GitHub Actions cron | Free, reliable |
-| Hosting | Fly.io | Persistent volumes, Paris region, always-on |
+| RSS fallback | 25 public feeds, no API key | Transparent, inspectable, free |
+| Scheduling | GitHub Actions cron | Free, reliable, zero config |
+| Hosting | Fly.io (Paris / CDG) | Persistent SQLite volume, no cold starts |
+| Typography | Cabinet Grotesk + Libre Baskerville | Editorial, distinctive, not overexposed |
 
 ---
 
@@ -207,46 +345,62 @@ fly deploy
 
 Full history: **[CHANGELOG.md](./CHANGELOG.md)**
 
-### v0.4.0 — 2026-03-22
-- Swipeable card reader (left/right navigation, touch, grid overview)
-- 25 RSS sources (up from 7)
-- Admin login fix (default `admin` password, better hints)
-- Rich README with engineering narrative
+| Version | Date | Highlights |
+|---------|------|------------|
+| **1.1.0** | 2026-03-23 | 20 stories per digest, full docs rewrite, line height improvements |
+| 0.5.2 | 2026-03-23 | Increased line heights |
+| 0.5.1 | 2026-03-23 | Quote card cleanup, logo text removed, bigger desktop type |
+| 0.5.0 | 2026-03-23 | Keyboard nav, mobile-first type scale, news.paulfleury.com |
+| 0.4.0 | 2026-03-22 | Swipeable card reader, 25 RSS sources, auth fixes |
+| 0.3.0 | 2026-03-22 | Economist red/black/white redesign, admin auth |
+| 0.2.0 | 2026-03-22 | Full audit — 10 bugs fixed, all code documented |
+| 0.1.0-beta | 2026-03-22 | Initial release |
 
-### v0.3.0 — 2026-03-22
-- Economist red/black/white redesign
-- Admin password auth + change password
+---
 
-### v0.2.0 — 2026-03-22
-- Full audit: 10 bugs fixed, full documentation
+## 🗺️ Roadmap — v2.0.0
 
-### v0.1.0-beta — 2026-03-22
-- Initial release
+- 📧 Email delivery — formatted HTML email at 6 AM (Postmark / Resend)
+- 📱 Telegram bot — `/add <url>` to submit links, `/digest` to read
+- 🔔 Webhooks — POST digest JSON anywhere on publish
+- 🗂️ Multiple channels — separate Tech / World / Science feeds
+- 🔖 Pocket / Readwise integration — auto-pull saved articles
+- 🌐 Browser extension — one-click save from any page
+- 📄 PDF export — print-ready digest download
+- 🌍 Multilingual summaries — generate in user's preferred language
+- 🛡️ Rate limiting — protect public API endpoints
+- 👥 Multi-user — teams and shared digests
 
 ---
 
 ## 🤝 Contributing
 
-Beta — contributions especially welcome. Ideas: email delivery, Telegram bot, browser extension, multi-channel feeds, PWA mode.
+Issues, PRs, and feedback all welcome.
 
-1. Fork → `git checkout -b feature/my-thing` → commit → PR
+```bash
+git checkout -b feature/my-thing
+git commit -m 'feat: add amazing feature'
+git push origin feature/my-thing
+# → open a Pull Request
+```
 
 ---
 
 ## 📜 License
 
-MIT
+MIT — free to use, modify, and distribute.
 
 ---
 
 ## 👤 Author
 
-Made with ❤️ by **Paul Fleury** · Built with **[Perplexity Computer](https://www.perplexity.ai/computer)**
+Made with ❤️ by **Paul Fleury** — built with **[Perplexity Computer](https://www.perplexity.ai/computer)**
 
 - 🌐 [paulfleury.com](https://paulfleury.com)
 - 🔗 [linkedin.com/in/paulfxyz](https://www.linkedin.com/in/paulfxyz/)
+- 🐦 [@paulfxyz](https://github.com/paulfxyz)
 - 📧 [hello@paulfleury.com](mailto:hello@paulfleury.com)
 
 ---
 
-⭐ **Star the repo if Espresso saves you time every morning.**
+⭐ **If Espresso improves your mornings, a star helps others find it.**
