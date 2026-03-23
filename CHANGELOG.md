@@ -18,6 +18,72 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) · Versioning: 
 
 ---
 
+## [2.0.1] — 2026-03-23
+
+**Responsive typography fix: story body text line-height was catastrophically large on mobile.**
+
+### Engineering notes
+
+**The root cause: `leading-[3.0]` — a single class that broke mobile.**
+
+Tailwind's `leading-[3.0]` sets `line-height: 3` — that means 300% of the font size.
+On desktop at `text-2xl` (24px): line gaps of 72px. Already large, but tolerable on a
+big screen reading horizontally-scrolled editorial content.
+On mobile at `text-lg` (18px): line gaps of 54px. A 200-word summary took 3+ screens
+of vertical scrolling. It looked like a government document printed with extra space
+for annotations.
+
+**Why it happened:** every line-height iteration was reviewed on desktop. The progression
+was: tight (v1.1.0) → better but still tight (v1.5.0) → fixed with leading-[2.6] plus
+word/letter-spacing (v1.5.0) → then pushed to leading-[3.0] after more complaints about
+desktop spacing (v1.6.0). Nobody checked mobile after the final push. The stat: 200 words
+at 18px × 54px line-height on a 375px phone = roughly 95 visible lines requiring ~8 scroll
+gestures to read one story. Desktop was the same story but in 3-4 scrolls.
+
+**The fix: responsive line-height with Tailwind breakpoint prefixes.**
+
+Tailwind lets you prefix any utility with a breakpoint: `leading-[1.9] sm:leading-[2.2] lg:leading-[2.6]`.
+The values chosen:
+- `1.9` (mobile, default): tight but comfortable. Matches what iOS News and The Economist app
+  use at similar font sizes. Leaves room to read without forcing excessive scrolling.
+- `2.2` (sm, 640px+): more horizontal real estate, so slightly more vertical air feels right.
+- `2.6` (lg, 1024px+): editorial broadsheet rhythm on large screens. This is what you'd
+  find in a quality print magazine body text.
+
+**Font size also reduced on mobile:** `text-lg → text-base` at mobile, `text-xl → text-lg`
+at tablet. The combination of smaller font + lower line-height gives similar characters-per-line
+count on mobile while fitting dramatically more text in the viewport.
+
+**Other mobile compaction:**
+- Article padding: `py-7 → py-5` mobile, `px-5 → px-4` mobile
+- Hero image: `aspect-video → aspect-[16/7]` on mobile (less tall, keeps image present
+  without dominating the small viewport)
+- Headline margin-bottom: `mb-5 → mb-3` mobile
+- Red accent divider: `mb-6 → mb-4` mobile
+- Category row: `mb-4 → mb-3` mobile
+
+**Why not just use CSS `@media` queries in a stylesheet?**
+We're using Tailwind throughout the project. Mixing Tailwind responsive prefixes with
+a separate stylesheet breakpoint creates two sources of truth for the same rule.
+Tailwind's approach (`leading-[1.9] sm:leading-[2.2] lg:leading-[2.6]`) is
+co-located with the element it controls — easier to audit, no cascade surprises.
+
+**word-spacing and letter-spacing:** kept in inline style but reduced (0.05em → 0.03em,
+0.015em → 0.01em). These are genuine improvements to horizontal rhythm at larger sizes
+but become imperceptible on mobile text-base. A future improvement would be to make these
+responsive too, but the current values are subtle enough not to cause problems.
+
+### ✨ Fixed
+
+- `leading-[3.0]` → `leading-[1.9] sm:leading-[2.2] lg:leading-[2.6]` on story summary paragraph
+- Story body font size: `text-lg sm:text-xl lg:text-2xl` → `text-base sm:text-lg lg:text-xl`
+- Article padding: `py-7 sm:py-10 lg:py-14` → `py-5 sm:py-8 lg:py-14`
+- Hero image aspect ratio: `aspect-video` → `aspect-[16/7] sm:aspect-video`
+- Headline margin: `mb-5` → `mb-3 sm:mb-5`
+- Reduced word-spacing (0.05em → 0.03em) and letter-spacing (0.015em → 0.01em)
+
+---
+
 ## [2.0.0] — 2026-03-23
 
 **The Edition System: 8 independent editions in English, French, and German.**

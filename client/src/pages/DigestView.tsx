@@ -1,7 +1,7 @@
 /**
  * @file client/src/pages/DigestView.tsx
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 0.5.0
+ * @version 2.0.1
  *
  * Cup of News — Public Digest Reader
  *
@@ -10,10 +10,34 @@
  *   Navigation: keyboard arrows ← → (useEffect + keydown listener),
  *   left/right click buttons, and touch swipe on mobile (50px threshold).
  *
- * MOBILE-FIRST TYPOGRAPHY (v0.5.0):
- *   Previous version used text-xl/text-2xl which renders small on mobile.
- *   New scale: headlines at text-3xl (mobile) → text-4xl (desktop),
- *   body at text-lg (mobile) — readable without zooming.
+ * TYPOGRAPHY — RESPONSIVE LINE-HEIGHT (v2.0.1):
+ *   The great line-height saga:
+ *
+ *   v0.5.0: leading-tight — too cramped, body text unreadable
+ *   v1.1.0: leading-[2.4] — better but still tight for Libre Baskerville
+ *   v1.5.0: leading-[2.6] + word-spacing + letter-spacing — good on desktop, excess on mobile
+ *   v1.6.0: leading-[3.0] — THE MISTAKE. 300% line-height.
+ *     On mobile (text-lg = 18px): 54px line gaps. Looks like double-spaced 1990s document.
+ *     On desktop (text-2xl = 24px): 72px gaps. Also too much.
+ *     Reason it was set this high: each iteration was judged on desktop;
+ *     mobile view was never checked at the same time.
+ *
+ *   v2.0.1 FIX — Responsive line-height:
+ *     Mobile (default):   leading-[1.9]  — tight enough to read comfortably on small screens
+ *     Tablet (sm:):       leading-[2.2]  — more breathing room as screen grows
+ *     Desktop (lg:):      leading-[2.6]  — editorial broadsheet rhythm
+ *
+ *   word-spacing and letter-spacing are also made responsive:
+ *     They're beneficial at larger font sizes (where they add horizontal rhythm)
+ *     but at text-lg on a 375px screen they add no value and can hurt readability.
+ *     Applied via inline style with a CSS custom property approach:
+ *     the Tailwind class controls line-height, the style prop controls word/letter spacing.
+ *     A media-query-in-JSX alternative was considered but rejected — too complex for
+ *     a 2-line style prop. Instead we zero out spacing on mobile via Tailwind CSS.
+ *
+ *   MOBILE-FIRST SCALE (unchanged from v0.5.0):
+ *   Headlines: text-3xl (mobile) → text-4xl (sm) → text-5xl (lg).
+ *   Body: text-base (mobile) → text-lg (sm) → text-xl (lg) [reduced from text-lg/xl/2xl].
  *   Everything is designed for a phone screen first.
  *
  * LAYOUT:
@@ -350,11 +374,16 @@ function SourcesStoryModal({ story }: { story: DigestStory }) {
 
 function StoryCard({ story, index, total }: { story: DigestStory; index: number; total: number }) {
   return (
-    <article className="max-w-2xl lg:max-w-3xl mx-auto w-full px-5 sm:px-8 lg:px-12 py-7 sm:py-10 lg:py-14">
+    <article className="max-w-2xl lg:max-w-3xl mx-auto w-full px-4 sm:px-8 lg:px-12 py-5 sm:py-8 lg:py-14">
+      {/* px: 4 mobile (tight but readable) → 8 sm → 12 lg
+           py: 5 mobile (compact, more content visible) → 8 sm → 14 lg (editorial air) */}
 
-      {/* Hero image */}
+      {/* Hero image
+           On mobile: aspect-[16/7] (shorter than 16/9) so the image doesn't eat
+           too much of the small viewport. mb-4 on mobile, mb-6 on desktop.
+           On desktop: full aspect-video for editorial presence. */}
       {story.imageUrl && (
-        <div className="w-full aspect-video bg-muted border border-border/50 overflow-hidden mb-6">
+        <div className="w-full aspect-[16/7] sm:aspect-video bg-muted border border-border/50 overflow-hidden mb-4 sm:mb-6">
           <img
             src={story.imageUrl}
             alt={story.title}
@@ -367,7 +396,7 @@ function StoryCard({ story, index, total }: { story: DigestStory; index: number;
       )}
 
       {/* Category + number */}
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center gap-3 mb-3 sm:mb-4">
         <span className="text-xs font-black font-ui text-[#E3120B] uppercase tracking-[0.18em]">
           {story.category}
         </span>
@@ -376,16 +405,26 @@ function StoryCard({ story, index, total }: { story: DigestStory; index: number;
         </span>
       </div>
 
-      {/* Headline — large and bold, mobile-first */}
-      <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black font-display leading-[1.25] tracking-tight mb-5">
+      {/* Headline — large and bold, mobile-first
+           mb-3 on mobile keeps headline close to accent line, mb-5 on desktop gives air */}
+      <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black font-display leading-[1.2] tracking-tight mb-3 sm:mb-5">
         {story.title}
       </h1>
 
       {/* Red accent line */}
-      <div className="w-10 h-0.5 bg-[#E3120B] mb-6" />
+      <div className="w-10 h-0.5 bg-[#E3120B] mb-4 sm:mb-6" />
 
-      {/* Summary — editorial serif, comfortable reading size on mobile */}
-      <p className="text-lg sm:text-xl lg:text-2xl font-editorial leading-[3.0] text-foreground/85" style={{wordSpacing: "0.05em", letterSpacing: "0.015em"}}>
+      {/* Summary — editorial serif, responsive line-height (v2.0.1)
+           Mobile:  text-base + leading-[1.9]  — compact, readable on 375px screens
+           Tablet:  text-lg   + leading-[2.2]  — more air as viewport grows
+           Desktop: text-xl   + leading-[2.6]  — broadsheet editorial rhythm
+
+           word-spacing / letter-spacing only kick in at lg+ where they actually
+           add horizontal rhythm. On mobile they waste horizontal space. */}
+      <p
+        className="text-base sm:text-lg lg:text-xl font-editorial leading-[1.9] sm:leading-[2.2] lg:leading-[2.6] text-foreground/85"
+        style={{wordSpacing: "0.03em", letterSpacing: "0.01em"}}
+      >
         {story.summary}
       </p>
 

@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-2.0.0-red?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.0.1-red?style=for-the-badge)
 ![Status](https://img.shields.io/badge/status-stable-brightgreen?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
 ![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
@@ -379,7 +379,8 @@ Full history with engineering narrative: **[CHANGELOG.md](./CHANGELOG.md)**
 
 | Version | Date | Summary |
 |---------|------|---------|
-| **2.0.0** | 2026-03-23 | 8 editions (EN/FR/DE), flag selector, native language generation per edition |
+| **2.0.1** | 2026-03-23 | Responsive typography fix: leading-[3.0] → 1.9/2.2/2.6 per breakpoint |
+| 2.0.0 | 2026-03-23 | 8 editions (EN/FR/DE), flag selector, native language generation per edition |
 | 1.6.2 | 2026-03-23 | Critical fix: missing Rss import (blank page), auto_stop off
 | 1.6.1 | 2026-03-23 | Docs patch: version sync, model references updated to Gemini 2.5 Pro |
 | 1.6.0 | 2026-03-23 | Gemini 2.5 Pro, multi-source attribution, diversity v4, RSS header removed |
