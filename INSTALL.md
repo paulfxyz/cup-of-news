@@ -1,6 +1,6 @@
-# 📦 INSTALL.md — Espresso Installation Guide
+# 📦 INSTALL.md — Cup of News
 
-Complete guide for every deployment scenario. Start with **Local Development** to verify everything works, then follow the platform guide that fits your setup.
+Complete deployment guide. Every platform. Every scenario.
 
 ---
 
@@ -9,17 +9,17 @@ Complete guide for every deployment scenario. Start with **Local Development** t
 1. [Prerequisites](#prerequisites)
 2. [Local Development](#local-development)
 3. [Environment Variables](#environment-variables)
-4. [Getting an OpenRouter Key](#getting-an-openrouter-key)
+4. [OpenRouter API Key](#openrouter-api-key)
 5. [Production Deployment](#production-deployment)
-   - [Fly.io](#flyio-recommended) ← recommended
+   - [Fly.io](#flyio-recommended)
    - [Railway](#railway)
    - [Render](#render)
    - [VPS / Self-hosted](#vps--self-hosted)
    - [Docker](#docker)
-6. [Custom Domain (HTTPS)](#custom-domain-https)
-7. [Scheduling Daily Generation](#scheduling-daily-generation)
-8. [Submitting Links](#submitting-links)
-9. [Admin Panel](#admin-panel)
+6. [Custom Domain + HTTPS](#custom-domain--https)
+7. [Daily Cron — GitHub Actions](#daily-cron--github-actions)
+8. [Native iOS / Android App](#native-ios--android-app)
+9. [Submitting Links](#submitting-links)
 10. [Changing the AI Model](#changing-the-ai-model)
 11. [Security](#security)
 12. [Updating](#updating)
@@ -29,31 +29,26 @@ Complete guide for every deployment scenario. Start with **Local Development** t
 
 ## Prerequisites
 
-- **Node.js 20+** — verify: `node --version`
-- **npm 10+** — verify: `npm --version`
-- **OpenRouter API key** — free account at [openrouter.ai](https://openrouter.ai)
-- ~100 MB disk space (app + SQLite DB)
+- **Node.js 20+** — `node --version`
+- **npm 10+** — `npm --version`  
+- **OpenRouter API key** — [openrouter.ai](https://openrouter.ai)
+- ~100MB disk space
 
 ---
 
 ## Local Development
 
 ```bash
-# 1. Clone
-git clone https://github.com/paulfxyz/espresso.git
-cd espresso
-
-# 2. Install dependencies
+git clone https://github.com/paulfxyz/cup-of-news.git
+cd cup-of-news
 npm install
-
-# 3. Start dev server (hot reload on both frontend and backend)
 npm run dev
 # → http://localhost:5000
 ```
 
-Visit `http://localhost:5000/#/setup` to configure your OpenRouter key.
-
-Then `http://localhost:5000/#/admin` — password `admin` — to generate your first digest.
+1. Visit `http://localhost:5000/#/setup` → enter OpenRouter key
+2. Visit `http://localhost:5000/#/admin` → password `admin`
+3. Click **Generate Today's Digest** — first digest in ~15 seconds
 
 ---
 
@@ -63,42 +58,42 @@ Create `.env` in the project root (already in `.gitignore`):
 
 ```bash
 # Required
-OPENROUTER_KEY=sk-or-v1-...       # Your OpenRouter API key
+OPENROUTER_KEY=sk-or-v1-...
 
-# Recommended
-ADMIN_KEY=your-random-secret       # Protects all write endpoints
-DB_PATH=./espresso.db              # SQLite file path (default: ./espresso.db)
-
-# Optional
-PORT=5000                          # Server port (default: 5000)
-NODE_ENV=production                # Set in deployed environments
+# Recommended in production
+ADMIN_KEY=your-random-secret          # protects all write endpoints
+DB_PATH=./cup-of-news.db              # SQLite file path
+PORT=5000                             # server port (default: 5000)
+NODE_ENV=production
 ```
 
-Keys can also be set via the `/#/setup` UI on first run — stored in the SQLite config table. Environment variables take precedence over DB-stored keys.
+Keys can also be set via the `/#/setup` UI on first run — stored in the SQLite config
+table. Environment variables take precedence.
 
 **Generate a strong admin key:**
 ```bash
 openssl rand -hex 32
-# or
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
 ---
 
-## Getting an OpenRouter Key
+## OpenRouter API Key
 
 1. Create a free account at [openrouter.ai](https://openrouter.ai)
-2. Go to **Keys → Create Key** — name it `espresso`
-3. Add a small credit balance (~$5 lasts months)
+2. **Keys → Create Key** → name it `cup-of-news`
+3. Add ~$5 credit (lasts months at ~$0.02/digest)
 
-**Cost:** Gemini 2.0 Flash (default model) costs approximately $0.02 per full 20-story digest generation.
+**Default model:** `google/gemini-2.0-flash-001`
 
-**Change the model** — edit `server/pipeline.ts` → `DEFAULT_MODEL`:
+**Switch model** — edit `server/pipeline.ts`:
 ```typescript
 const DEFAULT_MODEL = "google/gemini-2.0-flash-001";
-// Try: "anthropic/claude-3-haiku", "openai/gpt-4o-mini", "meta-llama/llama-3.1-70b"
+// Alternatives:
+// "anthropic/claude-3-haiku"       ~$0.05/digest — slightly better quality
+// "openai/gpt-4o-mini"             ~$0.04/digest — good balance
+// "anthropic/claude-3.5-sonnet"    ~$0.30/digest — best quality
+// "meta-llama/llama-3.1-70b"       ~$0.01/digest — cheapest
 ```
-Browse all available models at [openrouter.ai/models](https://openrouter.ai/models).
 
 ---
 
@@ -106,45 +101,52 @@ Browse all available models at [openrouter.ai/models](https://openrouter.ai/mode
 
 ### Fly.io (Recommended)
 
-Fly.io is the best fit: persistent volumes for SQLite, no cold starts, automatic HTTPS, Paris region (close to Lisbon/Europe).
+Fly.io has persistent volumes (SQLite survives restarts/deploys), no cold starts on the
+hobby plan, and automatic HTTPS. Paris region (CDG) is closest to Europe.
 
 ```bash
 # Install Fly CLI
 curl -L https://fly.io/install.sh | sh
 fly auth login
 
-# Launch from the project directory
+# Launch (from the cup-of-news directory)
 fly launch
-# When prompted: name your app, select region (cdg = Paris is closest to Lisbon)
-# DO NOT deploy yet when asked — say No
+# → when asked to deploy now: say NO
+# → note the app name Fly generates (you'll need it)
 
-# Create a persistent volume for SQLite (1 GB, free)
-fly volumes create espresso_data --size 1 --region cdg
+# Create persistent SQLite volume (1GB free)
+fly volumes create cup_of_news_data --size 1 --region cdg
+
+# Verify fly.toml has the mount:
+# [[mounts]]
+#   source = "cup_of_news_data"
+#   destination = "/data"
 
 # Set secrets
 fly secrets set \
   OPENROUTER_KEY=sk-or-v1-... \
   ADMIN_KEY=your-secure-password \
-  DB_PATH=/data/espresso.db
-
-# Verify fly.toml has the volume mount (should be auto-added, check anyway):
-# [[mounts]]
-#   source = "espresso_data"
-#   destination = "/data"
+  DB_PATH=/data/cup-of-news.db
 
 # Deploy
 fly deploy
+
+# Configure via browser
+open https://your-app.fly.dev/#/setup
 ```
 
-**fly.toml** reference (already included in the repo):
+> ⚠️ **Critical:** Fly auto-generates a random app name (e.g. `app-lively-haze-690`).
+> Your `fly.toml` must match this exact name. Check with `fly apps list`.
+
+**fly.toml** (already in repo, update app name):
 ```toml
-app = "your-app-name"
+app = "your-actual-app-name"
 primary_region = "cdg"
 
 [env]
   PORT = "8080"
   NODE_ENV = "production"
-  DB_PATH = "/data/espresso.db"
+  DB_PATH = "/data/cup-of-news.db"
 
 [http_service]
   internal_port = 8080
@@ -153,119 +155,91 @@ primary_region = "cdg"
   auto_start_machines = true
 
 [[mounts]]
-  source = "espresso_data"
+  source = "cup_of_news_data"
   destination = "/data"
-
-[[vm]]
-  size = "shared-cpu-1x"
-  memory = "256mb"
 ```
 
 ---
 
 ### Railway
 
-1. Create account at [railway.app](https://railway.app)
-2. **New Project → Deploy from GitHub** → select `paulfxyz/espresso`
-3. Add environment variables in the **Variables** tab:
-   ```
-   OPENROUTER_KEY=sk-or-v1-...
-   ADMIN_KEY=your-password
-   NODE_ENV=production
-   ```
-4. Build command: `npm run build` · Start command: `npm start`
-5. For persistent SQLite: add a **Volume** (Railway Pro) mounted at `/data`, then set `DB_PATH=/data/espresso.db`
+1. [railway.app](https://railway.app) → New Project → Deploy from GitHub → `paulfxyz/cup-of-news`
+2. Add variables: `OPENROUTER_KEY`, `ADMIN_KEY`, `NODE_ENV=production`
+3. Build: `npm run build` · Start: `npm start`
+4. For persistent SQLite: add a Volume (Railway Pro) at `/data`, set `DB_PATH=/data/cup-of-news.db`
 
-> Without a persistent volume, the database resets on every deploy. Use GitHub Actions to regenerate on each deploy in that case.
+> Without a persistent volume, the DB resets on every deploy. Acceptable for testing.
 
 ---
 
 ### Render
 
-1. New **Web Service** → connect your repo
-2. **Build Command:** `npm install && npm run build`
-3. **Start Command:** `npm start`
-4. Add env vars in the **Environment** tab
-5. Free tier spins down after 15 min inactivity — first request after idle takes ~30s
-6. For persistent storage: use a **Persistent Disk** (paid) mounted at `/data`
+1. New Web Service → connect repo
+2. Build: `npm install && npm run build` · Start: `npm start`
+3. Add env vars
+4. Free tier: spins down after 15 min inactivity (first request takes ~30s to wake)
 
 ---
 
 ### VPS / Self-hosted
 
-Full control. Cheapest for long-term.
-
 ```bash
-# 1. Install Node.js 20 (Ubuntu/Debian)
+# Node.js 20
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
-# 2. Clone and build
-git clone https://github.com/paulfxyz/espresso.git /opt/espresso
-cd /opt/espresso
-npm install
-npm run build
+# Clone and build
+git clone https://github.com/paulfxyz/cup-of-news.git /opt/cup-of-news
+cd /opt/cup-of-news
+npm install && npm run build
 
-# 3. Create .env
-mkdir -p /opt/espresso/data
-cat > /opt/espresso/.env << EOF
+# Environment
+mkdir -p /opt/cup-of-news/data
+cat > /opt/cup-of-news/.env << EOF
 OPENROUTER_KEY=sk-or-v1-...
-ADMIN_KEY=your-secure-password
-DB_PATH=/opt/espresso/data/espresso.db
+ADMIN_KEY=your-password
+DB_PATH=/opt/cup-of-news/data/cup-of-news.db
 PORT=3000
 NODE_ENV=production
 EOF
 
-# 4. Systemd service
-sudo tee /etc/systemd/system/espresso.service > /dev/null << EOF
+# Systemd service
+sudo tee /etc/systemd/system/cup-of-news.service << EOF
 [Unit]
-Description=Espresso Morning Digest
+Description=Cup of News
 After=network.target
-
 [Service]
 Type=simple
-User=www-data
-WorkingDirectory=/opt/espresso
+WorkingDirectory=/opt/cup-of-news
 ExecStart=/usr/bin/node dist/index.cjs
 Restart=on-failure
-RestartSec=10
-EnvironmentFile=/opt/espresso/.env
-
+EnvironmentFile=/opt/cup-of-news/.env
 [Install]
 WantedBy=multi-user.target
 EOF
 
 sudo systemctl daemon-reload
-sudo systemctl enable espresso
-sudo systemctl start espresso
-
-# 5. Verify
+sudo systemctl enable cup-of-news
+sudo systemctl start cup-of-news
 curl http://localhost:3000/api/health
 ```
 
-**Nginx reverse proxy** (for HTTPS):
+**Nginx + HTTPS:**
 ```nginx
 server {
     listen 443 ssl http2;
-    server_name news.yourdomain.com;
-
-    ssl_certificate /etc/letsencrypt/live/news.yourdomain.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/news.yourdomain.com/privkey.pem;
-
-    gzip on;
-    gzip_types text/plain text/css application/json application/javascript;
-
+    server_name app.cupof.news;
+    ssl_certificate /etc/letsencrypt/live/app.cupof.news/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/app.cupof.news/privkey.pem;
     location / {
         proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }
 }
 ```
-
 ```bash
-sudo certbot --nginx -d news.yourdomain.com
+sudo certbot --nginx -d app.cupof.news
 ```
 
 ---
@@ -273,249 +247,269 @@ sudo certbot --nginx -d news.yourdomain.com
 ### Docker
 
 ```bash
-# Build
-docker build -t espresso .
-
-# Run with persistent volume
+docker build -t cup-of-news .
 docker run -d \
-  --name espresso \
+  --name cup-of-news \
   -p 5000:5000 \
   -e OPENROUTER_KEY=sk-or-v1-... \
   -e ADMIN_KEY=your-password \
-  -e DB_PATH=/data/espresso.db \
-  -v espresso-data:/data \
+  -e DB_PATH=/data/cup-of-news.db \
+  -v cup-of-news-data:/data \
   --restart unless-stopped \
-  espresso
-```
-
-**docker-compose.yml:**
-```yaml
-version: '3.9'
-services:
-  espresso:
-    build: .
-    ports:
-      - "5000:5000"
-    environment:
-      OPENROUTER_KEY: ${OPENROUTER_KEY}
-      ADMIN_KEY: ${ADMIN_KEY}
-      DB_PATH: /data/espresso.db
-      NODE_ENV: production
-    volumes:
-      - espresso_data:/data
-    restart: unless-stopped
-
-volumes:
-  espresso_data:
+  cup-of-news
 ```
 
 ---
 
-## Custom Domain (HTTPS)
+## Custom Domain + HTTPS
 
-### Fly.io custom domain
+### Fly.io
 
 ```bash
-# Add the domain
-fly certs add news.yourdomain.com --app your-app-name
+# Add domain
+fly certs add app.cupof.news --app your-app-name
 
-# Get DNS instructions
-fly certs setup news.yourdomain.com --app your-app-name
+# Get DNS records
+fly certs setup app.cupof.news --app your-app-name
 ```
 
-Add these DNS records at your registrar:
+Add to your DNS:
 
 | Type | Name | Value |
 |------|------|-------|
-| `A` | `news` | (your Fly IPv4 — from `fly ips list`) |
-| `AAAA` | `news` | (your Fly IPv6 — from `fly ips list`) |
-| `TXT` | `_fly-ownership.news` | (from `fly certs setup` output) |
+| `A` | `app` | (from `fly ips list`) |
+| `AAAA` | `app` | (from `fly ips list`) |
+| `TXT` | `_fly-ownership.app` | (from `fly certs setup`) |
 
-Check validation: `fly certs check news.yourdomain.com --app your-app-name`
-
-SSL is auto-issued via Let's Encrypt. Propagation typically takes 5–30 minutes.
+SSL issues automatically via Let's Encrypt. Check: `fly certs check app.cupof.news`
 
 ---
 
-## Scheduling Daily Generation
+## Daily Cron — GitHub Actions
 
-### GitHub Actions (recommended — already included)
+Already included in `.github/workflows/daily-digest.yml`. Fires at **6:00 AM GMT**.
 
-The workflow file `.github/workflows/daily-digest.yml` fires at **6:00 AM GMT** every day.
-
-Add these secrets to your GitHub repo (**Settings → Secrets → Actions**):
+Add repo secrets (**Settings → Secrets → Actions**):
 
 | Secret | Value |
 |--------|-------|
-| `ESPRESSO_URL` | `https://news.yourdomain.com` |
+| `ESPRESSO_URL` | `https://app.cupof.news` |
 | `ESPRESSO_ADMIN_KEY` | Your admin password |
 
-**Optional:** set repo variable `AUTO_PUBLISH=true` to skip manual review and publish automatically.
+Optional repo variable: `AUTO_PUBLISH=true` to skip manual review.
 
 Manual trigger: **Actions → Daily Morning Digest → Run workflow**
 
-### System cron (VPS)
+**System cron (VPS):**
+```bash
+0 6 * * * curl -s -X POST https://app.cupof.news/api/digest/generate \
+  -H "x-admin-key: your-password" >> /var/log/cup-of-news.log 2>&1
+```
+
+---
+
+## Native iOS / Android App
+
+Cup of News is PWA-ready and Capacitor-ready. Two paths to native:
+
+### Option A — Capacitor (Recommended, free)
+
+Capacitor wraps the existing React app in a native WebView. 100% code reuse. No rewrite.
 
 ```bash
-# crontab -e
-# Fire at 6:00 AM UTC (adjust for your timezone)
-0 6 * * * curl -s -X POST https://news.yourdomain.com/api/digest/generate \
-  -H "x-admin-key: your-password" \
-  >> /var/log/espresso.log 2>&1
+# Install Capacitor
+npm install @capacitor/core @capacitor/cli
+npm install @capacitor/ios @capacitor/android
+npm install @capacitor/status-bar @capacitor/splash-screen
+
+# Build web app
+npm run build
+
+# Add native platforms
+npx cap add ios
+npx cap add android
+
+# Sync web assets to native shells
+npx cap sync
+
+# Open in native IDE
+npx cap open ios      # → Xcode (Mac required)
+npx cap open android  # → Android Studio
 ```
+
+Then distribute via App Store Connect and Google Play Console.
+App ID: `news.cupof.app`
+
+See [`NATIVE.md`](./NATIVE.md) for the full guide including App Store preparation,
+deep links, push notifications, and future native plugins.
+
+### Option B — Capacitor + Ionic AppFlow (CI/CD, paid)
+
+[Ionic AppFlow](https://ionic.io/appflow) builds your native app in the cloud without
+needing Xcode or Android Studio locally. Useful if you don't have a Mac for iOS builds.
+
+```bash
+npm install -g @ionic/cli
+ionic init "Cup of News" --type=react
+# Connect to AppFlow in ionic.io dashboard
+# Push to GitHub → AppFlow builds and distributes automatically
+```
+
+Cost: ~$49/month for the CI/CD pipeline. Worth it if you're deploying regularly.
+
+### Option C — Capacitor + Fastlane (free, automated)
+
+[Fastlane](https://fastlane.tools) automates App Store and Play Store submissions.
+
+```bash
+gem install fastlane
+cd ios/App && fastlane init
+cd android && fastlane init
+# Configure Appfile with your Apple/Google credentials
+# Run: fastlane ios release / fastlane android release
+```
+
+### Option D — Progressive Web App (PWA, zero cost)
+
+No build step. Works on Android natively (full PWA support). iOS has limitations:
+no push notifications, no App Store listing, but fully installable from Safari.
+
+The app already has `manifest.json`, all Apple meta tags, and `theme-color: #E3120B`.
+Just visit `app.cupof.news` in Safari → Share → Add to Home Screen.
+
+### Option E — Median.co / AppMySite (no-code, fastest)
+
+Services that wrap any URL into a native app without touching code:
+- **[Median.co](https://median.co)** — best quality, ~$99/year, iOS + Android
+- **[AppMySite](https://www.appmysite.com)** — no-code, ~$29/month
+- **[Gonative.io](https://gonative.io)** — developer-friendly, ~$99 one-time
+
+Just point them at `https://app.cupof.news`. No code changes needed. Good for
+testing the App Store experience before investing in a full Capacitor build.
+
+### Comparison
+
+| Approach | Cost | Effort | Native APIs | App Store |
+|----------|------|--------|-------------|-----------|
+| **Capacitor** | Free | Medium | ✅ Full | ✅ |
+| **Capacitor + AppFlow** | $49/mo | Low | ✅ Full | ✅ |
+| **Fastlane** | Free | Medium | ✅ Full | ✅ |
+| **PWA** | Free | Zero | ❌ Limited | ❌ iOS |
+| **Median.co** | $99/yr | Zero | ⚠️ Basic | ✅ |
+
+**Recommendation:** Start with Median.co or PWA to test the concept. Move to Capacitor
+when you want push notifications, haptics, and full App Store presence.
 
 ---
 
 ## Submitting Links
 
 ### Admin panel
+`/#/admin → Links` tab — single URL or bulk paste (one per line)
 
-`/#/admin → Links` tab — paste a URL and press Add, or use bulk paste (one per line).
-
-### REST API
-
+### API
 ```bash
-# Single URL
-curl -X POST https://news.yourdomain.com/api/links \
+# Single
+curl -X POST https://app.cupof.news/api/links \
   -H "Content-Type: application/json" \
   -H "x-admin-key: your-password" \
   -d '{"url": "https://example.com/article"}'
 
-# Multiple URLs at once
-curl -X POST https://news.yourdomain.com/api/links \
+# Multiple
+curl -X POST https://app.cupof.news/api/links \
   -H "Content-Type: application/json" \
   -H "x-admin-key: your-password" \
-  -d '{"urls": ["https://...", "https://...", "https://..."]}'
+  -d '{"urls": ["https://...", "https://..."]}'
 ```
 
-### Apple Shortcuts (iOS Share Sheet)
-
-1. Open **Shortcuts** → New Shortcut
-2. Add: **Get URLs from input** (enables Share Sheet)
-3. Add: **Get Contents of URL**
-   - URL: `https://news.yourdomain.com/api/links`
-   - Method: `POST`
+### Apple Shortcuts (iOS)
+1. New Shortcut → **Get URLs from input** (enables Share Sheet)
+2. **Get Contents of URL**: POST to `https://app.cupof.news/api/links`
    - Headers: `Content-Type: application/json`, `x-admin-key: your-password`
-   - Body: JSON → `{"url": "[shortcut input]"}`
-4. Add to Share Sheet
+   - Body: JSON `{"url": "[input URL]"}`
+3. Add to Share Sheet
 
-Share any Safari page directly into Espresso.
-
-### Browser bookmarklet
-
-Create a bookmark with this URL (replace values):
+### Bookmarklet
 ```javascript
-javascript:(function(){fetch('https://news.yourdomain.com/api/links',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':'your-password'},body:JSON.stringify({url:location.href})}).then(r=>r.json()).then(()=>alert('☕ Saved to Espresso!'));})();
+javascript:(function(){fetch('https://app.cupof.news/api/links',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':'YOUR_PASSWORD'},body:JSON.stringify({url:location.href})}).then(()=>alert('☕ Saved to Cup of News!'));})();
 ```
-
----
-
-## Admin Panel
-
-Visit `/#/admin`. Default password: `admin`.
-
-**Overview tab** — stats, generate button, API reference  
-**Links tab** — submit URLs (single or bulk), view/delete link history  
-**Digest tab** — view all digests, expand stories, swap, publish/unpublish
-
-**Change password:** red toolbar at top of admin → "Change password"  
-**Log out:** red toolbar at top → "Log out"
 
 ---
 
 ## Changing the AI Model
 
-Edit `server/pipeline.ts`:
-
+Edit `server/pipeline.ts`, line ~60:
 ```typescript
 const DEFAULT_MODEL = "google/gemini-2.0-flash-001";
 ```
 
-Recommended alternatives (all available on OpenRouter):
-
-| Model | Speed | Quality | Cost/digest |
-|-------|-------|---------|-------------|
-| `google/gemini-2.0-flash-001` | Fast | Excellent | ~$0.02 |
-| `anthropic/claude-3-haiku` | Fast | Great | ~$0.05 |
-| `openai/gpt-4o-mini` | Fast | Great | ~$0.04 |
-| `anthropic/claude-3.5-sonnet` | Medium | Best | ~$0.30 |
-| `meta-llama/llama-3.1-70b` | Medium | Good | ~$0.01 |
+| Model | Cost/digest | Quality | Speed |
+|-------|-------------|---------|-------|
+| `google/gemini-2.0-flash-001` | ~$0.02 | Excellent | Fast |
+| `anthropic/claude-3-haiku` | ~$0.05 | Great | Fast |
+| `openai/gpt-4o-mini` | ~$0.04 | Great | Fast |
+| `anthropic/claude-3.5-sonnet` | ~$0.30 | Best | Medium |
+| `meta-llama/llama-3.1-70b` | ~$0.01 | Good | Medium |
 
 ---
 
 ## Security
 
-- **Set a strong admin key** before exposing publicly — use `openssl rand -hex 32`
-- **HTTPS is mandatory** in production — Fly/Railway/Render handle this automatically; use Certbot on VPS
-- **SQLite file** is never served as a static asset — it's inside the container, not accessible via HTTP
-- **Rate limiting** is not built in — add Nginx rate limiting if your API is public-facing
-- **OpenRouter key** is stored in the SQLite config table, not in plaintext files
+- **Set a strong `ADMIN_KEY`** before exposing publicly — use `openssl rand -hex 32`
+- **HTTPS mandatory** in production — Fly/Railway handle it; use Certbot on VPS
+- The admin URL (`/#/admin`) is not linked anywhere in the public reader — intentionally hidden
+- The SQLite file is never served as a static asset
+- No rate limiting built in — add Nginx rate limiting if the API is public-facing
 
 ---
 
 ## Updating
 
 ```bash
-# Pull latest
-cd /opt/espresso  # or your project directory
 git pull origin main
-
-# Install any new dependencies
 npm install
-
-# Rebuild
 npm run build
-
-# Restart (systemd)
-sudo systemctl restart espresso
-
-# Or redeploy on Fly.io
-fly deploy
+sudo systemctl restart cup-of-news   # VPS
+# or
+fly deploy                            # Fly.io
 ```
 
-Database migrations are automatic — `CREATE TABLE IF NOT EXISTS` runs on every startup. No separate migration step needed.
+DB migrations run automatically (`CREATE TABLE IF NOT EXISTS`) on every startup.
 
 ---
 
 ## Troubleshooting
 
-**`admin` password not working**
+**Password `admin` not working on fresh Fly deploy**
+The DB may have a different password from a previous setup call. Reset:
 ```bash
-# Reset via API (if you know the current password)
-curl -X POST https://news.yourdomain.com/api/setup \
+curl -X POST https://app.cupof.news/api/setup \
   -H "Content-Type: application/json" \
-  -H "x-admin-key: current-password" \
+  -H "x-admin-key: old-password" \
   -d '{"adminKey": "admin"}'
 ```
 
-**"No content available"**
-No links submitted and RSS fetch failed. Test connectivity:
-```bash
-curl https://feeds.bbci.co.uk/news/world/rss.xml | head -5
-```
-
-**"OpenRouter error: 401"**
-API key invalid or not set. Check `/#/admin → Overview → Configuration status`.
+**"No content available" error**
+No links + RSS fetch failed. Test: `curl https://feeds.bbci.co.uk/news/world/rss.xml`
 
 **"OpenRouter error: 404 — No endpoints found"**
-Model slug is wrong. Check [openrouter.ai/models](https://openrouter.ai/models) for the correct identifier.
+Wrong model slug. Check [openrouter.ai/models](https://openrouter.ai/models).
 
 **"Published digest already exists"**
-Unpublish today's digest from admin before regenerating.
-
-**Blank page on load**
-Open browser console for errors. Usually a build issue — run `npm run build` and check for TypeScript errors first.
-
-**Database errors on first run**
-Ensure `DB_PATH` directory exists and is writable:
-```bash
-mkdir -p $(dirname $DB_PATH)
-chmod 755 $(dirname $DB_PATH)
-```
+Unpublish from Admin → Digest tab → Unpublish, then regenerate.
 
 **Fly.io: `app not found`**
-Your `fly.toml` app name doesn't match the actual Fly app. Run `fly apps list` to see your real app name, then update `fly.toml`.
+`fly.toml` app name doesn't match. Check with `fly apps list`, update `fly.toml`.
+
+**Too many SVG placeholder images**
+The direct HTML OG fetch is failing. Test: `curl -r 0-20000 https://article-url.com`
+Some outlets block Range requests. Nothing to do — the editorial SVG is the correct fallback.
+
+**Digest not diverse enough**
+Add links from underrepresented regions before generating. The AI can only diversify
+from what it receives. Submitting 5 links from Latin America + 5 from Asia before the
+6 AM cron will immediately improve geographic spread.
 
 ---
 
-*For bugs and feature requests: [github.com/paulfxyz/cup-of-news/issues](https://github.com/paulfxyz/cup-of-news/issues)*
+*Bugs and questions: [github.com/paulfxyz/cup-of-news/issues](https://github.com/paulfxyz/cup-of-news/issues)*
