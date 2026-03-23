@@ -18,6 +18,102 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) · Versioning: 
 
 ---
 
+## [2.0.3] — 2026-03-23
+
+**The multi-edition blocker: SQLite UNIQUE constraint prevented generating any edition except en-WORLD.**
+
+### Engineering notes
+
+**The root cause: `UNIQUE(date)` on the digests table — a constraint from v1.x.**
+
+When Cup of News was first built, the digests table was created with:
+```sql
+CREATE TABLE digests (
+  date TEXT NOT NULL UNIQUE,  -- only one digest per day, ever
+  ...
+);
+```
+This was correct for v1.x: one global digest per day. When v2.0.0 added the `edition`
+column and intended to support 8 digests per day (one per edition), the `UNIQUE(date)`
+constraint was never updated. Every attempt to generate `en-US`, `fr-FR`, `de-DE` etc.
+after `en-WORLD` was already generated for that day threw:
+`UNIQUE constraint failed: digests.date`
+
+The fix needed was `UNIQUE(date, edition)` — one digest per (day, edition) pair.
+
+**Why ALTER TABLE doesn't work in SQLite.**
+
+SQLite is intentionally minimal. Unlike Postgres/MySQL, it does not support:
+- `ALTER TABLE DROP CONSTRAINT`
+- `ALTER TABLE MODIFY COLUMN`
+- `ALTER TABLE ADD CONSTRAINT`
+
+The only supported ALTER TABLE operations in SQLite are:
+- ADD COLUMN
+- RENAME COLUMN (3.25.0+)
+- RENAME TABLE
+
+To change a constraint, you must rebuild the table. This is SQLite's documented
+"12-step" table modification procedure:
+1. Create new table with correct schema
+2. Copy all data (INSERT INTO new SELECT * FROM old)
+3. DROP old table
+4. RENAME new table to old name
+5. Recreate indexes
+
+All in a single transaction so the database is never in an inconsistent state.
+
+**The migration detection logic.**
+
+The migration must be idempotent — safe to run on every startup:
+```sql
+SELECT COUNT(*) FROM sqlite_master
+WHERE type='table' AND name='digests'
+AND sql LIKE '%date%NOT NULL%UNIQUE%'       -- has old single-column unique
+AND sql NOT LIKE '%UNIQUE(date, edition)%'  -- but not the new composite one
+```
+If this returns >0, the old constraint is present and we rebuild. After rebuild,
+the condition is false and the migration is skipped on all subsequent startups.
+
+**The pipeline bug: `getDigestByDate(today)` missing edition parameter.**
+
+The "already exists" check in `runDailyPipeline` called:
+```typescript
+const existing = storage.getDigestByDate(today);  // defaults to en-WORLD
+```
+So after generating `en-WORLD`, ANY other edition's generation was blocked because
+`getDigestByDate(today, "en-WORLD")` found the published en-WORLD digest and threw
+"Published digest already exists". Fix: pass `editionId` explicitly.
+
+**Fallback: never show an empty reader.**
+
+Added `getLatestPublishedDigestAny()` — returns most recent digest across all
+editions. The `/api/digest/latest` endpoint now cascades:
+1. Exact edition match
+2. Any published digest (with `isFallback: true` in response)
+3. 404 only if DB is completely empty
+
+The reader shows a non-intrusive banner when falling back: "France not generated yet.
+Showing latest available edition. Generate →"
+
+**Product vision note.**
+The user shared an ambitious v3+ roadmap: friend networks, multi-model ensemble loops,
+disinformation detection, blockchain provenance. These are genuinely exciting directions.
+All are tracked as v3.x roadmap items. For now, the foundation needs to be solid:
+every edition generating cleanly, every reader always having content, the DB schema
+being correct. v2.0.3 closes the last structural gap.
+
+### ✨ Fixed
+
+- **SQLite UNIQUE(date) → UNIQUE(date, edition)** via idempotent table rebuild migration
+- **`runDailyPipeline` edition check**: `getDigestByDate(today)` → `getDigestByDate(today, editionId)`
+- **Never empty reader**: `getLatestPublishedDigestAny()` fallback in `/api/digest/latest`
+- **Fallback banner** in DigestView: non-intrusive notice when showing cross-edition content
+- **Roadmap updated** to reflect v3+ vision: friend networks, disinformation detection,
+  multi-model loops, source credibility scoring
+
+---
+
 ## [2.0.2] — 2026-03-23
 
 **Three silent bugs fixed + typography calibrated to editorial sweet spot.**

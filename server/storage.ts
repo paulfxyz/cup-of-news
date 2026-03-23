@@ -83,15 +83,23 @@ sqlite.exec(`
     notes         TEXT
   );
 
+  -- v2.0.0+: digests table with (date, edition) composite unique key.
+  -- Each edition can have one digest per day.
+  -- NOTE: the original v1.x table had UNIQUE(date) only, preventing multi-edition.
+  -- We cannot ALTER TABLE to drop a UNIQUE constraint in SQLite.
+  -- This CREATE uses IF NOT EXISTS — if the old table exists it won't be recreated.
+  -- The migration block below handles the old-table upgrade path.
   CREATE TABLE IF NOT EXISTS digests (
     id                   INTEGER PRIMARY KEY AUTOINCREMENT,
-    date                 TEXT    NOT NULL UNIQUE,
+    date                 TEXT    NOT NULL,
     status               TEXT    NOT NULL DEFAULT 'draft',
     stories_json         TEXT    NOT NULL,
     closing_quote        TEXT,
     closing_quote_author TEXT,
     generated_at         TEXT,
-    published_at         TEXT
+    published_at         TEXT,
+    edition              TEXT    NOT NULL DEFAULT 'en-WORLD',
+    UNIQUE(date, edition)
   );
 
   CREATE TABLE IF NOT EXISTS config (
@@ -103,18 +111,96 @@ sqlite.exec(`
   CREATE INDEX IF NOT EXISTS idx_links_processed ON links (processed_at);
   -- Index on digest date for fast lookup by date
   CREATE INDEX IF NOT EXISTS idx_digests_date ON digests (date);
+  -- Index on digest (date, edition) for multi-edition lookups
+  CREATE INDEX IF NOT EXISTS idx_digests_date_edition ON digests (date, edition);
   -- Index on digest status for fast latest-published query
   CREATE INDEX IF NOT EXISTS idx_digests_status ON digests (status, date);
 `);
 
-// ─── v2.0.0 Migration: add edition column ────────────────────────────────────
+// ─── v2.0.0 Migration: add edition column (step 1) ───────────────────────────
 // SQLite supports ADD COLUMN but not DROP/MODIFY. This is safe to run repeatedly.
-// Existing rows get the default 'en-WORLD' automatically via SQLite DEFAULT.
 try {
   sqlite.exec(`ALTER TABLE digests ADD COLUMN edition TEXT NOT NULL DEFAULT 'en-WORLD';`);
-  console.log("✅ Migration: added digests.edition column");
+  console.log("✅ Migration v2.0.0: added digests.edition column");
 } catch {
   // Column already exists — expected on all runs after first migration
+}
+
+// ─── v2.0.3 Migration: fix UNIQUE constraint (date) → UNIQUE(date, edition) ────────
+//
+// THE PROBLEM:
+//   The original digests table was created with `date TEXT NOT NULL UNIQUE`.
+//   A UNIQUE constraint on (date) alone means only ONE digest per day, regardless
+//   of edition. This prevented generating fr-FR, de-DE etc. on the same day as
+//   en-WORLD — every attempt threw "UNIQUE constraint failed: digests.date".
+//
+// WHY WE CAN'T USE ALTER TABLE:
+//   SQLite does not support ALTER TABLE DROP CONSTRAINT or ALTER TABLE MODIFY.
+//   The only way to change a constraint is to rebuild the table.
+//
+// THE FIX: table rebuild ("12-step" SQLite ALTER pattern):
+//   1. Create new table with correct UNIQUE(date, edition) constraint
+//   2. Copy all data from old table
+//   3. Drop old table
+//   4. Rename new table to original name
+//   5. Recreate indexes
+//
+// This migration is idempotent: if the column `edition` already exists AND
+// the table was already rebuilt, the pragma check returns the correct schema
+// and we skip. Detects via: checking if `digests` has a compound unique index.
+
+try {
+  // Check if we still have the old single-column unique constraint.
+  // sqlite_master stores index definitions; the old constraint creates an
+  // implicit index named 'sqlite_autoindex_digests_1' on a single column.
+  const oldConstraint = sqlite.prepare(`
+    SELECT COUNT(*) as cnt FROM sqlite_master
+    WHERE type='table' AND name='digests'
+    AND sql LIKE '%date%NOT NULL%UNIQUE%'
+    AND sql NOT LIKE '%UNIQUE(date, edition)%'
+  `).get() as { cnt: number };
+
+  if (oldConstraint?.cnt > 0) {
+    console.log("🔧 Migration v2.0.3: rebuilding digests table to fix UNIQUE(date) → UNIQUE(date,edition)");
+    sqlite.exec(`
+      BEGIN;
+
+      CREATE TABLE digests_new (
+        id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+        date                 TEXT    NOT NULL,
+        status               TEXT    NOT NULL DEFAULT 'draft',
+        stories_json         TEXT    NOT NULL,
+        closing_quote        TEXT,
+        closing_quote_author TEXT,
+        generated_at         TEXT,
+        published_at         TEXT,
+        edition              TEXT    NOT NULL DEFAULT 'en-WORLD',
+        UNIQUE(date, edition)
+      );
+
+      INSERT INTO digests_new
+        (id, date, status, stories_json, closing_quote, closing_quote_author,
+         generated_at, published_at, edition)
+      SELECT
+        id, date, status, stories_json, closing_quote, closing_quote_author,
+        generated_at, published_at,
+        COALESCE(edition, 'en-WORLD')
+      FROM digests;
+
+      DROP TABLE digests;
+      ALTER TABLE digests_new RENAME TO digests;
+
+      CREATE INDEX IF NOT EXISTS idx_digests_date ON digests (date);
+      CREATE INDEX IF NOT EXISTS idx_digests_date_edition ON digests (date, edition);
+      CREATE INDEX IF NOT EXISTS idx_digests_status ON digests (status, date);
+
+      COMMIT;
+    `);
+    console.log("✅ Migration v2.0.3: digests table rebuilt with UNIQUE(date, edition)");
+  }
+} catch (e) {
+  console.error("❌ Migration v2.0.3 failed:", e);
+  // Non-fatal: app still runs, but multi-edition generation will be blocked.
 }
 
 // ─── Row Mapper ───────────────────────────────────────────────────────
@@ -172,6 +258,11 @@ export interface IStorage {
   getDigestByDate(date: string, edition?: string): Digest | undefined;
   /** v2.0.0: returns most recent published digest for the given edition */
   getLatestPublishedDigest(edition?: string): Digest | undefined;
+  /**
+   * v2.0.3: fallback — returns the most recent published digest across ALL editions.
+   * Used when the requested edition has no digest yet so the reader is never empty.
+   */
+  getLatestPublishedDigestAny(): Digest | undefined;
   getAllDigests(): Digest[];
   updateDigest(id: number, updates: Partial<Digest>): Digest | undefined;
   deleteDigest(id: number): void;
@@ -260,6 +351,19 @@ class Storage implements IStorage {
     const row = sqlite.prepare(
       `SELECT * FROM digests WHERE status = 'published' AND edition = ? ORDER BY date DESC LIMIT 1`
     ).get(edition) as any;
+    return row ? mapDigestRow(row) : undefined;
+  }
+
+  /**
+   * Fallback: most recent published digest regardless of edition.
+   * Called when the requested edition has no digest so the reader never shows a blank page.
+   * The client receives a `fallbackEdition` field in the response so it can show
+   * a notice: "Showing World edition — your edition hasn't been generated yet."
+   */
+  getLatestPublishedDigestAny(): Digest | undefined {
+    const row = sqlite.prepare(
+      `SELECT * FROM digests WHERE status = 'published' ORDER BY date DESC LIMIT 1`
+    ).get() as any;
     return row ? mapDigestRow(row) : undefined;
   }
 

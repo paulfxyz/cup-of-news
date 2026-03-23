@@ -100,7 +100,7 @@ export function registerRoutes(httpServer: Server, app: Express) {
    * Public. Used by uptime monitors, Docker HEALTHCHECK, GitHub Actions.
    */
   app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok", version: "2.0.2" });
+    res.json({ status: "ok", version: "2.0.3" });
   });
 
   // ── Setup ──────────────────────────────────────────────────────────────────
@@ -211,14 +211,45 @@ export function registerRoutes(httpServer: Server, app: Express) {
   /**
    * GET /api/digest/latest?edition=en-WORLD
    * Public. Returns the latest published digest for the given edition.
-   * v2.0.0: edition query param added. Defaults to "en-WORLD" for backwards compat.
-   * The reader frontend passes its currently selected edition on every load.
+   *
+   * v2.0.3: NEVER returns 404 to the reader.
+   * Fallback cascade:
+   *   1. Exact edition match (e.g. fr-FR)
+   *   2. Any published digest regardless of edition (so the reader always has content)
+   *   3. 404 only if the database is completely empty
+   *
+   * When falling back to a different edition, the response includes:
+   *   { isFallback: true, requestedEdition: "fr-FR", edition: "en-WORLD" }
+   * The client can use this to show a non-intrusive notice:
+   *   "Showing World edition — your edition hasn't been generated yet."
+   *
+   * Design decision: a reader switching to the French edition for the first time
+   * should see SOMETHING rather than a blank screen. An empty state is
+   * the worst possible first impression and discourages generating new editions.
    */
   app.get("/api/digest/latest", (req, res) => {
-    const edition = (req.query.edition as string) || "en-WORLD";
-    const digest = storage.getLatestPublishedDigest(edition);
-    if (!digest) return res.status(404).json({ error: `No published digest for edition: ${edition}` });
-    res.json({ ...digest, stories: JSON.parse(digest.storiesJson) });
+    const requestedEdition = (req.query.edition as string) || "en-WORLD";
+
+    // Try exact edition first
+    let digest = storage.getLatestPublishedDigest(requestedEdition);
+    let isFallback = false;
+
+    // Fallback: any published digest
+    if (!digest) {
+      digest = storage.getLatestPublishedDigestAny();
+      isFallback = !!digest;
+    }
+
+    if (!digest) {
+      return res.status(404).json({ error: "No digest published yet. Generate and publish one from the admin panel." });
+    }
+
+    res.json({
+      ...digest,
+      stories: JSON.parse(digest.storiesJson),
+      isFallback,
+      requestedEdition: isFallback ? requestedEdition : undefined,
+    });
   });
 
   /**

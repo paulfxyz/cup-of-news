@@ -443,15 +443,23 @@ async function extractAllLinks(
  * @returns { digestId, storiesCount } on success
  */
 export async function runDailyPipeline(
-  apiKey: string
-): Promise<{ digestId: number; storiesCount: number }> {
+  apiKey: string,
+  editionId = "en-WORLD"
+): Promise<{ digestId: number; storiesCount: number; edition: string }> {
   const today = getTodayDate();
+  const edition = getEdition(editionId);
 
-  // Block regeneration if today's digest is already published
-  const existing = storage.getDigestByDate(today);
+  console.log(`☕ Generating digest for edition: ${edition.flag} ${edition.name} (${editionId})`);
+
+  // Block regeneration ONLY if THIS edition's digest is already published.
+  // v2.0.3 fix: must pass editionId to getDigestByDate.
+  // Previous bug: called getDigestByDate(today) with no edition — defaulted to
+  // "en-WORLD" — so generating ANY edition after en-WORLD was published would
+  // throw "Published digest already exists" even for editions with no digest.
+  const existing = storage.getDigestByDate(today, editionId);
   if (existing?.status === "published") {
     throw new Error(
-      `Published digest already exists for ${today}. Unpublish it first to regenerate.`
+      `Published digest already exists for ${today} / ${editionId}. Unpublish it first to regenerate.`
     );
   }
 

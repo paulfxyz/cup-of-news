@@ -75,9 +75,14 @@ interface DigestResponse {
   id: number;
   date: string;
   status: string;
+  edition: string;
   stories: DigestStory[];
   closingQuote: string;
   closingQuoteAuthor: string;
+  /** v2.0.3: true when the server returned a fallback edition (requested edition has no digest) */
+  isFallback?: boolean;
+  /** v2.0.3: the edition the user requested, when isFallback is true */
+  requestedEdition?: string;
 }
 
 function formatDate(d: string) {
@@ -170,6 +175,26 @@ export default function DigestView() {
     >
       {/* Economist signature red rule */}
       <div className="h-1.5 w-full bg-[#E3120B] flex-shrink-0" />
+
+      {/* ── Fallback notice (v2.0.3) ─────────────────────────────────────────
+           When the selected edition has no digest, the server returns the most
+           recent digest from any edition (never a blank page). This banner tells
+           the reader which edition they're seeing and invites them to generate
+           their edition. Non-intrusive: one line, dismissible by switching edition. */}
+      {digest.isFallback && (
+        <div className="flex-shrink-0 bg-muted/50 border-b border-border/60 px-4 py-2 flex items-center justify-between gap-3">
+          <p className="text-[11px] text-muted-foreground font-ui leading-tight">
+            <span className="text-foreground font-bold">{edition.flag} {edition.name}</span>
+            {" — not generated yet. Showing latest available edition."}
+          </p>
+          <a
+            href="/#/admin"
+            className="text-[11px] font-bold font-ui text-[#E3120B] hover:underline flex-shrink-0 whitespace-nowrap"
+          >
+            Generate →
+          </a>
+        </div>
+      )}
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="flex-shrink-0 border-b border-border bg-background z-10">

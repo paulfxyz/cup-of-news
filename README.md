@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-2.0.2-red?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.0.3-red?style=for-the-badge)
 ![Status](https://img.shields.io/badge/status-stable-brightgreen?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
 ![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
@@ -397,11 +397,11 @@ Full history with engineering narrative: **[CHANGELOG.md](./CHANGELOG.md)**
 
 ---
 
-## 🗺️ Roadmap — v2.1.0+
+## 🗺️ Roadmap
 
-**v2.0.0 shipped.** The Edition System is live — 8 independent editions in EN/FR/DE.
+**v2.0.x shipped.** Edition system, all 8 editions, never-empty reader, DB migration.
 
-Next:
+### v2.1 — Delivery & Channels
 - 📧 Email delivery (Postmark / Resend) — digest in your inbox at 6 AM
 - 📱 Telegram bot — `/add <url>` and `/digest` commands
 - 🔔 Push notifications via Capacitor — native 6 AM alert
@@ -409,7 +409,23 @@ Next:
 - 🔖 Pocket / Readwise integration — auto-pull saved articles
 - 🌐 Browser extension — one-click save
 - 🛡️ Rate limiting — protect public API
-- 👥 Multi-user — teams, shared digests
+
+### v3.0 — Trust & Verification Platform
+
+The long-term vision: a transparent, battle-tested news verification platform.
+
+| Feature | Description |
+|---------|-------------|
+| **3-source validation** | Every story requires 3+ distinct domains. Enforced at the pipeline level, not optional |
+| **Friend network curation** | Share your Cup with trusted contacts. See how their editorial lens differs. Privacy-first (E2E encrypted) |
+| **Source credibility scoring** | Internal scores: historical accuracy, correction rate, cross-reference validation |
+| **Disinformation detection** | Cross-source narrative consistency + language pattern analysis (persuasion techniques) |
+| **Multi-model ensemble** | Trend detection across Claude + GPT-4 + Gemini in parallel. Consensus reduces single-model bias |
+| **Transparent provenance** | Full content lineage: "Story appeared in Source A at T1, Source B at T2" |
+| **Why This Matters** | Auto-generated historical context, stakeholder analysis, counter-perspectives |
+| **Multi-user** | Teams, shared digests, collaborative editorial prompts |
+
+This roadmap reflects the mission: not just a personal digest, but a tool that actively fights disinformation through transparency, multi-source verification, and network intelligence.
 
 ---
 
