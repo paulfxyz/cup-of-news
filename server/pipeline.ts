@@ -447,7 +447,7 @@ async function callOpenRouter(
     messages,
     response_format: { type: "json_object" },
     temperature: 0.4,
-    max_tokens: 16000,
+    max_tokens: 24000,
   });
 
   const headers = {
