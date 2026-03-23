@@ -279,7 +279,7 @@ function StoryCard({ story, index, total }: { story: DigestStory; index: number;
       </div>
 
       {/* Headline — large and bold, mobile-first */}
-      <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black font-display leading-[1.15] tracking-tight mb-5">
+      <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black font-display leading-[1.25] tracking-tight mb-5">
         {story.title}
       </h1>
 
@@ -287,7 +287,7 @@ function StoryCard({ story, index, total }: { story: DigestStory; index: number;
       <div className="w-10 h-0.5 bg-[#E3120B] mb-6" />
 
       {/* Summary — editorial serif, comfortable reading size on mobile */}
-      <p className="text-lg sm:text-xl lg:text-2xl font-editorial leading-[2.0] text-foreground/85">
+      <p className="text-lg sm:text-xl lg:text-2xl font-editorial leading-[2.2] text-foreground/85">
         {story.summary}
       </p>
 
@@ -317,7 +317,7 @@ function QuoteCard({ quote, author, date }: { quote: string; author: string; dat
           {formatDate(date)} · Today’s Thought
         </p>
         <div className="w-10 h-0.5 bg-[#E3120B] mx-auto" />
-        <blockquote className="text-3xl sm:text-4xl lg:text-5xl font-editorial italic leading-[1.6] font-medium">
+        <blockquote className="text-3xl sm:text-4xl lg:text-5xl font-editorial italic leading-[1.75] font-medium">
           “{quote}”
         </blockquote>
         {author && (
@@ -385,7 +385,7 @@ function GridOverlay({
               }`}>
                 {story.category}
               </p>
-              <h3 className="text-sm font-bold font-display leading-[1.4] line-clamp-3">
+              <h3 className="text-sm font-bold font-display leading-[1.6] line-clamp-3">
                 {story.title}
               </h3>
             </button>
