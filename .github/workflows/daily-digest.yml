@@ -1,4 +1,44 @@
-name: Daily Morning Digest
+##
+## .github/workflows/daily-digest.yml
+## @author Paul Fleury <hello@paulfleury.com>
+## @version 2.0.3
+##
+## Cup of News — Daily Digest Generation for ALL 8 Editions
+##
+## WHAT THIS DOES:
+##   Runs at 6:00 AM GMT every day.
+##   Generates and auto-publishes one digest per edition (8 total).
+##   Each edition uses its own regional RSS sources and writes in its native language.
+##
+## WHY ALL 8 EDITIONS:
+##   Previously this workflow generated only the global en-WORLD edition.
+##   v2.0.0 added 8 language/regional editions — each needs its own daily digest
+##   so users switching to fr-FR, de-DE etc. always have fresh content.
+##
+## EDITIONS:
+##   en-WORLD — Global English (flagship)
+##   en-US    — United States
+##   en-CA    — Canada (English)
+##   en-GB    — United Kingdom
+##   fr-FR    — France (Français)
+##   fr-CA    — Canada (Français)
+##   de-DE    — Deutschland (Deutsch)
+##   en-AU    — Australia
+##
+## REQUIRED SECRETS (Settings → Secrets → Actions):
+##   ESPRESSO_URL       — https://app.cupof.news
+##   ESPRESSO_ADMIN_KEY — admin password
+##
+## OPTIONAL VARIABLE:
+##   AUTO_PUBLISH=true  — auto-publish each digest without manual review
+##
+## TIMING NOTE:
+##   Gemini 2.5 Pro takes ~30-90s per edition.
+##   8 editions run sequentially = ~5-8 minutes total.
+##   The 10-minute job timeout is set accordingly.
+##
+
+name: Daily Morning Digest — All Editions
 
 on:
   schedule:
@@ -6,47 +46,97 @@ on:
     - cron: '0 6 * * *'
   workflow_dispatch:
     inputs:
+      edition:
+        description: 'Generate specific edition only (leave empty for all)'
+        required: false
+        default: ''
       force:
-        description: 'Force regeneration even if digest exists'
+        description: 'Force regeneration (unpublish existing first)'
         required: false
         default: 'false'
 
 jobs:
   generate:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+
+    strategy:
+      # Run editions sequentially to avoid overwhelming the server
+      # and to respect OpenRouter rate limits
+      max-parallel: 1
+      matrix:
+        edition:
+          - en-WORLD
+          - en-US
+          - en-CA
+          - en-GB
+          - fr-FR
+          - fr-CA
+          - de-DE
+          - en-AU
 
     steps:
-      - name: Trigger digest generation
+      - name: Skip if specific edition requested and this is not it
+        if: ${{ github.event.inputs.edition != '' && github.event.inputs.edition != matrix.edition }}
+        run: echo "Skipping ${{ matrix.edition }} — only generating ${{ github.event.inputs.edition }}"
+
+      - name: Generate digest — ${{ matrix.edition }}
+        if: ${{ github.event.inputs.edition == '' || github.event.inputs.edition == matrix.edition }}
         run: |
-          RESPONSE=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+          echo "🌍 Generating edition: ${{ matrix.edition }}"
+
+          RESPONSE=$(curl -s -o /tmp/response_${{ matrix.edition }}.json -w "%{http_code}" \
             -X POST "${{ secrets.ESPRESSO_URL }}/api/digest/generate" \
             -H "x-admin-key: ${{ secrets.ESPRESSO_ADMIN_KEY }}" \
-            -H "Content-Type: application/json")
-          
+            -H "Content-Type: application/json" \
+            --max-time 120 \
+            -d '{"edition": "${{ matrix.edition }}"}')
+
           echo "HTTP status: $RESPONSE"
-          echo "Response body:"
-          cat /tmp/response.json
-          
+          echo "Response:"
+          cat /tmp/response_${{ matrix.edition }}.json
+
+          # 409 = digest already exists for today = not an error
+          if [ "$RESPONSE" = "409" ]; then
+            echo "ℹ️  Digest already exists for ${{ matrix.edition }} today — skipping"
+            exit 0
+          fi
+
           if [ "$RESPONSE" != "200" ]; then
-            echo "❌ Generation failed with status $RESPONSE"
+            echo "❌ Generation failed for ${{ matrix.edition }} with status $RESPONSE"
             exit 1
           fi
-          
-          echo "✅ Digest generated successfully"
 
-      - name: Auto-publish if configured
-        if: vars.AUTO_PUBLISH == 'true'
+          echo "✅ ${{ matrix.edition }} digest generated"
+
+      - name: Auto-publish — ${{ matrix.edition }}
+        if: ${{ vars.AUTO_PUBLISH == 'true' && (github.event.inputs.edition == '' || github.event.inputs.edition == matrix.edition) }}
         run: |
-          # Get the latest digest ID
-          DIGEST=$(curl -s \
-            "${{ secrets.ESPRESSO_URL }}/api/digests" \
-            -H "x-admin-key: ${{ secrets.ESPRESSO_ADMIN_KEY }}")
-          
-          DIGEST_ID=$(echo $DIGEST | python3 -c "import sys,json; data=json.load(sys.stdin); print(data[0]['id'] if data else '')")
-          
-          if [ -n "$DIGEST_ID" ]; then
-            curl -s -X POST "${{ secrets.ESPRESSO_URL }}/api/digest/$DIGEST_ID/publish" \
-              -H "x-admin-key: ${{ secrets.ESPRESSO_ADMIN_KEY }}"
-            echo "✅ Digest $DIGEST_ID published"
+          # Extract digestId from the generation response
+          DIGEST_ID=$(python3 -c "
+          import sys, json
+          try:
+              with open('/tmp/response_${{ matrix.edition }}.json') as f:
+                  d = json.load(f)
+              print(d.get('digestId', ''))
+          except:
+              print('')
+          ")
+
+          if [ -z "$DIGEST_ID" ]; then
+            echo "ℹ️  No digest ID to publish (may already have been published)"
+            exit 0
+          fi
+
+          echo "📢 Publishing digest $DIGEST_ID for ${{ matrix.edition }}..."
+
+          PUB_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "${{ secrets.ESPRESSO_URL }}/api/digest/$DIGEST_ID/publish" \
+            -H "x-admin-key: ${{ secrets.ESPRESSO_ADMIN_KEY }}" \
+            -H "Content-Type: application/json")
+
+          if [ "$PUB_RESPONSE" = "200" ]; then
+            echo "✅ ${{ matrix.edition }} published"
+          else
+            echo "⚠️  Publish returned $PUB_RESPONSE for ${{ matrix.edition }}"
           fi

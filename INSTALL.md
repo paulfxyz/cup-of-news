@@ -292,7 +292,7 @@ SSL issues automatically via Let's Encrypt. Check: `fly certs check app.cupof.ne
 
 ## Daily Cron — GitHub Actions
 
-Already included in `.github/workflows/daily-digest.yml`. Fires at **6:00 AM GMT**.
+Already included in `.github/workflows/daily-digest.yml`. Fires at **6:00 AM GMT** and generates all 8 editions sequentially.
 
 Add repo secrets (**Settings → Secrets → Actions**):
 
@@ -301,9 +301,13 @@ Add repo secrets (**Settings → Secrets → Actions**):
 | `ESPRESSO_URL` | `https://app.cupof.news` |
 | `ESPRESSO_ADMIN_KEY` | Your admin password |
 
-Optional repo variable: `AUTO_PUBLISH=true` to skip manual review.
+Optional repo variable (**Settings → Variables**): `AUTO_PUBLISH=true` to auto-publish each edition without manual review.
 
 Manual trigger: **Actions → Daily Morning Digest → Run workflow**
+- Leave **edition** blank to generate all 8
+- Enter a specific edition ID (`fr-FR`, `de-DE`, etc.) to generate just one
+
+> **Auto-generate on startup:** In production, the server automatically detects editions with zero published digests and generates them on boot. This means a fresh deploy always has content — no manual intervention required.
 
 **System cron (VPS):**
 ```bash

@@ -1,3 +1,19 @@
+/**
+ * @file server/index.ts
+ * @author Paul Fleury <hello@paulfleury.com>
+ * @version 2.0.3
+ *
+ * Cup of News — Express Server Entry Point
+ *
+ * Startup sequence:
+ *   1. Express app + middleware
+ *   2. Route registration
+ *   3. Static file serving (production) or Vite dev server
+ *   4. HTTP listen
+ *   5. Background: auto-generate any edition that has never had a digest
+ *      (ensures the reader always has content on first deploy or after DB reset)
+ */
+
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
@@ -98,6 +114,91 @@ app.use((req, res, next) => {
     },
     () => {
       log(`serving on port ${port}`);
+      // Fire-and-forget: ensure every edition has at least one digest.
+      // Runs in background so it never delays server startup or first request.
+      ensureAllEditionsHaveDigest();
     },
   );
 })();
+
+/**
+ * ensureAllEditionsHaveDigest — background startup task
+ *
+ * WHY THIS EXISTS:
+ *   After a fresh deploy, DB reset, or first-time setup, some or all editions
+ *   may have no published digest. The reader would show an empty state or a
+ *   fallback notice for every edition except the one that was manually generated.
+ *
+ *   This function runs ~5s after server boot and silently generates + publishes
+ *   a digest for any edition that has no published digest at all.
+ *
+ * DESIGN DECISIONS:
+ *   - Only runs in production (NODE_ENV=production). In dev, the developer
+ *     generates digests manually via the admin panel.
+ *   - 5 second initial delay: lets the server fully boot and handle the first
+ *     health check before starting a CPU/API-heavy generation task.
+ *   - Sequential generation (not parallel): OpenRouter has rate limits and
+ *     running 8 concurrent Gemini 2.5 Pro calls would trigger 429s.
+ *   - Only generates if ZERO published digests exist for an edition (not just today).
+ *     If yesterday's is published, that's fine — the reader shows it.
+ *   - Silent failure: logs errors but never crashes the server.
+ *
+ * COUNTER-ARGUMENT / AUDIT:
+ *   One could argue this burns API credits on startup. Counter: it only generates
+ *   if there are literally zero digests for an edition. After the first run, it
+ *   finds existing digests and does nothing. Cost: 8 x ~$0.10 = ~$0.80 on first deploy.
+ *   Subsequent restarts: $0. Worth it to ensure the reader is never empty.
+ */
+async function ensureAllEditionsHaveDigest() {
+  if (process.env.NODE_ENV !== "production") return;
+
+  // Wait for server to fully start
+  await new Promise(r => setTimeout(r, 5000));
+
+  const { storage } = await import("./storage");
+  const { runDailyPipeline } = await import("./pipeline");
+  const { EDITIONS } = await import("@shared/editions");
+
+  const apiKey = storage.getConfig("openrouter_key");
+  if (!apiKey) {
+    console.log("[⚠️ startup] No OpenRouter key configured — skipping auto-generation");
+    return;
+  }
+
+  const allDigests = storage.getAllDigests();
+
+  for (const edition of EDITIONS) {
+    // Check if ANY published digest exists for this edition (not just today)
+    const hasPublished = allDigests.some(
+      d => d.edition === edition.id && d.status === "published"
+    );
+
+    if (hasPublished) continue; // Already has content — skip
+
+    console.log(`[🌍 startup] No published digest for ${edition.flag} ${edition.id} — auto-generating...`);
+
+    try {
+      const result = await runDailyPipeline(apiKey, edition.id);
+      const digest = storage.getDigest(result.digestId);
+      if (digest) {
+        storage.updateDigest(result.digestId, {
+          status: "published",
+          publishedAt: new Date().toISOString(),
+        });
+        console.log(`[✅ startup] ${edition.flag} ${edition.id}: ${result.storiesCount} stories generated and published`);
+      }
+    } catch (e: any) {
+      // 409 = already exists for today (draft exists) — not an error, just publish it
+      if (e.message?.includes("already exists")) {
+        console.log(`[ℹ️ startup] ${edition.id}: draft already exists — skipping`);
+      } else {
+        console.error(`[❌ startup] Failed to auto-generate ${edition.id}:`, e.message);
+      }
+    }
+
+    // Small delay between editions to respect rate limits
+    await new Promise(r => setTimeout(r, 2000));
+  }
+
+  console.log("[✅ startup] All editions checked. Reader will never be empty.");
+}

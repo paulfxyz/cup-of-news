@@ -1,7 +1,7 @@
 /**
  * @file server/routes.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 0.2.0
+ * @version 2.0.3
  *
  * Cup of News — REST API Routes
  *
