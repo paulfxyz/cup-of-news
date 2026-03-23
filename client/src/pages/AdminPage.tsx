@@ -383,6 +383,8 @@ function DigestTab({ headers }: { headers: Record<string, string> }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  // v2.0.2: edition selector in Digest tab so "Generate Today" respects the chosen edition
+  const [selectedEdition, setSelectedEdition] = useState<Edition>(EDITIONS[0]);
 
   const { data: digests = [], isLoading } = useQuery<DigestResponse[]>({
     queryKey: ["/api/digests"],
@@ -391,15 +393,15 @@ function DigestTab({ headers }: { headers: Record<string, string> }) {
 
   const generateMutation = useMutation({
     mutationFn: async () => {
-      const r = await apiRequest("POST", "/api/digest/generate", {}, headers);
+      const r = await apiRequest("POST", "/api/digest/generate", { edition: selectedEdition.id }, headers);
       if (!r.ok) throw new Error((await r.json()).error);
       return r.json();
     },
     onSuccess: (data) => {
-      toast({ title: `Generated — ${data.storiesCount} stories` });
+      toast({ title: `${selectedEdition.flag} Generated — ${data.storiesCount} stories (${selectedEdition.name})` });
       qc.invalidateQueries({ queryKey: ["/api/digests"] });
     },
-    onError: (e: any) => toast({ title: "Failed", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast({ title: "Generation failed", description: e.message, variant: "destructive" }),
   });
 
   const publishMutation = useMutation({
@@ -442,19 +444,36 @@ function DigestTab({ headers }: { headers: Record<string, string> }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground font-ui">
           All Digests ({(digests as DigestResponse[]).length})
         </h2>
-        <button
-          onClick={() => generateMutation.mutate()}
-          disabled={generateMutation.isPending}
-          data-testid="generate-digest-btn-2"
-          className="flex items-center gap-2 px-5 py-2.5 bg-[#E3120B] text-white text-sm font-bold hover:bg-[#B50D08] transition-colors disabled:opacity-40 font-ui"
-        >
-          {generateMutation.isPending ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-          Generate Today
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Compact edition pills */}
+          {EDITIONS.map(ed => (
+            <button
+              key={ed.id}
+              onClick={() => setSelectedEdition(ed)}
+              className={`flex items-center gap-1 px-2 py-1 text-xs font-bold border transition-colors font-ui ${
+                selectedEdition.id === ed.id
+                  ? "bg-[#E3120B] text-white border-[#E3120B]"
+                  : "border-border hover:border-[#E3120B] hover:text-[#E3120B]"
+              }`}
+              title={ed.name}
+            >
+              {ed.flag}
+            </button>
+          ))}
+          <button
+            onClick={() => generateMutation.mutate()}
+            disabled={generateMutation.isPending}
+            data-testid="generate-digest-btn-2"
+            className="flex items-center gap-2 px-4 py-2 bg-[#E3120B] text-white text-sm font-bold hover:bg-[#B50D08] transition-colors disabled:opacity-40 font-ui"
+          >
+            {generateMutation.isPending ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+            {selectedEdition.flag} Generate
+          </button>
+        </div>
       </div>
 
       {isLoading ? (

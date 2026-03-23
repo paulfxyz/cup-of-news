@@ -117,6 +117,38 @@ try {
   // Column already exists — expected on all runs after first migration
 }
 
+// ─── Row Mapper ───────────────────────────────────────────────────────
+
+/**
+ * Map a raw better-sqlite3 row (snake_case) to the Digest TypeScript type (camelCase).
+ *
+ * WHY THIS EXISTS:
+ *   Drizzle ORM's query builder automatically maps column names from snake_case
+ *   (as stored in SQLite: stories_json, closing_quote, etc.) to camelCase
+ *   (storiesJson, closingQuote, etc.) when using db.select().
+ *
+ *   But better-sqlite3's raw sqlite.prepare().get() bypasses Drizzle entirely
+ *   and returns the raw SQLite column names unchanged. Any code that then calls
+ *   digest.storiesJson gets `undefined` because the column is actually `stories_json`.
+ *
+ *   This function normalises both paths to the same camelCase shape.
+ *   It's called only for the two methods that use raw SQL (getDigestByDate,
+ *   getLatestPublishedDigest). The Drizzle-based methods don't need it.
+ */
+function mapDigestRow(row: any): any {
+  return {
+    id:                   row.id,
+    date:                 row.date,
+    status:               row.status,
+    storiesJson:          row.storiesJson          ?? row.stories_json,
+    closingQuote:         row.closingQuote         ?? row.closing_quote,
+    closingQuoteAuthor:   row.closingQuoteAuthor   ?? row.closing_quote_author,
+    generatedAt:          row.generatedAt          ?? row.generated_at,
+    publishedAt:          row.publishedAt          ?? row.published_at,
+    edition:              row.edition              ?? "en-WORLD",
+  };
+}
+
 // ─── Storage Interface ────────────────────────────────────────────────────────
 
 /**
@@ -196,27 +228,39 @@ class Storage implements IStorage {
 
   /**
    * Get digest by date and edition.
-   * v2.0.0: edition parameter added. Defaults to "en-WORLD" for backwards compatibility.
-   * The unique key is now (date, edition) — one digest per day per edition.
+   *
+   * v2.0.0 bug fix: the original implementation used:
+   *   .where(eq(digests.date, date) && eq(digests.edition, edition))
+   * The `&&` operator is JavaScript boolean AND — it evaluates eq(digests.date, date)
+   * as truthy, then returns eq(digests.edition, edition) as the result. This means
+   * the WHERE clause only filtered by edition, ignoring the date entirely.
+   * Fix: use raw SQL with parameterised query, which also sidesteps Drizzle's
+   * and() import requirement.
+   *
+   * Column mapping: better-sqlite3 returns raw snake_case column names from raw SQL
+   * (stories_json, closing_quote, etc). We must manually map to camelCase to match
+   * the Digest TypeScript type that Drizzle's ORM queries produce automatically.
    */
   getDigestByDate(date: string, edition = "en-WORLD"): Digest | undefined {
-    return db
-      .select()
-      .from(digests)
-      .where(eq(digests.date, date) && eq(digests.edition, edition) as any)
-      .get();
+    const row = sqlite.prepare(
+      `SELECT * FROM digests WHERE date = ? AND edition = ? LIMIT 1`
+    ).get(date, edition) as any;
+    return row ? mapDigestRow(row) : undefined;
   }
 
   /**
    * Most recent published digest for the given edition.
-   * v2.0.0: edition parameter added. Defaults to "en-WORLD".
-   * Used by GET /api/digest/latest?edition=...
+   *
+   * v2.0.0 bug fix: raw SQL returns snake_case column names (stories_json, closing_quote)
+   * but routes.ts does JSON.parse(digest.storiesJson) — camelCase. This caused
+   * JSON.parse(undefined) → '"undefined" is not valid JSON' error on every page load.
+   * Fix: mapDigestRow() converts snake_case → camelCase before returning.
    */
   getLatestPublishedDigest(edition = "en-WORLD"): Digest | undefined {
-    // Use raw SQL for the multi-column WHERE to avoid Drizzle AND() import issues
-    return (sqlite.prepare(
+    const row = sqlite.prepare(
       `SELECT * FROM digests WHERE status = 'published' AND edition = ? ORDER BY date DESC LIMIT 1`
-    ).get(edition)) as Digest | undefined;
+    ).get(edition) as any;
+    return row ? mapDigestRow(row) : undefined;
   }
 
   /** All digests, newest first — used by admin panel */

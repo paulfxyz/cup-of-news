@@ -1,7 +1,7 @@
 /**
  * @file client/src/pages/DigestView.tsx
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 2.0.1
+ * @version 2.0.2
  *
  * Cup of News — Public Digest Reader
  *
@@ -22,22 +22,36 @@
  *     Reason it was set this high: each iteration was judged on desktop;
  *     mobile view was never checked at the same time.
  *
- *   v2.0.1 FIX — Responsive line-height:
- *     Mobile (default):   leading-[1.9]  — tight enough to read comfortably on small screens
- *     Tablet (sm:):       leading-[2.2]  — more breathing room as screen grows
- *     Desktop (lg:):      leading-[2.6]  — editorial broadsheet rhythm
+ *   v2.0.2 CALIBRATION — "Air without excess":
+ *     The goal: match the line density of quality editorial apps (NYT, FT, The Economist).
+ *     Not so tight it feels cramped. Not so loose it feels like a Word doc with 2.0 spacing.
  *
- *   word-spacing and letter-spacing are also made responsive:
- *     They're beneficial at larger font sizes (where they add horizontal rhythm)
- *     but at text-lg on a 375px screen they add no value and can hurt readability.
- *     Applied via inline style with a CSS custom property approach:
- *     the Tailwind class controls line-height, the style prop controls word/letter spacing.
- *     A media-query-in-JSX alternative was considered but rejected — too complex for
- *     a 2-line style prop. Instead we zero out spacing on mobile via Tailwind CSS.
+ *     FONT SIZE:
+ *       Mobile:  15px (text-[15px]) — Libre Baskerville has generous x-height;
+ *                14px is too small, 16px+ requires too much scroll on 375px screens.
+ *       Tablet:  17px (text-[17px]) — comfortable mid-range
+ *       Desktop: 19px (text-[19px]) — full editorial presence on wide screens
  *
- *   MOBILE-FIRST SCALE (unchanged from v0.5.0):
+ *     LINE HEIGHT:
+ *       Mobile:  1.85 — matches NYT/FT mobile rhythm. Enough air to read without
+ *                eye-tracking loss, not so much that it feels double-spaced.
+ *       Tablet:  2.0  — a half-step more air at larger font sizes
+ *       Desktop: 2.15 — the editorial sweet spot. Wider columns need more leading
+ *                to guide the eye back to the line start, but 2.6 (our old value)
+ *                was too loose — the gaps became the dominant visual element.
+ *
+ *     WORD/LETTER SPACING:
+ *       Removed entirely. At Libre Baskerville's natural spacing these additions
+ *       made text feel artificially expanded rather than typographically refined.
+ *       The font's built-in metrics are already well-spaced for body text.
+ *
+ *   HEADLINE LEADING (StoryCard h1):
+ *     leading-[1.15] across all sizes — tight for headlines is correct.
+ *     At 3xl-5xl, generous line-height on headlines wastes visual real estate.
+ *
+ *   MOBILE-FIRST SCALE:
  *   Headlines: text-3xl (mobile) → text-4xl (sm) → text-5xl (lg).
- *   Body: text-base (mobile) → text-lg (sm) → text-xl (lg) [reduced from text-lg/xl/2xl].
+ *   Body: text-[15px] → text-[17px] sm → text-[19px] lg.
  *   Everything is designed for a phone screen first.
  *
  * LAYOUT:
@@ -405,26 +419,23 @@ function StoryCard({ story, index, total }: { story: DigestStory; index: number;
         </span>
       </div>
 
-      {/* Headline — large and bold, mobile-first
-           mb-3 on mobile keeps headline close to accent line, mb-5 on desktop gives air */}
-      <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black font-display leading-[1.2] tracking-tight mb-3 sm:mb-5">
+      {/* Headline — tight leading is correct for large display type.
+           leading-[1.15] keeps multi-line headlines compact and punchy.
+           mb: snug on mobile, breathes on desktop. */}
+      <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black font-display leading-[1.15] tracking-tight mb-3 sm:mb-4 lg:mb-5">
         {story.title}
       </h1>
 
       {/* Red accent line */}
       <div className="w-10 h-0.5 bg-[#E3120B] mb-4 sm:mb-6" />
 
-      {/* Summary — editorial serif, responsive line-height (v2.0.1)
-           Mobile:  text-base + leading-[1.9]  — compact, readable on 375px screens
-           Tablet:  text-lg   + leading-[2.2]  — more air as viewport grows
-           Desktop: text-xl   + leading-[2.6]  — broadsheet editorial rhythm
-
-           word-spacing / letter-spacing only kick in at lg+ where they actually
-           add horizontal rhythm. On mobile they waste horizontal space. */}
-      <p
-        className="text-base sm:text-lg lg:text-xl font-editorial leading-[1.9] sm:leading-[2.2] lg:leading-[2.6] text-foreground/85"
-        style={{wordSpacing: "0.03em", letterSpacing: "0.01em"}}
-      >
+      {/* Summary — calibrated editorial typography (v2.0.2)
+           Font:        15px mobile → 17px tablet → 19px desktop
+           Line-height: 1.85 mobile → 2.0 tablet → 2.15 desktop
+           Rationale: matches NYT/FT/Economist mobile+desktop rhythm.
+           Word/letter spacing removed — Libre Baskerville's native
+           spacing is already optimised; extra spacing felt artificial. */}
+      <p className="text-[15px] sm:text-[17px] lg:text-[19px] font-editorial leading-[1.85] sm:leading-[2.0] lg:leading-[2.15] text-foreground/85">
         {story.summary}
       </p>
 
@@ -445,7 +456,7 @@ function QuoteCard({ quote, author, date }: { quote: string; author: string; dat
           {formatDate(date)} · Today’s Thought
         </p>
         <div className="w-10 h-0.5 bg-[#E3120B] mx-auto" />
-        <blockquote className="text-3xl sm:text-4xl lg:text-5xl font-editorial italic leading-[1.75] font-medium">
+        <blockquote className="text-2xl sm:text-3xl lg:text-4xl font-editorial italic leading-[1.55] sm:leading-[1.65] font-medium">
           “{quote}”
         </blockquote>
         {author && (

@@ -18,6 +18,91 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) · Versioning: 
 
 ---
 
+## [2.0.2] — 2026-03-23
+
+**Three silent bugs fixed + typography calibrated to editorial sweet spot.**
+
+### Engineering notes
+
+**Bug 1 — `getLatestPublishedDigest` returning `undefined` for `storiesJson`.**
+
+The root issue: two different query paths produce different column name conventions.
+Drizzle ORM's `db.select()` automatically maps SQLite snake_case column names
+(`stories_json`, `closing_quote`, etc.) to camelCase (`storiesJson`, `closingQuote`)
+via its schema definition. But `sqlite.prepare().get()` (better-sqlite3's raw API)
+bypasses Drizzle entirely and returns raw SQLite column names unchanged.
+
+So `digest.storiesJson` returned by `getLatestPublishedDigest` was always `undefined`.
+`routes.ts` then called `JSON.parse(undefined)` which throws `"undefined" is not valid JSON`
+— the exact error users saw on every page load.
+
+Fix: added `mapDigestRow(row)` helper that normalises both conventions using the `??`
+operator: `storiesJson: row.storiesJson ?? row.stories_json`. Both paths now produce
+identical camelCase objects regardless of which query path was used.
+
+**Bug 2 — `getDigestByDate` WHERE clause only filtering by edition, ignoring date.**
+
+The implementation was:
+```typescript
+.where(eq(digests.date, date) && eq(digests.edition, edition) as any)
+```
+The `&&` here is JavaScript boolean AND, not Drizzle's `and()` operator.
+`eq(digests.date, date)` evaluates as a truthy Drizzle expression object.
+JavaScript's `&&` returns the **right operand** when the left is truthy.
+So the WHERE clause received only `eq(digests.edition, edition)` —
+the date filter was silently discarded. You could get another day's digest
+if the editions matched. Fix: replaced with raw SQL `WHERE date = ? AND edition = ?`.
+
+**Bug 3 — DigestTab "Generate Today" button sent no edition.**
+
+The Digest tab had its own `generateMutation` that called `POST /api/digest/generate`
+with an empty body `{}`. The edition defaulted to `en-WORLD` regardless of
+what the admin intended. Added `selectedEdition` state + flag pill selector to
+the Digest tab header, matching the Overview tab's behaviour.
+
+**Typography — calibrating to editorial sweet spot: "air without excess".**
+
+Target: match the line density of NYT, FT, and The Economist mobile apps.
+Not cramped. Not a government form with double-spacing.
+
+The progression of body text iterations in this project is instructive:
+- `leading-tight` (v0.5): too cramped — Libre Baskerville has tall ascenders
+- `leading-[2.4]` (v1.1): better but still close
+- `leading-[2.6] + word/letter-spacing` (v1.5): good on desktop, already excessive
+- `leading-[3.0]` (v1.6): catastrophically large on mobile (54px gaps at 18px)
+- `1.9/2.2/2.6` (v2.0.1): correct direction, but 2.6 on desktop still too loose
+- `1.85/2.0/2.15` (v2.0.2): the right values.
+
+Why these specific values:
+- `1.85` mobile: at 15px font, a line-height of 1.85 = 27.75px gap. A 200-word
+  paragraph at this density is 2.5 screens on a 375px phone — readable, one story.
+- `2.0` tablet: the universally cited "comfortable" line-height at 17px.
+- `2.15` desktop: at 19px, 2.15 = 40.8px. This is what broadsheet editorial apps
+  use. 2.6 = 49.4px was the previous value — nearly 10px extra per line, visible.
+
+Font size also stepped down: `text-[15px] sm:text-[17px] lg:text-[19px]`
+replacing `text-base sm:text-lg lg:text-xl` (16/18/20px). One pixel tighter
+at each breakpoint makes a meaningful difference on mobile scroll depth.
+
+Word/letter-spacing removed entirely. Libre Baskerville's built-in spacing
+is already optimised for body text — the additions made it feel artificially
+expanded rather than typographically refined.
+
+Quote card: `text-2xl/3xl/4xl` replacing `text-3xl/4xl/5xl`. The closing
+quote was dominating the screen. Smaller = more contemplative, appropriate.
+
+### ✨ Fixed
+
+- `mapDigestRow()` added to `storage.ts` — normalises snake_case → camelCase
+  for all raw SQL digest queries. Fixes the `storiesJson is undefined` crash.
+- `getDigestByDate`: `&&` (JS boolean) → raw SQL `WHERE date = ? AND edition = ?`
+- `DigestTab` generate button: now passes `{ edition }` body param + flag selector
+- Typography: `text-[15/17/19px]`, `leading-[1.85/2.0/2.15]` responsive values
+- Quote card font size reduced to be proportionate
+- Word/letter-spacing removed from body text
+
+---
+
 ## [2.0.1] — 2026-03-23
 
 **Responsive typography fix: story body text line-height was catastrophically large on mobile.**
