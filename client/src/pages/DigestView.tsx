@@ -27,7 +27,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
-  Sun, Moon, ArrowUpRight, ChevronLeft, ChevronRight, LayoutGrid, X
+  Sun, Moon, ArrowUpRight, ChevronLeft, ChevronRight, LayoutGrid, X, Rss
 } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import type { DigestStory } from "@shared/schema";

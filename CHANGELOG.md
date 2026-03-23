@@ -18,6 +18,54 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) · Versioning: 
 
 ---
 
+## [1.6.2] — 2026-03-23
+
+**Critical bugfix: missing `Rss` import causing blank white page on app.cupof.news.**
+
+### Engineering notes
+
+**The root cause: Rss icon imported but not declared.**
+`DigestView.tsx` uses `<Rss size={13} />` in the `SourcesStoryModal` component —
+but `Rss` was never added to the `lucide-react` import destructure. In TypeScript
+in dev mode, this would have thrown `Cannot find name 'Rss'` at compile time. But
+the production build on Fly was compiled from an earlier state before this line
+was added. When users loaded the app, React threw a runtime `ReferenceError` and
+the entire component tree crashed to a blank white screen.
+
+This is a class of bug where tree-shaking in Vite + esbuild doesn't catch it at
+build time if the identifier resolves as `undefined` (JS) rather than an error.
+The component renders fine in development (hot reload catches it) but crashes in
+the optimised production bundle.
+
+**Fix:** Added `Rss` to the lucide-react import: `{ Sun, Moon, ArrowUpRight,
+ChevronLeft, ChevronRight, LayoutGrid, X, Rss }`.
+
+**Cold-start blank page — eliminated.**
+`fly.toml` had `auto_stop_machines = "stop"` which puts the Fly machine to sleep
+after inactivity. On first request, the machine takes 1-3 seconds to wake. During
+this window, the HTML serves but the JS/CSS assets return 503 or partial responses
+— the app renders blank. Fixed by setting `auto_stop_machines = "off"` and
+`min_machines_running = 1`. The machine always runs. At `shared-cpu-1x / 256MB`,
+this costs ~$2-3/month — worth it for a news app you expect to work every morning.
+
+**Version drift: landing page FTP update was failing silently.**
+The landing page at `cupof.news` was still showing `v1.5.1` despite previous
+FTP deploys. Root cause: the FTP server has two locations that could serve the
+site (`/` root and `/cupof.news/public_html/`). The root `index.html` (the old one)
+was taking precedence. Fixed by deploying to both locations and verifying live.
+
+### ✨ Fixed
+
+- **`Rss` import missing from `DigestView.tsx`** — caused blank white page on all
+  production loads. The app was completely non-functional.
+- **`auto_stop_machines = "stop"` → `"off"`** — eliminates cold-start blank page
+  on first daily load
+- **`min_machines_running = 0` → `1`** — machine always warm
+- **Landing page FTP** — deployed to both FTP paths, confirmed `v1.6.2` live
+- **Version 1.6.2** across routes.ts, README badge, CHANGELOG, landing page
+
+---
+
 ## [1.6.1] — 2026-03-23
 
 **Docs, model references, and version sync patch.**

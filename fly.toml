@@ -27,9 +27,9 @@ primary_region = "cdg"   # Paris — closest to Lisbon
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = "stop"
+  auto_stop_machines = "off"   # Keep machine always running — no cold starts, no blank page on first load
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1      # Always at least 1 machine running
 
   [http_service.concurrency]
     type = "connections"
