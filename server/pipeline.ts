@@ -1,7 +1,7 @@
 /**
  * @file server/pipeline.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 2.1.2
+ * @version 2.1.3
  *
  * Cup of News — Daily Digest Generation Pipeline
  *
@@ -900,7 +900,9 @@ MANDATORY SLOTS — your 20 stories MUST include ALL of the following:
 BEFORE FINALISING: count your stories per category and region. If you're short on a mandatory slot, REMOVE a story from an over-represented area and replace it.
 
 QUALITY:
-- Each summary: maximum 200 words, active voice, editorial confidence — no hedging
+- Each summary: 150-200 words, split into EXACTLY 2 or 3 short paragraphs separated by a blank line (\n\n).
+  Structure: P1 = what happened (the core facts). P2 = why it matters / context. P3 (optional) = what comes next / implications.
+  Active voice, editorial confidence — no hedging. Each paragraph should be 2-4 sentences.
 - Headlines: specific and informative, not clickbait
 - ALL OUTPUT TEXT MUST BE IN ${edition.languageName.toUpperCase()} — this is the ${edition.name} edition
 - Imagine a reader who wants to feel informed about the whole world over breakfast — not exhausted by one topic
@@ -919,7 +921,7 @@ Required JSON response:
       "idx": <primary source idx from above, 1-based>,
       "additionalIdxs": [<up to 2 more idx values that also covered this story — for multi-source coverage>],
       "title": "<headline, max 80 chars, strong and specific>",
-      "summary": "<editorial summary, max 200 words, active voice, synthesise across sources if multiple>",
+      "summary": "<2-3 paragraphs separated by \\n\\n. P1: what happened. P2: why it matters. P3 (optional): what comes next. 150-200 words total, active voice>",
       "category": "<exactly one of: Technology|Science|Business|Politics|World|Culture|Health|Environment|Sports|Other>"
     }
   ],
@@ -1155,7 +1157,7 @@ Content: ${(candidate.extractedText || "").slice(0, MAX_TEXT_PER_ARTICLE)}
 Return JSON:
 {
   "title": "<headline max 80 chars>",
-  "summary": "<editorial summary max 200 words>",
+  "summary": "<2-3 paragraphs separated by \\n\\n. 150-200 words total, active voice>",
   "category": "<Technology|Science|Business|Politics|World|Culture|Health|Environment|Sports|Other>"
 }`,
       },

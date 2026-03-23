@@ -1,3 +1,19 @@
+## [2.1.3] — 2026-03-23
+
+**Story summaries now rendered as 2-3 paragraphs with clear spacing.**
+
+The AI previously wrote summaries as a single block of text.
+Now instructed to write 2-3 paragraphs separated by a blank line:
+  P1: What happened — the core facts
+  P2: Why it matters — context and significance
+  P3 (optional): What comes next — implications and forward look
+
+Frontend splits on `\n\n` and renders each paragraph as a separate `<p>`
+with `space-y-5` gap between them. Old single-block summaries (no \n\n)
+continue to render correctly as one paragraph.
+
+---
+
 ## [2.1.2] — 2026-03-23
 
 **Mandatory 3-source minimum enforced on every story. Source count badge on Read Sources button.**

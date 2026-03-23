@@ -460,15 +460,21 @@ function StoryCard({ story, index, total, edition }: { story: DigestStory; index
       {/* Red accent line */}
       <div className="w-10 h-0.5 bg-[#E3120B] mb-4 sm:mb-6" />
 
-      {/* Summary — calibrated editorial typography (v2.0.2)
-           Font:        15px mobile → 17px tablet → 19px desktop
-           Line-height: 1.85 mobile → 2.0 tablet → 2.15 desktop
-           Rationale: matches NYT/FT/Economist mobile+desktop rhythm.
-           Word/letter spacing removed — Libre Baskerville's native
-           spacing is already optimised; extra spacing felt artificial. */}
-      <p className="text-[15px] sm:text-[17px] lg:text-[19px] font-editorial leading-[1.85] sm:leading-[2.0] lg:leading-[2.15] text-foreground/85">
-        {story.summary}
-      </p>
+      {/* Summary — rendered as 2-3 paragraphs (v2.1.2)
+           The AI writes summaries with \n\n paragraph breaks.
+           We split on those and render each as a separate <p> with
+           mb-5 spacing between paragraphs for clean visual separation.
+           Single-block summaries (old digests, no \n\n) render as one paragraph. */}
+      <div className="space-y-5">
+        {(story.summary || "").split(/\n\n+/).filter(p => p.trim()).map((para, i) => (
+          <p
+            key={i}
+            className="text-[15px] sm:text-[17px] lg:text-[19px] font-editorial leading-[1.85] sm:leading-[2.0] lg:leading-[2.15] text-foreground/85"
+          >
+            {para.trim()}
+          </p>
+        ))}
+      </div>
 
       {/* Sources — opens modal with source details */}
       <SourcesStoryModal story={story} readSourcesLabel={edition?.ui?.readSources ?? "Read sources"} />
