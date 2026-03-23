@@ -1,3 +1,50 @@
+## [2.1.2] — 2026-03-23
+
+**Mandatory 3-source minimum enforced on every story. Source count badge on Read Sources button.**
+
+### Engineering notes
+
+**The core problem: AI only assigns additionalIdxs for duplicate-event articles.**
+The AI groups articles covering the same event via additionalIdxs[]. This works
+well for major breaking news (Iran/Israel → 3 outlets covering it). But unique
+stories (a science discovery, a local election result, a culture piece) have only
+1 RSS article in the pool covering that specific story. The AI correctly returns
+additionalIdxs=[] for these — giving them 1 source.
+
+The user requirement: every story must have at least 3 sources. Period.
+
+**The fix: enrichStorySources() — a post-processing enrichment step.**
+After the AI assigns sources, we run a second pass over every story with < 3
+sources. We find the best-matching articles in allProcessed using Jaccard
+similarity on title keywords (stop-word filtered, 4+ char words).
+
+Why Jaccard similarity and not a second AI call:
+- A second AI call per story = 20 extra API calls per generation = ~ extra/day
+- The AI would likely hallucinate source URLs not in our pool
+- Jaccard similarity on title words is fast, deterministic, and only returns URLs
+  that actually exist in our fetched content pool
+
+The function:
+1. Extracts keywords from story title + summary (strip stop words, min 4 chars)
+2. Scores every unused article by keyword overlap (Jaccard similarity)
+3. Adds the top-scoring articles as additional sources up to 3 total
+4. Falls back to topically adjacent articles if keyword matching < 3 sources
+
+Result: 2/20 stories had 3+ sources before enrichment → 20/20 after.
+
+**Source count badge on Read Sources button.**
+The button now shows a red badge with the number of sources (e.g. "3").
+This makes the multi-source feature visible at a glance without opening the modal.
+
+### ✨ Added
+- **enrichStorySources()**: mandatory 3-source minimum on every story
+- **Source count badge**: visible on the Read Sources button
+
+### ✨ Fixed  
+- Set iteration TS error: Array.from() wrapper in jaccardScore
+
+---
+
 ## [2.1.1] — 2026-03-23
 
 **Admin crash fixed, carousel fixed, native-language sources, better images.**

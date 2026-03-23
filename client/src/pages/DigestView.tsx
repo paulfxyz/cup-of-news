@@ -338,6 +338,11 @@ function SourcesStoryModal({ story, readSourcesLabel = "Read sources" }: { story
         data-testid="read-sources-btn"
       >
         <Rss size={13} /> {readSourcesLabel}
+        {story.sources && story.sources.length > 0 && (
+          <span className="text-[10px] bg-[#E3120B]/10 text-[#E3120B] px-1.5 py-0.5 font-black font-ui">
+            {story.sources.length}
+          </span>
+        )}
       </button>
 
       {open && (
