@@ -506,24 +506,30 @@ export async function runDailyPipeline(
 
 Your task: from the provided list of articles, select exactly 20 that together form the best morning briefing. Prioritize newsworthiness, recency, diversity of topics, and global relevance.${editorialSection}
 
-Editorial rules — DIVERSITY IS MANDATORY:
-- STRONGLY prefer user-submitted content (isTrend=false) over auto-fetched trends
-- Only use trend stories (isTrend=true) to fill slots if user content is genuinely insufficient
-- Avoid stories marked recentlyUsed=true unless they represent critical breaking developments
+EDITORIAL MANDATE — BREADTH IS NON-NEGOTIABLE:
+You are curating a world briefing, not a region report. The reader wants to understand the ENTIRE world today.
 
-ANTI-REDUNDANCY (strictly enforced):
-- Maximum 3 stories on the same geographic region (e.g. no more than 3 Middle East stories)
-- Maximum 3 stories involving the same country, conflict, or protagonist
-- Maximum 4 stories in the same category (e.g. no more than 4 World stories)
-- If multiple articles cover the same underlying event (same war, same election, same company), pick ONLY THE BEST ONE — discard the rest entirely
-- The 20 stories must span at least 5 distinct categories
-- The 20 stories must cover at least 6 distinct geographic regions or subject areas
-- Ask yourself: would a reader feel they got the full picture of the world today, or just one corner of it?
+HARD LIMITS (violating any of these is a failure):
+- Maximum 2 stories about the same conflict, war, or ongoing crisis (e.g. Iran/Israel: pick the 2 most important angles, then STOP)
+- Maximum 2 stories involving the same country
+- Maximum 2 stories with the same protagonist (person, company, or organisation)
+- Maximum 3 stories per category (World, Politics, Business, Technology, etc.)
+- If two articles are about the same underlying event — pick ONE, drop the other entirely
+
+REQUIRED COVERAGE — your 20 stories MUST include at least:
+- 2 stories about Technology or Science (AI, climate, medicine, space, research)
+- 2 stories about Business or Economics (markets, companies, trade, finance)
+- 1 story about Culture, Arts, or Society
+- 1 story about Health, Environment, or Science
+- Stories from at least 4 distinct geographic regions (e.g. Europe, Asia, Americas, Middle East, Africa)
+- At least 1 story from Africa or Latin America
+- No more than 5 stories total from the Middle East/Iran/Israel conflict
 
 QUALITY:
 - Each summary: maximum 200 words, active voice, editorial confidence — no hedging
 - Headlines: specific and informative, not clickbait
-- If a reader profile is provided above, bias selection toward their interests — but never at the cost of diversity
+- Imagine a reader who wants to feel informed about the whole world over breakfast — not exhausted by one topic
+- If a reader profile is provided above, honour their interests — but NEVER at the cost of geographic and topical breadth
 - Return ONLY valid JSON matching the schema. No markdown fences, no extra keys.`;
 
   const userPrompt = `Here are ${contentItems.length} articles. Select the 20 best and summarize them. Then add a closing quote.
