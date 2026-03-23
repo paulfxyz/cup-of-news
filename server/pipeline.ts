@@ -169,7 +169,6 @@ function isValidOgImage(url: string | null): boolean {
  *   pattern for texture, and displays the category label — clean, on-brand, zero cost.
  */
 function generateCategoryImage(title: string, category: string): string {
-  // Category → colour palette (background, accent, text)
   const palettes: Record<string, { bg: string; accent: string; dot: string }> = {
     Technology:   { bg: "#0f1729", accent: "#1d3461", dot: "#3b82f6" },
     Science:      { bg: "#0d1f0d", accent: "#1a3a1a", dot: "#22c55e" },
@@ -182,39 +181,27 @@ function generateCategoryImage(title: string, category: string): string {
     Sports:       { bg: "#1a0a00", accent: "#3a1500", dot: "#f97316" },
     Other:        { bg: "#111111", accent: "#222222", dot: "#888888" },
   };
-
   const p = palettes[category] || palettes.Other;
-  const shortTitle = title.length > 60 ? title.slice(0, 57) + "…" : title;
-  // Word-wrap title into 2 lines max
-  const words = shortTitle.split(" ");
-  const lines: string[] = [];
-  let line = "";
+  const short = title.length > 60 ? title.slice(0, 57) + "..." : title;
+  const words = short.split(" ");
+  const lines2: string[] = [];
+  let cur = "";
   for (const w of words) {
-    if ((line + " " + w).trim().length > 32) { lines.push(line.trim()); line = w; }
-    else line = (line + " " + w).trim();
+    if ((cur + " " + w).trim().length > 32) { lines2.push(cur.trim()); cur = w; }
+    else cur = (cur + " " + w).trim();
   }
-  if (line) lines.push(line.trim());
-  const titleLines = lines.slice(0, 2);
+  if (cur) lines2.push(cur.trim());
+  const twoLines = lines2.slice(0, 2);
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450">
-  <defs>
-    <pattern id="g" width="40" height="40" patternUnits="userSpaceOnUse">
-      <path d="M40 0L0 0 0 40" fill="none" stroke="${p.accent}" stroke-width="0.5" opacity="0.4"/>
-    </pattern>
-  </defs>
-  <rect width="800" height="450" fill="${p.bg}"/>
-  <rect width="800" height="450" fill="url(#g)"/>
-  <rect width="4" height="450" fill="${p.dot}"/>
-  <rect x="40" y="180" width="720" height="2" fill="${p.accent}" opacity="0.6"/>
-  <text x="40" y="160" font-family="Helvetica Neue,Arial,sans-serif" font-size="11" font-weight="700" letter-spacing="3" fill="${p.dot}" text-transform="uppercase" opacity="0.9">${category.toUpperCase()}</text>
-  ${titleLines.map((l, i) => `<text x="40" y="${215 + i * 38}" font-family="Helvetica Neue,Arial,sans-serif" font-size="26" font-weight="800" fill="#ffffff" opacity="0.92">${l.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</text>`).join("
-  ")}
-  <circle cx="760" cy="400" r="60" fill="${p.dot}" opacity="0.06"/>
-  <circle cx="760" cy="400" r="30" fill="${p.dot}" opacity="0.08"/>
-</svg>`;
+  const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const textEls = twoLines
+    .map((l, i) => `<text x="40" y="${215 + i * 38}" font-family="Helvetica Neue" font-size="26" font-weight="800" fill="#fff" opacity="0.92">${escape(l)}</text>`)
+    .join(" ");
 
-  return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450"><defs><pattern id="g" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0L0 0 0 40" fill="none" stroke="${p.accent}" stroke-width="0.5" opacity="0.4"/></pattern></defs><rect width="800" height="450" fill="${p.bg}"/><rect width="800" height="450" fill="url(#g)"/><rect width="4" height="450" fill="${p.dot}"/><rect x="40" y="180" width="720" height="2" fill="${p.accent}" opacity="0.6"/><text x="40" y="160" font-family="Helvetica Neue" font-size="11" font-weight="700" letter-spacing="3" fill="${p.dot}" opacity="0.9">${category.toUpperCase()}</text>${textEls}<circle cx="760" cy="400" r="60" fill="${p.dot}" opacity="0.06"/><circle cx="760" cy="400" r="30" fill="${p.dot}" opacity="0.08"/></svg>`;
+  return "data:image/svg+xml;base64," + Buffer.from(svg).toString("base64");
 }
+
 
 // ─── Jina Reader ──────────────────────────────────────────────────────────────
 
