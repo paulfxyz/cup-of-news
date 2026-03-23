@@ -182,4 +182,11 @@ export interface DigestStory {
 
   /** FK to links.id — 0 for trend items, >0 for user-submitted links */
   linkId: number;
+
+  /**
+   * Up to 3 source URLs and titles used to compile this story.
+   * Populated by the AI from the contentItems it received.
+   * The primary source is always sourceUrl; these are additional references.
+   */
+  sources?: Array<{ url: string; title: string; domain: string }>;
 }

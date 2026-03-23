@@ -27,7 +27,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
-  Sun, Moon, ArrowUpRight, ChevronLeft, ChevronRight, LayoutGrid, X, Rss
+  Sun, Moon, ArrowUpRight, ChevronLeft, ChevronRight, LayoutGrid, X
 } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import type { DigestStory } from "@shared/schema";
@@ -53,7 +53,6 @@ export default function DigestView() {
   const { theme, toggle } = useTheme();
   const [cardIndex, setCardIndex] = useState(0);
   const [showGrid, setShowGrid] = useState(false);
-  const [showSources, setShowSources] = useState(false);
 
   const { data: digest, isLoading } = useQuery<DigestResponse | null>({
     queryKey: ["/api/digest/latest"],
@@ -173,13 +172,7 @@ export default function DigestView() {
             >
               <LayoutGrid size={16} />
             </button>
-            <button
-              onClick={() => setShowSources(v => !v)}
-              className="w-9 h-9 flex items-center justify-center hover:bg-accent rounded transition-colors"
-              aria-label="RSS Sources"
-            >
-              <Rss size={15} />
-            </button>
+
             <button
               onClick={toggle}
               className="w-9 h-9 flex items-center justify-center hover:bg-accent rounded transition-colors"
@@ -286,30 +279,36 @@ function SourcesStoryModal({ story }: { story: DigestStory }) {
             </div>
 
             {/* Source entry */}
-            <div className="px-6 py-5 space-y-4">
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground font-ui">Primary Source</p>
+            <div className="px-6 py-5 space-y-3">
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground font-ui">
+                {story.sources && story.sources.length > 1 ? `${story.sources.length} Sources` : "Source"}
+              </p>
 
-              <a
-                href={story.sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-start gap-4 p-4 border border-border hover:border-[#E3120B] transition-colors group"
-              >
-                <div className="w-10 h-10 bg-[#E3120B]/10 flex items-center justify-center flex-shrink-0 group-hover:bg-[#E3120B]/20 transition-colors">
-                  <Rss size={16} className="text-[#E3120B]" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold font-display leading-snug group-hover:text-[#E3120B] transition-colors line-clamp-2">
-                    {story.sourceTitle || story.title}
-                  </p>
-                  <p className="text-xs text-muted-foreground font-ui mt-1 flex items-center gap-1">
-                    {domain} <ArrowUpRight size={10} />
-                  </p>
-                </div>
-              </a>
+              {/* Multi-source list */}
+              {(story.sources && story.sources.length > 0 ? story.sources : [{ url: story.sourceUrl, title: story.sourceTitle || story.title, domain }]).map((src, i) => (
+                <a
+                  key={i}
+                  href={src.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-start gap-4 p-4 border border-border hover:border-[#E3120B] transition-colors group"
+                >
+                  <div className="w-8 h-8 bg-muted flex items-center justify-center flex-shrink-0 text-xs font-bold text-muted-foreground group-hover:bg-[#E3120B]/10 group-hover:text-[#E3120B] transition-colors font-ui">
+                    {String(i + 1).padStart(2, "0")}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold font-display leading-snug group-hover:text-[#E3120B] transition-colors line-clamp-2">
+                      {(src.title || "").startsWith("http") ? src.domain : (src.title || src.domain)}
+                    </p>
+                    <p className="text-xs text-muted-foreground font-ui mt-1 flex items-center gap-1">
+                      {src.domain || domain} <ArrowUpRight size={10} />
+                    </p>
+                  </div>
+                </a>
+              ))}
 
-              <p className="text-xs text-muted-foreground font-editorial leading-relaxed">
-                This story was curated and summarised by the AI from the source above. The summary is an editorial interpretation — always read the original for full context.
+              <p className="text-xs text-muted-foreground font-editorial leading-relaxed pt-1">
+                This story was curated and summarised by the AI{story.sources && story.sources.length > 1 ? ` from ${story.sources.length} sources` : ""}. Always read the originals for full context.
               </p>
             </div>
 
@@ -374,7 +373,7 @@ function StoryCard({ story, index, total }: { story: DigestStory; index: number;
       <div className="w-10 h-0.5 bg-[#E3120B] mb-6" />
 
       {/* Summary — editorial serif, comfortable reading size on mobile */}
-      <p className="text-lg sm:text-xl lg:text-2xl font-editorial leading-[2.6] text-foreground/85" style={{wordSpacing: "0.04em", letterSpacing: "0.01em"}}>
+      <p className="text-lg sm:text-xl lg:text-2xl font-editorial leading-[3.0] text-foreground/85" style={{wordSpacing: "0.05em", letterSpacing: "0.015em"}}>
         {story.summary}
       </p>
 

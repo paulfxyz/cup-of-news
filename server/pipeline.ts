@@ -74,9 +74,10 @@ const EXTRACTION_BATCH_SIZE = 4;
  *  enough for the model to understand the story, cheap enough to pack 20+ items. */
 const MAX_TEXT_PER_ARTICLE = 3000;
 
-/** OpenRouter model. Gemini 2.0 Flash: fast, cheap, excellent summarization.
+/** OpenRouter model. Gemini 2.5 Pro: superior instruction following for complex
+ *  diversity rules and structured JSON output. Best quality/cost for this task.
  *  Change this to any OpenRouter model slug: https://openrouter.ai/models */
-const DEFAULT_MODEL = "google/gemini-2.0-flash-001";
+const DEFAULT_MODEL = "google/gemini-2.5-pro-preview-03-25";
 
 // ─── Utility Functions ────────────────────────────────────────────────────────
 
@@ -557,26 +558,28 @@ export async function runDailyPipeline(
 Your task: from the provided list of articles, select exactly 20 that together form the best morning briefing. Prioritize newsworthiness, recency, diversity of topics, and global relevance.${editorialSection}
 
 EDITORIAL MANDATE — BREADTH IS NON-NEGOTIABLE:
-You are curating a world briefing, not a region report. The reader wants to understand the ENTIRE world today.
+You are the editor of a world briefing read at breakfast. A reader should finish feeling they understand TODAY'S WORLD — not just one corner of it.
 
-HARD LIMITS (violating any of these is a failure):
-- Maximum 2 stories about the same conflict, war, or ongoing crisis (e.g. Iran/Israel: pick the 2 most important angles, then STOP)
-- Maximum 2 stories involving the same country
-- Maximum 2 stories with the same protagonist (person, company, or organisation)
-- Maximum 3 stories per category (World, Politics, Business, Technology, etc.)
-- If two articles are about the same underlying event — pick ONE, drop the other entirely
+HARD LIMITS — breaking any of these means the digest has FAILED:
+- MAX 2 stories about any single ongoing conflict or crisis (Iran/Israel = 2 max, then STOP — pick 2 best angles only)
+- MAX 2 stories involving the same country (includes stories that are primarily about that country)
+- MAX 2 stories with the same person, company, or institution as the primary subject
+- MAX 3 stories in any single category
+- If multiple articles cover the SAME NEWS EVENT from different outlets — do NOT treat them as separate stories. Group them using additionalIdxs (multi-source) instead. One story, multiple perspectives.
 
-REQUIRED COVERAGE — these are MANDATORY, not optional. A digest missing any of these is incomplete:
-- AT LEAST 2 stories: Technology or Science (AI, medicine, space, research, climate tech)
-- AT LEAST 2 stories: Business or Economics (markets, trade, companies, finance)
-- AT LEAST 1 story: Sports (football, tennis, athletics, motorsport, Olympics — any sport)
-- AT LEAST 1 story: Culture, Arts, or Entertainment (film, music, books, exhibitions)
-- AT LEAST 1 story: Health or Environment (medicine, climate, nature, food)
-- AT LEAST 1 story from Africa
-- AT LEAST 1 story from Asia (excluding Middle East)
-- AT LEAST 1 story from the Americas (North or South)
-- AT LEAST 1 story from Europe
-- No more than 4 stories total about the Middle East/Iran/Israel conflict
+MANDATORY SLOTS — your 20 stories MUST include ALL of the following:
+✦ AT LEAST 2 Technology or Science stories (AI breakthroughs, medical research, space, climate tech)
+✦ AT LEAST 2 Business or Economics stories (markets, M&A, central banks, trade, earnings)
+✦ AT LEAST 2 Sports stories (football, tennis, F1, athletics, basketball — any sport)
+✦ AT LEAST 1 Culture story (film, music, art, books, fashion, architecture)
+✦ AT LEAST 1 Health or Environment story (medicine, climate change, nature, food systems)
+✦ AT LEAST 1 story from SUB-SAHARAN AFRICA (not North Africa / Middle East)
+✦ AT LEAST 1 story from ASIA-PACIFIC (Japan, India, China, SE Asia, Australia — NOT Middle East)
+✦ AT LEAST 1 story from THE AMERICAS (USA, Canada, Brazil, Mexico, Latin America)
+✦ AT LEAST 1 story from EUROPE (EU, UK, Russia — separate from Middle East)
+✦ NO MORE THAN 3 stories from the Middle East/Iran/Israel/Gaza conflict zone
+
+BEFORE FINALISING: count your stories per category and region. If you're short on a mandatory slot, REMOVE a story from an over-represented area and replace it.
 - No more than 2 stories from any single country
 
 QUALITY:
@@ -595,15 +598,18 @@ Required JSON response:
 {
   "stories": [
     {
-      "idx": <integer, original idx from above, 1-based, select 20>,
+      "idx": <primary source idx from above, 1-based>,
+      "additionalIdxs": [<up to 2 more idx values that also covered this story — for multi-source coverage>],
       "title": "<headline, max 80 chars, strong and specific>",
-      "summary": "<editorial summary, max 200 words, active voice>",
+      "summary": "<editorial summary, max 200 words, active voice, synthesise across sources if multiple>",
       "category": "<exactly one of: Technology|Science|Business|Politics|World|Culture|Health|Environment|Sports|Other>"
     }
   ],
   "closingQuote": "<an inspiring or thought-provoking quote, thematically relevant to today's stories>",
   "closingQuoteAuthor": "<Full Name, Role/Context>"
-}`;
+}
+
+IMPORTANT: For additionalIdxs — if multiple articles in the list cover the SAME story from different angles or sources, group them here. This gives readers 3 perspectives on important stories instead of just 1. Do this especially for major breaking news.`;
 
   console.log(`🤖 Calling OpenRouter (${DEFAULT_MODEL}) with ${contentItems.length} articles…`);
 
@@ -646,6 +652,30 @@ Required JSON response:
         ? original.ogImage!
         : `__GENERATE__:${s.title}:${s.category}`;
 
+      // Collect additional sources from additionalIdxs
+      const additionalIdxs: number[] = Array.isArray(s.additionalIdxs)
+        ? s.additionalIdxs.filter((i: number) => i > 0 && i <= allProcessed.length && i !== s.idx)
+        : [];
+
+      const sources = [
+        // Primary source
+        {
+          url: original.link.url,
+          title: original.title || original.link.url,
+          domain: (() => { try { return new URL(original.link.url).hostname.replace("www.", ""); } catch { return original.link.url; } })(),
+        },
+        // Additional sources (up to 2 more)
+        ...additionalIdxs.slice(0, 2).map((i: number) => {
+          const src = allProcessed[i - 1];
+          if (!src) return null;
+          return {
+            url: src.link.url,
+            title: src.title || src.link.url,
+            domain: (() => { try { return new URL(src.link.url).hostname.replace("www.", ""); } catch { return src.link.url; } })(),
+          };
+        }).filter(Boolean) as Array<{url:string;title:string;domain:string}>,
+      ];
+
       return {
         id: randomUUID(),
         title: s.title || original.title || "Untitled",
@@ -655,6 +685,7 @@ Required JSON response:
         sourceTitle: original.title || original.link.url,
         category: s.category || "Other",
         linkId: original.link.id,
+        sources,
       };
     })
     .filter((s): s is DigestStory => s !== null);
