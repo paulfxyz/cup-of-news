@@ -1,7 +1,7 @@
 /**
  * @file server/routes.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 2.3.0
+ * @version 3.0.0
  *
  * Cup of News — REST API Routes
  *
@@ -100,7 +100,7 @@ export function registerRoutes(httpServer: Server, app: Express) {
    * Public. Used by uptime monitors, Docker HEALTHCHECK, GitHub Actions.
    */
   app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok", version: "2.3.0" });
+    res.json({ status: "ok", version: "3.0.0" });
   });
 
   // ── Setup ──────────────────────────────────────────────────────────────────
@@ -219,7 +219,7 @@ export function registerRoutes(httpServer: Server, app: Express) {
    *   3. 404 only if the database is completely empty
    *
    * When falling back to a different edition, the response includes:
-   *   { isFallback: true, requestedEdition: "fr-FR", edition: "en-WORLD" }
+   *   { isFallback: true, requestedEdition: "fr-FR", edition: "en" }
    * The client can use this to show a non-intrusive notice:
    *   "Showing World edition — your edition hasn't been generated yet."
    *
@@ -283,8 +283,8 @@ export function registerRoutes(httpServer: Server, app: Express) {
    * POST /api/digest/generate
    * Admin. Triggers the full daily pipeline for a specific edition.
    *
-   * v2.0.0: Body can include { edition: "fr-FR" } to generate a specific edition.
-   * Defaults to "en-WORLD" for backwards compatibility.
+   * v2.0.0: Body can include { edition: "fr" } to generate a specific edition.
+   * Defaults to "en" for backwards compatibility.
    *
    * This is a synchronous long-poll — holds connection until generation
    * completes (15-90 seconds). Returns { success, digestId, storiesCount, edition }.

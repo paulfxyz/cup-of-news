@@ -292,7 +292,7 @@ SSL issues automatically via Let's Encrypt. Check: `fly certs check app.cupof.ne
 
 ## Daily Cron — GitHub Actions
 
-Already included in `.github/workflows/daily-digest.yml`. Fires at **6:00 AM GMT** and generates all 8 editions sequentially.
+Already included in `.github/workflows/daily-digest.yml`. Fires at **6:00 AM GMT** and generates all editions sequentially.
 
 Add repo secrets (**Settings → Secrets → Actions**):
 
@@ -304,8 +304,8 @@ Add repo secrets (**Settings → Secrets → Actions**):
 Optional repo variable (**Settings → Variables**): `AUTO_PUBLISH=true` to auto-publish each edition without manual review.
 
 Manual trigger: **Actions → Daily Morning Digest → Run workflow**
-- Leave **edition** blank to generate all 8
-- Enter a specific edition ID (`fr-FR`, `de-DE`, etc.) to generate just one
+- Leave **edition** blank to generate all editions
+- Enter a specific edition ID (`fr-FR`, `de-DE`, `es-ES`, etc.) to generate just one
 
 > **Auto-generate on startup:** In production, the server automatically detects editions with zero published digests and generates them on boot. This means a fresh deploy always has content — no manual intervention required.
 
@@ -332,9 +332,41 @@ curl -X POST https://app.cupof.news/api/digest/generate \
   -H "x-admin-key: your-password" \
   -H "Content-Type: application/json" \
   -d '{"edition": "de-DE"}'
+
+# Spanish edition (v3.0.0+)
+curl -X POST https://app.cupof.news/api/digest/generate \
+  -H "x-admin-key: your-password" \
+  -H "Content-Type: application/json" \
+  -d '{"edition": "es-ES"}'
+
+# Portuguese edition (v3.0.0+)
+curl -X POST https://app.cupof.news/api/digest/generate \
+  -H "x-admin-key: your-password" \
+  -H "Content-Type: application/json" \
+  -d '{"edition": "pt-PT"}'
+
+# Chinese edition (v3.0.0+)
+curl -X POST https://app.cupof.news/api/digest/generate \
+  -H "x-admin-key: your-password" \
+  -H "Content-Type: application/json" \
+  -d '{"edition": "zh-CN"}'
+
+# Russian edition (v3.0.0+)
+curl -X POST https://app.cupof.news/api/digest/generate \
+  -H "x-admin-key: your-password" \
+  -H "Content-Type: application/json" \
+  -d '{"edition": "ru-RU"}'
 ```
 
-Available edition IDs: `en-WORLD`, `en-US`, `en-CA`, `en-GB`, `fr-FR`, `fr-CA`, `de-DE`, `en-AU`
+Available edition IDs:
+
+**English:** `en-WORLD`, `en-US`, `en-CA`, `en-GB`, `en-AU`
+**French:** `fr-FR`, `fr-CA`
+**German:** `de-DE`
+**Spanish (v3.0.0+):** `es-ES`
+**Portuguese (v3.0.0+):** `pt-PT`
+**Chinese (v3.0.0+):** `zh-CN`
+**Russian (v3.0.0+):** `ru-RU`
 
 Each edition maintains its own digest per day. The reader automatically fetches the correct edition based on your last selection (saved in the browser).
 
@@ -508,6 +540,45 @@ fly deploy                            # Fly.io
 ```
 
 DB migrations run automatically (`CREATE TABLE IF NOT EXISTS`) on every startup.
+
+---
+
+## Dark Mode Default
+
+As of v3.0.0, the reader defaults to **dark mode**. This is not simply "follow system preference" — it is the deliberate default for users who have never visited the app before.
+
+Behaviour:
+1. If the user has previously set a theme preference (`localStorage('theme')`), that takes precedence.
+2. If no stored preference exists, the system `prefers-color-scheme` media query is read.
+3. If neither is set (older browsers), dark mode is applied.
+
+To change the default back to light:
+```typescript
+// client/src/components/ThemeProvider.tsx
+// Change the final fallback:
+const defaultTheme = 'light'; // was 'dark'
+```
+
+The toggle button is visible in the reader's top bar. Theme preference persists across sessions via localStorage.
+
+---
+
+## Refresh Button UX
+
+The refresh button in the public reader uses **React Query `refetch()`**, not `window.location.reload()`.
+
+Behaviour:
+- Pressing refresh calls `queryClient.refetchQueries('digest')`.
+- If the newly fetched digest ID **matches** the currently displayed digest, the reader stays at the current story position.
+- If the digest ID **differs** (a new digest was published), the reader resets to story 1.
+- The `staleTime` for digest queries is 5 minutes — if you press refresh within 5 minutes of the last network fetch, the cache is served without a network call.
+
+This means:
+- Mid-read refreshes don’t kick you to story 1 (unless new content arrived).
+- No page white-flash.
+- The refresh is effectively a no-op until a new digest is published.
+
+If you prefer the simpler page reload behaviour, find `DigestView.tsx` and replace the `refetch()` call with `window.location.reload()`.
 
 ---
 

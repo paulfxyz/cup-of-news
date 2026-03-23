@@ -1,7 +1,7 @@
 /**
  * @file client/src/pages/DigestView.tsx
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 2.0.2
+ * @version 3.0.0
  *
  * Cup of News — Public Digest Reader
  *
@@ -65,7 +65,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
-  Sun, Moon, ArrowUpRight, ChevronLeft, ChevronRight, LayoutGrid, X, Rss
+  Sun, Moon, ArrowUpRight, ChevronLeft, ChevronRight, LayoutGrid, X, Rss, RefreshCw
 } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import { EditionSelector, useEdition } from "@/components/EditionSelector";
@@ -106,7 +106,7 @@ export default function DigestView() {
     setShowGrid(false);
   };
 
-  const { data: digest, isLoading } = useQuery<DigestResponse | null>({
+  const { data: digest, isLoading, refetch } = useQuery<DigestResponse | null>({
     // Include edition in the query key so React Query re-fetches when edition changes
     queryKey: ["/api/digest/latest", edition.id],
     queryFn: async () => {
@@ -199,14 +199,16 @@ export default function DigestView() {
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="flex-shrink-0 border-b border-border bg-background z-10">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-3">
-          {/* Logo — tapping resets to card 0 */}
+          {/* Logo — hover shows refresh icon, click refreshes digest */}
           <button
-            onClick={() => { setCardIndex(0); setShowGrid(false); }}
-            className="flex items-center gap-2 flex-shrink-0 hover:opacity-75 transition-opacity"
-            aria-label="First story"
+            onClick={() => { setCardIndex(0); setShowGrid(false); refetch(); }}
+            className="group flex items-center gap-2 flex-shrink-0 transition-opacity"
+            aria-label="Refresh digest"
+            title="Refresh digest"
           >
-            <div className="w-8 h-8 bg-[#E3120B] flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-black text-sm font-display tracking-tight">C</span>
+            <div className="w-8 h-8 bg-[#E3120B] flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110">
+              <span className="block group-hover:hidden text-white font-black text-sm font-display tracking-tight">C</span>
+              <RefreshCw size={14} className="hidden group-hover:block text-white" />
             </div>
           </button>
 
@@ -274,7 +276,7 @@ export default function DigestView() {
       {/* ── Card area ───────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto">
         {isQuoteCard
-          ? <QuoteCard quote={digest.closingQuote} author={digest.closingQuoteAuthor} date={digest.date} label={edition.ui.closingThought} />
+          ? <QuoteCard quote={digest.closingQuote} author={digest.closingQuoteAuthor} date={digest.date} label={edition.ui.closingThought} refreshLabel={edition.ui.refreshDigest} morningComplete={edition.ui.morningComplete} onRefresh={() => { refetch(); setCardIndex(0); }} />
           : story
           ? <StoryCard story={story} index={cardIndex} total={digest.stories.length} edition={edition} />
           : null
@@ -495,11 +497,14 @@ function StoryCard({ story, index, total, edition }: { story: DigestStory; index
 //
 // layout: completion badge → date → red line → quote → author → end nudge
 
-function QuoteCard({ quote, author, date, label = "Today's Thought" }: {
+function QuoteCard({ quote, author, date, label = "Today's Thought", refreshLabel = "New digest", morningComplete = "You\u2019ve read today\u2019s digest", onRefresh }: {
   quote: string;
   author: string;
   date: string;
   label?: string;
+  refreshLabel?: string;
+  morningComplete?: string;
+  onRefresh?: () => void;
 }) {
   return (
     <div
@@ -530,8 +535,9 @@ function QuoteCard({ quote, author, date, label = "Today's Thought" }: {
         .cup-line   { animation: cup-line-grow 0.4s ease 0.5s both; }
         .cup-quote  { animation: cup-fade-up 0.7s ease 0.6s both; }
         .cup-author { animation: cup-fade-up 0.5s ease 0.9s both; }
-        .cup-nudge  { animation: cup-fade-up 0.4s ease 1.1s both; }
-        .cup-dot    { display: inline-block; animation: cup-shimmer 2s ease-in-out 1.3s infinite; }
+        .cup-nudge    { animation: cup-fade-up 0.4s ease 1.1s both; }
+        .cup-refresh  { animation: cup-fade-up 0.5s ease 1.4s both; }
+        .cup-dot      { display: inline-block; animation: cup-shimmer 2s ease-in-out 1.3s infinite; }
       `}</style>
 
       <div className="max-w-xl w-full text-center">
@@ -567,8 +573,21 @@ function QuoteCard({ quote, author, date, label = "Today's Thought" }: {
 
         {/* End-of-digest nudge */}
         <p className="cup-nudge text-[10px] text-white/15 font-ui mt-14 uppercase tracking-[0.22em]">
-          You&rsquo;ve read today&rsquo;s digest
+          {morningComplete}
         </p>
+
+        {/* Refresh button — large, prominent, invites the reader back */}
+        {onRefresh && (
+          <div className="cup-refresh mt-10">
+            <button
+              onClick={onRefresh}
+              className="inline-flex items-center gap-3 px-8 py-4 border border-white/20 text-white/60 hover:text-white hover:border-white/50 text-sm font-bold font-ui uppercase tracking-[0.18em] transition-all duration-200 hover:bg-white/5 active:scale-95"
+            >
+              <RefreshCw size={14} className="flex-shrink-0" />
+              {refreshLabel}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

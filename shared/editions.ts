@@ -1,58 +1,62 @@
 /**
  * @file shared/editions.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 2.3.0
+ * @version 3.0.0
  *
  * Cup of News — Edition Registry
  *
- * v2.2.0: Simplified from 8 editions to 3.
+ * PHILOSOPHY: 1 edition = 1 language.
  *
- * WHY 3 EDITIONS (not 8):
  *   The original 8 editions (en-WORLD, en-US, en-CA, en-GB, fr-FR, fr-CA, de-DE, en-AU)
- *   created too many variants of essentially the same English content. Five of the eight
- *   editions were in English with only minor regional focus differences — readers switching
- *   between them would see largely the same 20 stories with slightly different framing.
+ *   were collapsed to 3 in v2.2.0. In v3.0.0, we expand to 7 languages:
+ *   English, French, German, Spanish, Portuguese, Chinese, Russian.
  *
- *   Three editions with fully independent RSS source pools is cleaner and more impactful:
- *   each edition genuinely reads differently because it draws from different publications
- *   in different languages. The English edition covers global news from an international
- *   English-language perspective. The French edition draws from French press (Le Monde,
- *   RFI, France 24, L'Équipe). The German edition draws from German press (DW, Spiegel,
- *   FAZ, Kicker). The 20 topics are genuinely different — not just translations.
+ *   Each edition is genuinely different — different RSS sources, different topics,
+ *   different cultural framing. Chinese readers care about different stories than
+ *   Spanish readers. The AI generates natively in each language from primary-language
+ *   source material, not by translating English wire copy.
  *
- * EDITION IDs (BCP 47):
- *   "en" — English, global perspective
+ * EDITION IDs (BCP 47 language tags):
+ *   "en" — English (global)
  *   "fr" — Français
  *   "de" — Deutsch
+ *   "es" — Español
+ *   "pt" — Português
+ *   "zh" — 中文 (Chinese)
+ *   "ru" — Русский (Russian)
  *
  * DEFAULT: English ("en")
  *
  * RSS SOURCE STRATEGY:
- *   English: international wire services + major English broadsheets + global tech/science press
- *   French: French-language primary sources first (RFI, France 24, AFP FR, Le Monde, Le Figaro,
- *            L'Équipe, Les Échos), then 2-3 English wires for global context
- *   German: German-language primary sources first (DW, Spiegel, FAZ, SZ, Zeit, Kicker, Handelsblatt),
- *            then 2-3 English wires for global context
+ *   Every non-English edition: native-language sources dominate (>80% of the pool).
+ *   English wire services (Reuters, AP) appear in small quantities for global context only.
+ *   This ensures stories feel like journalism from that culture, not translated English news.
  *
- *   Key design: non-English editions receive primarily native-language RSS content so the AI
- *   summarises from authentic source material rather than translating English wire copy.
- *   This is the difference between "French journalism" and "English journalism in French."
+ * CHALLENGE — NON-LATIN SCRIPT RENDERING:
+ *   Chinese and Russian editions output Unicode text. The AI (Gemini 2.5 Pro) handles
+ *   both Simplified Chinese and Cyrillic natively. The app font stack includes
+ *   system CJK fonts (STSong, PingFang) and system Cyrillic (Georgia, Arial).
+ *   No additional font loading required.
+ *
+ * UI STRINGS:
+ *   Every edition ships its own ui{} block so the reader interface is fully
+ *   localised — no hardcoded English strings appear in any edition.
  */
 
 // ─── Edition Type ──────────────────────────────────────────────────────────────
 
 export interface Edition {
   /** BCP 47 language tag — used as DB key and localStorage key */
-  id: "en" | "fr" | "de";
+  id: "en" | "fr" | "de" | "es" | "pt" | "zh" | "ru";
 
-  /** Display name */
+  /** Display name in that language */
   name: string;
 
   /** Flag emoji */
   flag: string;
 
   /** ISO 639-1 language code */
-  language: "en" | "fr" | "de";
+  language: "en" | "fr" | "de" | "es" | "pt" | "zh" | "ru";
 
   /** Language name in that language */
   languageName: string;
@@ -62,34 +66,33 @@ export interface Edition {
 
   /**
    * Language instruction injected as the FIRST rule in the AI system prompt.
-   * Written in both English (so the model parses it) and the target language
-   * (reinforcement signal that activates native-language generation pathways).
+   * Written in both English (model parses it) and the target language
+   * (reinforcement that activates native-language generation pathways).
    */
   aiLanguageInstruction: string;
 
   /**
-   * Regional and editorial focus — adjusts story selection priorities.
-   * For French: French politics, EU affairs, Ligue 1, francophone Africa.
-   * For German: Bundestag, DAX, Bundesliga, DACH region.
+   * Regional and editorial focus.
+   * For Spanish: Spanish/LATAM politics, LaLiga, regional economy.
+   * For Portuguese: Portugal + Brazil — two very different news cycles.
+   * For Chinese: Asia-Pacific, China tech, Belt & Road, 华语世界.
+   * For Russian: Eastern Europe, CIS, energy, sanctions impact.
    */
   aiRegionalFocus: string;
 
   /**
    * Sport slot instruction — adapted per language/culture.
-   * Sports coverage differs significantly: French readers want football (Ligue 1),
-   * rugby, tennis, cycling. German readers want Bundesliga, Formel 1, handball.
    */
   aiSportSlot: string;
 
   /**
    * Category names in the target language for the AI to use in JSON output.
-   * The AI is instructed to use exactly these strings as "category" values.
+   * The AI must use exactly these strings as "category" values.
    */
   categories: Record<string, string>;
 
   /**
-   * Reader UI strings — localised interface labels.
-   * All strings visible in the reader interface are edition-aware.
+   * Reader UI strings — fully localised interface labels.
    */
   ui: {
     readSources: string;
@@ -102,6 +105,8 @@ export interface Edition {
     nextStory: string;
     allStories: string;
     of: string;
+    refreshDigest: string;
+    morningComplete: string;
   };
 }
 
@@ -115,7 +120,7 @@ export const EDITIONS: Edition[] = [
     flag: "🌐",
     language: "en",
     languageName: "English",
-    description: "Global English edition — international perspective",
+    description: "Global English edition",
     aiLanguageInstruction: "Write all titles, summaries and the closing quote in English.",
     aiRegionalFocus:
       "Provide genuinely global coverage. No single country or region should dominate. " +
@@ -138,6 +143,8 @@ export const EDITIONS: Edition[] = [
       nextStory: "Next",
       allStories: "All Stories",
       of: "of",
+      refreshDigest: "New digest",
+      morningComplete: "You've read today's digest",
     },
   },
 
@@ -148,7 +155,7 @@ export const EDITIONS: Edition[] = [
     flag: "🇫🇷",
     language: "fr",
     languageName: "Français",
-    description: "Édition française — actualité mondiale en français",
+    description: "Édition française — actualité mondiale",
     aiLanguageInstruction:
       "RÈGLE ABSOLUE : Écris TOUS les champs en FRANÇAIS. " +
       "This is a French-language edition. Every single output field must be in French: " +
@@ -178,6 +185,8 @@ export const EDITIONS: Edition[] = [
       nextStory: "Suiv.",
       allStories: "Toutes les actualités",
       of: "sur",
+      refreshDigest: "Nouveau digest",
+      morningComplete: "Vous avez lu le digest du jour",
     },
   },
 
@@ -188,7 +197,7 @@ export const EDITIONS: Edition[] = [
     flag: "🇩🇪",
     language: "de",
     languageName: "Deutsch",
-    description: "Deutsche Ausgabe — Weltnachrichten auf Deutsch",
+    description: "Deutsche Ausgabe — Weltnachrichten",
     aiLanguageInstruction:
       "ABSOLUTE REGEL: Schreibe ALLE Felder auf DEUTSCH. " +
       "This is a German-language edition. Every single output field must be in German: " +
@@ -218,6 +227,178 @@ export const EDITIONS: Edition[] = [
       nextStory: "Näch.",
       allStories: "Alle Nachrichten",
       of: "von",
+      refreshDigest: "Neuer Digest",
+      morningComplete: "Sie haben den heutigen Digest gelesen",
+    },
+  },
+
+  // ── Español ────────────────────────────────────────────────────────────────
+  {
+    id: "es",
+    name: "Español",
+    flag: "🇪🇸",
+    language: "es",
+    languageName: "Español",
+    description: "Edición en español — noticias del mundo",
+    aiLanguageInstruction:
+      "REGLA ABSOLUTA: Escribe TODOS los campos en ESPAÑOL. " +
+      "This is a Spanish-language edition. Every single output field must be in Spanish: " +
+      "title (título), summary (resumen), closingQuote (cita), closingQuoteAuthor (atribución). " +
+      "NINGUNA palabra en inglés en títulos o resúmenes.",
+    aiRegionalFocus:
+      "Prioriza noticias relevantes para lectores hispanohablantes: política española (Congreso, partidos, monarquía), " +
+      "economía española (IBEX 35, turismo, desempleo), América Latina (México, Argentina, Colombia, Chile, Venezuela), " +
+      "Unión Europea desde perspectiva española, cultura hispana (cine, literatura, gastronomía). " +
+      "Incluir al menos 8 historias de alcance internacional (fuera del mundo hispano). " +
+      "Fuentes en español prioritarias: El País, EFE, El Mundo, BBC Mundo, Deutsche Welle ES.",
+    aiSportSlot:
+      "fútbol (LaLiga, selección española, Champions League, Copa América), tenis, Fórmula 1, ciclismo, baloncesto (ACB, NBA)",
+    categories: {
+      Technology: "Tecnología", Science: "Ciencia", Business: "Economía",
+      Politics: "Política", World: "Mundo", Culture: "Cultura",
+      Health: "Salud", Environment: "Medio Ambiente", Sports: "Deportes", Other: "Otros",
+    },
+    ui: {
+      readSources: "Leer fuentes",
+      closingThought: "Pensamiento del día",
+      noDigestYet: "Sin digest todavía",
+      noDigestSub: "Genera y publica un digest desde el panel de administración.",
+      fallbackNotice: "aún no generado — mostrando la última edición disponible.",
+      generateLink: "Generar →",
+      prevStory: "Ant.",
+      nextStory: "Sig.",
+      allStories: "Todas las noticias",
+      of: "de",
+      refreshDigest: "Nuevo digest",
+      morningComplete: "Has leído el digest de hoy",
+    },
+  },
+
+  // ── Português ──────────────────────────────────────────────────────────────
+  {
+    id: "pt",
+    name: "Português",
+    flag: "🇧🇷",
+    language: "pt",
+    languageName: "Português",
+    description: "Edição em português — notícias do mundo",
+    aiLanguageInstruction:
+      "REGRA ABSOLUTA: Escreva TODOS os campos em PORTUGUÊS. " +
+      "This is a Portuguese-language edition. Every single output field must be in Portuguese: " +
+      "title (título), summary (resumo), closingQuote (citação), closingQuoteAuthor (atribuição). " +
+      "NENHUMA palavra em inglês em títulos ou resumos.",
+    aiRegionalFocus:
+      "Prioriza notícias relevantes para leitores de língua portuguesa: Brasil (política, economia, sociedade — maior país lusófono), " +
+      "Portugal (política europeia, economia, relações lusófonas), CPLP (Angola, Moçambique, Cabo Verde, Timor-Leste), " +
+      "América Latina, União Europeia. " +
+      "Incluir pelo menos 8 histórias de alcance internacional. " +
+      "Fontes em português: Folha de S.Paulo, G1, Globo, Público, Jornal de Notícias, Agência Brasil, BBC Brasil.",
+    aiSportSlot:
+      "futebol (Brasileirão, Liga Portugal, Seleção Brasileira, Seleção Portuguesa, Champions League), Fórmula 1 (pilotos brasileiros), tênis, vôlei",
+    categories: {
+      Technology: "Tecnologia", Science: "Ciência", Business: "Economia",
+      Politics: "Política", World: "Mundo", Culture: "Cultura",
+      Health: "Saúde", Environment: "Meio Ambiente", Sports: "Esportes", Other: "Outros",
+    },
+    ui: {
+      readSources: "Ler fontes",
+      closingThought: "Pensamento do dia",
+      noDigestYet: "Sem digest ainda",
+      noDigestSub: "Gere e publique um digest no painel de administração.",
+      fallbackNotice: "ainda não gerado — exibindo a última edição disponível.",
+      generateLink: "Gerar →",
+      prevStory: "Ant.",
+      nextStory: "Próx.",
+      allStories: "Todas as notícias",
+      of: "de",
+      refreshDigest: "Novo digest",
+      morningComplete: "Você leu o digest de hoje",
+    },
+  },
+
+  // ── 中文 ───────────────────────────────────────────────────────────────────
+  {
+    id: "zh",
+    name: "中文",
+    flag: "🇨🇳",
+    language: "zh",
+    languageName: "中文",
+    description: "中文版 — 全球新闻资讯",
+    aiLanguageInstruction:
+      "绝对规则：所有字段必须用简体中文书写。" +
+      "This is a Chinese-language edition. Every single output field must be in Simplified Chinese: " +
+      "title (标题), summary (摘要), closingQuote (结语引文), closingQuoteAuthor (引文出处). " +
+      "标题和摘要中禁止出现英文单词。",
+    aiRegionalFocus:
+      "优先报道华语读者关心的新闻：中国国内政治与经济（中南海、人大、央行、A股），" +
+      "亚太地区（日本、韩国、东南亚、澳大利亚），台海关系，中美关系，一带一路，" +
+      "香港时事，科技创新（AI、半导体、电动车），国际多边关系。" +
+      "至少包含8条超出亚洲范围的国际新闻。" +
+      "优先中文信源：BBC中文、Deutsche Welle中文、法广中文、端传媒、South China Morning Post。",
+    aiSportSlot:
+      "足球（中超、FIFA世界杯预选赛、欧洲五大联赛）、乒乓球、羽毛球、NBA、网球、冬奥项目",
+    categories: {
+      Technology: "科技", Science: "科学", Business: "经济",
+      Politics: "政治", World: "国际", Culture: "文化",
+      Health: "健康", Environment: "环境", Sports: "体育", Other: "其他",
+    },
+    ui: {
+      readSources: "阅读来源",
+      closingThought: "今日寄语",
+      noDigestYet: "暂无摘要",
+      noDigestSub: "请从管理面板生成并发布摘要。",
+      fallbackNotice: "尚未生成 — 显示最新可用版本。",
+      generateLink: "生成 →",
+      prevStory: "上一条",
+      nextStory: "下一条",
+      allStories: "所有报道",
+      of: "/",
+      refreshDigest: "新摘要",
+      morningComplete: "您已阅读完今日摘要",
+    },
+  },
+
+  // ── Русский ────────────────────────────────────────────────────────────────
+  {
+    id: "ru",
+    name: "Русский",
+    flag: "🌍",
+    language: "ru",
+    languageName: "Русский",
+    description: "Выпуск на русском — новости мира",
+    aiLanguageInstruction:
+      "АБСОЛЮТНОЕ ПРАВИЛО: Пиши ВСЕ поля на РУССКОМ ЯЗЫКЕ. " +
+      "This is a Russian-language edition. Every single output field must be in Russian: " +
+      "title (заголовок), summary (резюме), closingQuote (цитата), closingQuoteAuthor (источник). " +
+      "НИ ОДНОГО английского слова в заголовках и резюме.",
+    aiRegionalFocus:
+      "Приоритет — новости, важные для русскоязычных читателей: " +
+      "международная политика (ООН, G20, НАТО, ЕС), " +
+      "Восточная Европа и постсоветское пространство (СНГ, Беларусь, Кавказ, Центральная Азия), " +
+      "мировая экономика (энергетика, санкции, торговля), наука и технологии, культура. " +
+      "Охват должен быть глобальным: Азия, Африка, Латинская Америка, Ближний Восток. " +
+      "Минимум 10 международных новостей вне постсоветского пространства. " +
+      "Источники: BBC Русская служба, Deutsche Welle Русская служба, Радио Свобода, The Insider, Meduza.",
+    aiSportSlot:
+      "футбол (лиги мира, сборные), теннис (Большой шлем), хоккей (НХЛ, КХЛ), биатлон, лёгкая атлетика",
+    categories: {
+      Technology: "Технологии", Science: "Наука", Business: "Экономика",
+      Politics: "Политика", World: "Мир", Culture: "Культура",
+      Health: "Здоровье", Environment: "Экология", Sports: "Спорт", Other: "Другое",
+    },
+    ui: {
+      readSources: "Читать источники",
+      closingThought: "Мысль дня",
+      noDigestYet: "Дайджест ещё не создан",
+      noDigestSub: "Создайте и опубликуйте дайджест из панели администратора.",
+      fallbackNotice: "ещё не создан — показывается последний доступный выпуск.",
+      generateLink: "Создать →",
+      prevStory: "Назад",
+      nextStory: "Вперёд",
+      allStories: "Все новости",
+      of: "из",
+      refreshDigest: "Новый дайджест",
+      morningComplete: "Вы прочитали дайджест на сегодня",
     },
   },
 ];

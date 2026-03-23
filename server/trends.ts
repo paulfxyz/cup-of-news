@@ -1,7 +1,7 @@
 /**
  * @file server/trends.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 2.3.0
+ * @version 3.0.0
  *
  * Cup of News — RSS Trend Fallback Engine (Edition-Aware)
  *
@@ -11,29 +11,37 @@
  *   This module provides a safety net: trusted RSS sources per edition that
  *   ensure every morning has at least 20 stories worth reading.
  *
- * v2.0.0 CHANGES — EDITION-AWARE SOURCE SETS:
- *   Each of the 8 editions now has its own curated RSS source list:
- *   - English editions (World, US, CA, GB, AU) use English-language feeds
- *     filtered by regional relevance
- *   - French editions (fr-FR, fr-CA) use French-language primary feeds
- *     (Le Monde, Le Figaro, RFI, France 24, Radio-Canada, Le Devoir)
- *     plus global wire services for international context
- *   - German edition (de-DE) uses German-language primary feeds
- *     (Der Spiegel DE, Süddeutsche Zeitung, FAZ, DW, Zeit Online)
- *     plus global wire services
+ * v3.0.0 CHANGES — 7-LANGUAGE EXPANSION:
+ *   Spanish, Portuguese, Chinese, and Russian editions added, each with their
+ *   own curated native-language RSS source pools. The 8 legacy edition aliases
+ *   (en-WORLD, en-US, en-GB, etc.) have been removed — those editions no longer
+ *   exist. Only 7 canonical edition IDs are supported: en, fr, de, es, pt, zh, ru.
  *
- * CHALLENGE — FRENCH/GERMAN RSS RELIABILITY:
- *   French and German newspaper RSS feeds are less reliably maintained than
- *   Anglo-Saxon equivalents. Key issues encountered:
- *   - Le Figaro: changed RSS URLs several times; using /rss/ root which is stable
- *   - Libération: RSS has been intermittent; not included as primary
- *   - FAZ: RSS format is non-standard Atom; atomStyle = true required
- *   - Süddeutsche: RSS URL changed in 2023; confirmed current URL
- *   - DW (Deutsche Welle): most reliable German feed — multiple topic RSS feeds
- *   Strategy: prefer RFI (French) and DW (German) as anchor feeds since they
- *   are international broadcasters with explicitly maintained public RSS.
+ *   The design principle is unchanged: native-language sources must dominate
+ *   each edition's pool (>80%). English wire services appear only as a minimal
+ *   global context layer at the end of each non-English pool. This ensures the
+ *   AI summarises authentic journalism, not English-to-target-language translations.
  *
- * DESIGN DECISIONS (unchanged from v1.x):
+ * CHALLENGE — NON-LATIN RSS FEEDS:
+ *   Chinese feeds: Most major Chinese mainland outlets don't publish open RSS.
+ *   Solution: use BBC Chinese, DW Chinese, RFI Chinese, Radio Free Asia — all
+ *   international public broadcasters with stable RSS and no paywalls.
+ *
+ *   Russian feeds: Post-2022, several independent Russian outlets moved offshore.
+ *   Meduza (Latvia), The Insider (Riga), iStories all publish RSS. BBC Russian
+ *   Service and DW Russian are stable international broadcaster feeds.
+ *   We exclude state-controlled TASS/RIA — they do not produce independent journalism.
+ *
+ *   Spanish/Portuguese: Large, competitive media landscape with reliable RSS.
+ *   El País, EFE, G1, Folha are professionally maintained.
+ *
+ * CHALLENGE — PORTUGUESE: BRAZIL vs PORTUGAL:
+ *   Brazil (210M speakers) and Portugal (10M) have different news cycles, spelling
+ *   conventions, and editorial voices. Rather than two editions, we use one "pt"
+ *   edition that draws from BOTH Brazilian and Portuguese sources equally, then
+ *   lets the AI blend the two perspectives into a single digest.
+ *
+ * DESIGN DECISIONS (unchanged):
  *   - No API keys required. Pure public RSS/Atom feeds only. Zero cost.
  *   - Stories older than 72 hours are discarded.
  *   - Round-robin interleaving ensures no single source dominates.
@@ -67,46 +75,19 @@ export interface TrendStory {
   category: string;
 }
 
-// ─── Wire Services (shared across all editions) ──────────────────────────────
-// These are always included because they provide authoritative global coverage
-// regardless of edition. The AI will summarise them in the edition's language.
-
-const WIRE_SERVICES: RSSSource[] = [
-  {
-    name: "Reuters",
-    url: "https://feeds.reuters.com/reuters/topNews",
-    domain: "reuters.com",
-    category: "World",
-    lang: "en",
-  },
-  {
-    name: "Associated Press",
-    url: "https://rsshub.app/apnews/topics/apf-topnews",
-    domain: "apnews.com",
-    category: "World",
-    lang: "en",
-  },
-  {
-    name: "AFP World",
-    url: "https://www.afp.com/en/actus/afp_en_internet_1/rss",
-    domain: "afp.com",
-    category: "World",
-    lang: "en",
-  },
-];
-
-// ─── English Global Sources (en-WORLD baseline) ───────────────────────────────
+// ─── English Global Sources ───────────────────────────────────────────────────
 
 const EN_GLOBAL_SOURCES: RSSSource[] = [
-  ...WIRE_SERVICES,
+  // Wire services
+  { name: "Reuters", url: "https://feeds.reuters.com/reuters/topNews", domain: "reuters.com", category: "World", lang: "en" },
+  { name: "Associated Press", url: "https://rsshub.app/apnews/topics/apf-topnews", domain: "apnews.com", category: "World", lang: "en" },
+  { name: "AFP World", url: "https://www.afp.com/en/actus/afp_en_internet_1/rss", domain: "afp.com", category: "World", lang: "en" },
   // Broadsheets
   { name: "BBC News", url: "https://feeds.bbci.co.uk/news/world/rss.xml", domain: "bbc.com", category: "World", lang: "en" },
   { name: "The Guardian", url: "https://www.theguardian.com/world/rss", domain: "theguardian.com", category: "World", lang: "en" },
   { name: "NYT World", url: "https://rss.nytimes.com/services/xml/rss/nyt/World.xml", domain: "nytimes.com", category: "World", lang: "en" },
   { name: "WSJ World", url: "https://feeds.a.dj.com/rss/RSSWorldNews.xml", domain: "wsj.com", category: "Business", lang: "en" },
   { name: "Financial Times", url: "https://www.ft.com/rss/home/uk", domain: "ft.com", category: "Business", atomStyle: true, lang: "en" },
-  { name: "The Telegraph", url: "https://www.telegraph.co.uk/rss.xml", domain: "telegraph.co.uk", category: "World", lang: "en" },
-  { name: "The Independent", url: "https://www.independent.co.uk/rss", domain: "independent.co.uk", category: "World", lang: "en" },
   { name: "The Economist", url: "https://www.economist.com/the-world-this-week/rss.xml", domain: "economist.com", category: "World", atomStyle: true, lang: "en" },
   { name: "Economist Finance", url: "https://www.economist.com/finance-and-economics/rss.xml", domain: "economist.com", category: "Business", atomStyle: true, lang: "en" },
   // European press (EN)
@@ -142,360 +123,205 @@ const EN_GLOBAL_SOURCES: RSSSource[] = [
   { name: "Rest of World", url: "https://restofworld.org/feed/", domain: "restofworld.org", category: "Technology", lang: "en" },
 ];
 
-// ─── US-specific additions ─────────────────────────────────────────────────────
-const EN_US_EXTRA: RSSSource[] = [
-  { name: "NPR News", url: "https://feeds.npr.org/1001/rss.xml", domain: "npr.org", category: "World", lang: "en" },
-  { name: "Washington Post", url: "https://feeds.washingtonpost.com/rss/world", domain: "washingtonpost.com", category: "Politics", lang: "en" },
-  { name: "Politico", url: "https://rss.politico.com/politics-news.xml", domain: "politico.com", category: "Politics", lang: "en" },
-  { name: "The Hill", url: "https://thehill.com/rss/syndicator/19110", domain: "thehill.com", category: "Politics", lang: "en" },
-  { name: "ESPN NFL", url: "https://www.espn.com/espn/rss/nfl/news", domain: "espn.com", category: "Sports", lang: "en" },
-  { name: "ESPN NBA", url: "https://www.espn.com/espn/rss/nba/news", domain: "espn.com", category: "Sports", lang: "en" },
-];
-
-// ─── UK-specific additions ────────────────────────────────────────────────────
-const EN_GB_EXTRA: RSSSource[] = [
-  { name: "BBC Politics", url: "https://feeds.bbci.co.uk/news/politics/rss.xml", domain: "bbc.com", category: "Politics", lang: "en" },
-  { name: "Sky News", url: "https://feeds.skynews.com/feeds/rss/home.xml", domain: "news.sky.com", category: "World", lang: "en" },
-  { name: "The Times UK", url: "https://www.thetimes.co.uk/rss", domain: "thetimes.co.uk", category: "World", lang: "en" },
-  { name: "BBC Sport Cricket", url: "https://feeds.bbci.co.uk/sport/cricket/rss.xml", domain: "bbc.com", category: "Sports", lang: "en" },
-  { name: "Sky Sports", url: "https://www.skysports.com/rss/12040", domain: "skysports.com", category: "Sports", lang: "en" },
-];
-
-// ─── Canadian English additions ───────────────────────────────────────────────
-const EN_CA_EXTRA: RSSSource[] = [
-  { name: "CBC News", url: "https://www.cbc.ca/cmlink/rss-topstories", domain: "cbc.ca", category: "World", lang: "en" },
-  { name: "Globe and Mail", url: "https://www.theglobeandmail.com/arc/outboundfeeds/rss/category/canada/", domain: "theglobeandmail.com", category: "World", lang: "en" },
-  { name: "Toronto Star", url: "https://www.thestar.com/search/?f=rss&t=article&c=news*&l=50&s=start_time&sd=desc", domain: "thestar.com", category: "World", lang: "en" },
-  { name: "National Post", url: "https://nationalpost.com/feed", domain: "nationalpost.com", category: "World", lang: "en" },
-  { name: "Sportsnet NHL", url: "https://www.sportsnet.ca/hockey/rss", domain: "sportsnet.ca", category: "Sports", lang: "en" },
-];
-
-// ─── Australian additions ─────────────────────────────────────────────────────
-const EN_AU_EXTRA: RSSSource[] = [
-  { name: "ABC Australia", url: "https://www.abc.net.au/news/feed/51120/rss.xml", domain: "abc.net.au", category: "World", lang: "en" },
-  { name: "The Australian", url: "https://www.theaustralian.com.au/feed", domain: "theaustralian.com.au", category: "World", lang: "en" },
-  { name: "Sydney Morning Herald", url: "https://www.smh.com.au/rss/feed.xml", domain: "smh.com.au", category: "World", lang: "en" },
-  { name: "Guardian Australia", url: "https://www.theguardian.com/australia-news/rss", domain: "theguardian.com", category: "World", lang: "en" },
-  // Strong Asia-Pacific because Australia is in the region
-  { name: "South China Morning Post", url: "https://www.scmp.com/rss/91/feed", domain: "scmp.com", category: "World", lang: "en" },
-  { name: "Japan Times", url: "https://www.japantimes.co.jp/feed", domain: "japantimes.co.jp", category: "World", lang: "en" },
-  // AFL/NRL/Cricket
-  { name: "Fox Sports AU", url: "https://www.foxsports.com.au/rss", domain: "foxsports.com.au", category: "Sports", lang: "en" },
-];
-
-// ─── French-language sources (fr-FR and fr-CA both use these) ─────────────────
+// ─── French Sources ────────────────────────────────────────────────────────────
 /**
- * Challenge: French newspaper RSS is less standardised than English equivalents.
- * Several major outlets (Libération, Les Échos) have intermittent RSS.
+ * Challenge: French newspaper RSS is less standardised than English.
  * Strategy: anchor on RFI and France 24 (international broadcasters with
  * professionally maintained RSS), complement with Le Monde and Le Figaro.
- *
- * RFI (Radio France Internationale) is the most reliable:
- * - Publicly funded, internationally oriented, RSS always active
- * - Covers Africa, Europe, Americas in French — great for diversity
- *
- * France 24: similar profile to RFI, reliable RSS, multi-topic feeds
- *
- * Le Monde: flagship French newspaper, RSS is stable at /rss/une.xml
- *
- * Le Figaro: conservative flagship, RSS available but URL changed in 2022
- *   — using /rss/ which aggregates all sections
+ * AFP French-language wire is first — it covers the whole spectrum.
  */
 const FR_PRIMARY_SOURCES: RSSSource[] = [
-  // ── French-language anchor feeds FIRST ──────────────────────────────────────
-  // v2.1.1: Native-language sources must dominate the content pool.
-  // Wire services (English Reuters/AP/AFP) moved to the END so the AI receives
-  // primarily French-language source material, not English to be translated.
-  // ── AFP French-language feed (primary wire in French) ───────────────────────
-  {
-    name: "AFP FR",
-    url: "https://www.afp.com/fr/actus/afp_fr_internet_4/rss",
-    domain: "afp.com",
-    category: "World",
-    lang: "fr",
-  },
-    {
-    name: "RFI Actualités",
-    url: "https://www.rfi.fr/fr/rss",
-    domain: "rfi.fr",
-    category: "World",
-    lang: "fr",
-  },
-  {
-    name: "France 24",
-    url: "https://www.france24.com/fr/rss",
-    domain: "france24.com",
-    category: "World",
-    lang: "fr",
-  },
-  {
-    name: "Le Monde",
-    url: "https://www.lemonde.fr/rss/une.xml",
-    domain: "lemonde.fr",
-    category: "World",
-    lang: "fr",
-  },
-  {
-    name: "Le Figaro",
-    url: "https://www.lefigaro.fr/rss/figaro_actualites.xml",
-    domain: "lefigaro.fr",
-    category: "World",
-    lang: "fr",
-  },
-  {
-    name: "Le Monde Politique",
-    url: "https://www.lemonde.fr/politique/rss_full.xml",
-    domain: "lemonde.fr",
-    category: "Politics",
-    lang: "fr",
-  },
-  {
-    name: "Le Monde Économie",
-    url: "https://www.lemonde.fr/economie/rss_full.xml",
-    domain: "lemonde.fr",
-    category: "Business",
-    lang: "fr",
-  },
-  {
-    name: "Le Monde Culture",
-    url: "https://www.lemonde.fr/culture/rss_full.xml",
-    domain: "lemonde.fr",
-    category: "Culture",
-    lang: "fr",
-  },
-  {
-    name: "L'Équipe",
-    url: "https://www.lequipe.fr/rss/actu_rss.xml",
-    domain: "lequipe.fr",
-    category: "Sports",
-    lang: "fr",
-  },
-  {
-    name: "Sciences et Avenir",
-    url: "https://www.sciencesetavenir.fr/rss.xml",
-    domain: "sciencesetavenir.fr",
-    category: "Science",
-    lang: "fr",
-  },
-  {
-    name: "Les Échos",
-    url: "https://syndication.lesechos.fr/rss/rss_la_une.xml",
-    domain: "lesechos.fr",
-    category: "Business",
-    lang: "fr",
-  },
-  {
-    name: "France Info",
-    url: "https://www.francetvinfo.fr/titres.rss",
-    domain: "francetvinfo.fr",
-    category: "World",
-    lang: "fr",
-  },
-  // ── Francophone Africa & world ──────────────────────────────────────────────
-  {
-    name: "Jeune Afrique",
-    url: "https://www.jeuneafrique.com/feed/",
-    domain: "jeuneafrique.com",
-    category: "World",
-    lang: "fr",
-  },
-  // ── English wire services (global context only — kept to 2 feeds) ───────────
-  // Reduced from 3 to 2 to keep English content to <20% of the pool.
-  // AFP French above covers wire service content in French.
+  { name: "AFP FR", url: "https://www.afp.com/fr/actus/afp_fr_internet_4/rss", domain: "afp.com", category: "World", lang: "fr" },
+  { name: "RFI Actualités", url: "https://www.rfi.fr/fr/rss", domain: "rfi.fr", category: "World", lang: "fr" },
+  { name: "France 24", url: "https://www.france24.com/fr/rss", domain: "france24.com", category: "World", lang: "fr" },
+  { name: "Le Monde", url: "https://www.lemonde.fr/rss/une.xml", domain: "lemonde.fr", category: "World", lang: "fr" },
+  { name: "Le Figaro", url: "https://www.lefigaro.fr/rss/figaro_actualites.xml", domain: "lefigaro.fr", category: "World", lang: "fr" },
+  { name: "Le Monde Politique", url: "https://www.lemonde.fr/politique/rss_full.xml", domain: "lemonde.fr", category: "Politics", lang: "fr" },
+  { name: "Le Monde Économie", url: "https://www.lemonde.fr/economie/rss_full.xml", domain: "lemonde.fr", category: "Business", lang: "fr" },
+  { name: "Le Monde Culture", url: "https://www.lemonde.fr/culture/rss_full.xml", domain: "lemonde.fr", category: "Culture", lang: "fr" },
+  { name: "L'Équipe", url: "https://www.lequipe.fr/rss/actu_rss.xml", domain: "lequipe.fr", category: "Sports", lang: "fr" },
+  { name: "Sciences et Avenir", url: "https://www.sciencesetavenir.fr/rss.xml", domain: "sciencesetavenir.fr", category: "Science", lang: "fr" },
+  { name: "Les Échos", url: "https://syndication.lesechos.fr/rss/rss_la_une.xml", domain: "lesechos.fr", category: "Business", lang: "fr" },
+  { name: "France Info", url: "https://www.francetvinfo.fr/titres.rss", domain: "francetvinfo.fr", category: "World", lang: "fr" },
+  { name: "Jeune Afrique", url: "https://www.jeuneafrique.com/feed/", domain: "jeuneafrique.com", category: "World", lang: "fr" },
+  // English wire: global context only, kept minimal
   { name: "Reuters", url: "https://feeds.reuters.com/reuters/topNews", domain: "reuters.com", category: "World", lang: "en" },
   { name: "BBC News", url: "https://feeds.bbci.co.uk/news/world/rss.xml", domain: "bbc.com", category: "World", lang: "en" },
 ];
 
-// ─── French-Canadian specific additions ──────────────────────────────────────
-const FR_CA_EXTRA: RSSSource[] = [
-  {
-    name: "Radio-Canada",
-    url: "https://ici.radio-canada.ca/rss/4159",
-    domain: "radio-canada.ca",
-    category: "World",
-    lang: "fr",
-  },
-  {
-    name: "Le Devoir",
-    url: "https://www.ledevoir.com/rss/manchettes.xml",
-    domain: "ledevoir.com",
-    category: "World",
-    lang: "fr",
-  },
-  {
-    name: "La Presse",
-    url: "https://www.lapresse.ca/actualites/rss",
-    domain: "lapresse.ca",
-    category: "World",
-    lang: "fr",
-  },
-  {
-    name: "Journal de Montréal",
-    url: "https://www.journaldemontreal.com/api/rss",
-    domain: "journaldemontreal.com",
-    category: "World",
-    lang: "fr",
-  },
-  // Hockey — mandatory for francophone Canada
-  {
-    name: "RDS (sport)",
-    url: "https://www.rds.ca/rss",
-    domain: "rds.ca",
-    category: "Sports",
-    lang: "fr",
-  },
-];
-
-// ─── German-language sources ──────────────────────────────────────────────────
+// ─── German Sources ────────────────────────────────────────────────────────────
 /**
- * Challenge: German newspaper RSS feeds.
- * - FAZ: Atom format, atomStyle required; URL stable at https://www.faz.net/rss/aktuell/
- * - Süddeutsche: SZ.de RSS changed structure in 2023; using /rss/uebersicht.rss
- * - Zeit Online: reliable at https://newsfeed.zeit.de/all
- * - DW: most reliable German feed; multiple topical sub-feeds available
- * - Der Spiegel DE: German edition at spiegel.de/schlagzeilen/rss
- * - Handelsblatt: business-focused, reliable RSS
- *
- * DW (Deutsche Welle) is the anchor — publicly funded, internationally
- * maintained, excellent RSS discipline. Covers Germany + global news in German.
+ * Challenge: FAZ uses Atom format (atomStyle: true). DW is the most reliable
+ * German feed — publicly funded, internationally maintained.
  */
 const DE_PRIMARY_SOURCES: RSSSource[] = [
-  // ── German-language anchor feeds FIRST ──────────────────────────────────────
-  // v2.1.1: Native German sources first so AI summarises from German content.
-  {
-    name: "Deutsche Welle",
-    url: "https://rss.dw.com/rdf/rss-de-all",
-    domain: "dw.com",
-    category: "World",
-    lang: "de",
-  },
-  {
-    name: "DW Wirtschaft",
-    url: "https://rss.dw.com/rdf/rss-de-wirtschaft",
-    domain: "dw.com",
-    category: "Business",
-    lang: "de",
-  },
-  {
-    name: "Der Spiegel",
-    url: "https://www.spiegel.de/schlagzeilen/index.rss",
-    domain: "spiegel.de",
-    category: "World",
-    lang: "de",
-  },
-  {
-    name: "Spiegel Politik",
-    url: "https://www.spiegel.de/politik/index.rss",
-    domain: "spiegel.de",
-    category: "Politics",
-    lang: "de",
-  },
-  {
-    name: "Spiegel Wirtschaft",
-    url: "https://www.spiegel.de/wirtschaft/index.rss",
-    domain: "spiegel.de",
-    category: "Business",
-    lang: "de",
-  },
-  {
-    name: "Zeit Online",
-    url: "https://newsfeed.zeit.de/all",
-    domain: "zeit.de",
-    category: "World",
-    lang: "de",
-  },
-  {
-    name: "Süddeutsche Zeitung",
-    url: "https://rss.sueddeutsche.de/rss/Topthemen",
-    domain: "sueddeutsche.de",
-    category: "World",
-    lang: "de",
-  },
-  {
-    name: "FAZ Aktuell",
-    url: "https://www.faz.net/rss/aktuell/",
-    domain: "faz.net",
-    category: "World",
-    atomStyle: true,
-    lang: "de",
-  },
-  {
-    name: "Handelsblatt",
-    url: "https://www.handelsblatt.com/contentexport/feed/schlagzeilen",
-    domain: "handelsblatt.com",
-    category: "Business",
-    lang: "de",
-  },
-  {
-    name: "Tagesspiegel",
-    url: "https://www.tagesspiegel.de/contentexport/feed/home",
-    domain: "tagesspiegel.de",
-    category: "World",
-    lang: "de",
-  },
-  {
-    name: "Kicker (Sport)",
-    url: "https://www.kicker.de/news/fussball/bundesliga/news.rss",
-    domain: "kicker.de",
-    category: "Sports",
-    lang: "de",
-  },
-  {
-    name: "SportBILD",
-    url: "https://sport.bild.de/rss-feeds/sport-news/sport-news-37830028.xml",
-    domain: "bild.de",
-    category: "Sports",
-    lang: "de",
-  },
-  {
-    name: "Spektrum (Wissenschaft)",
-    url: "https://www.spektrum.de/alias/rss/spektrum-de-rss-feed/996406",
-    domain: "spektrum.de",
-    category: "Science",
-    lang: "de",
-  },
-  // ── English wire (minimal — German DW covers global in German) ───────────────
+  { name: "Deutsche Welle", url: "https://rss.dw.com/rdf/rss-de-all", domain: "dw.com", category: "World", lang: "de" },
+  { name: "DW Wirtschaft", url: "https://rss.dw.com/rdf/rss-de-wirtschaft", domain: "dw.com", category: "Business", lang: "de" },
+  { name: "Der Spiegel", url: "https://www.spiegel.de/schlagzeilen/index.rss", domain: "spiegel.de", category: "World", lang: "de" },
+  { name: "Spiegel Politik", url: "https://www.spiegel.de/politik/index.rss", domain: "spiegel.de", category: "Politics", lang: "de" },
+  { name: "Spiegel Wirtschaft", url: "https://www.spiegel.de/wirtschaft/index.rss", domain: "spiegel.de", category: "Business", lang: "de" },
+  { name: "Zeit Online", url: "https://newsfeed.zeit.de/all", domain: "zeit.de", category: "World", lang: "de" },
+  { name: "Süddeutsche Zeitung", url: "https://rss.sueddeutsche.de/rss/Topthemen", domain: "sueddeutsche.de", category: "World", lang: "de" },
+  { name: "FAZ Aktuell", url: "https://www.faz.net/rss/aktuell/", domain: "faz.net", category: "World", atomStyle: true, lang: "de" },
+  { name: "Handelsblatt", url: "https://www.handelsblatt.com/contentexport/feed/schlagzeilen", domain: "handelsblatt.com", category: "Business", lang: "de" },
+  { name: "Tagesspiegel", url: "https://www.tagesspiegel.de/contentexport/feed/home", domain: "tagesspiegel.de", category: "World", lang: "de" },
+  { name: "Kicker (Sport)", url: "https://www.kicker.de/news/fussball/bundesliga/news.rss", domain: "kicker.de", category: "Sports", lang: "de" },
+  { name: "Spektrum (Wissenschaft)", url: "https://www.spektrum.de/alias/rss/spektrum-de-rss-feed/996406", domain: "spektrum.de", category: "Science", lang: "de" },
+  // English wire: minimal
   { name: "Reuters", url: "https://feeds.reuters.com/reuters/topNews", domain: "reuters.com", category: "World", lang: "en" },
+  { name: "BBC News", url: "https://feeds.bbci.co.uk/news/world/rss.xml", domain: "bbc.com", category: "World", lang: "en" },
+];
+
+// ─── Spanish Sources ───────────────────────────────────────────────────────────
+/**
+ * Challenge: Covering both Spain and Latin America (20 countries, vastly different
+ * political situations). Strategy: use EFE (Spanish wire) + BBC Mundo + DW Español
+ * as cross-continental anchors, then add national outlets for Spain and major LATAM
+ * countries.
+ *
+ * El País is available internationally and covers Spain + LATAM.
+ * BBC Mundo covers Latin America specifically.
+ * EFE is the Spanish wire service — equivalent to AFP for French editions.
+ */
+const ES_PRIMARY_SOURCES: RSSSource[] = [
+  { name: "EFE Agencia", url: "https://www.efe.com/efe/espana/portada/rss.xml", domain: "efe.com", category: "World", lang: "es" },
+  { name: "El País", url: "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada", domain: "elpais.com", category: "World", lang: "es" },
+  { name: "El País Internacional", url: "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/internacional/portada", domain: "elpais.com", category: "World", lang: "es" },
+  { name: "El Mundo", url: "https://e00-elmundo.uecdn.es/elmundo/rss/portada.xml", domain: "elmundo.es", category: "World", lang: "es" },
+  { name: "BBC Mundo", url: "https://feeds.bbci.co.uk/mundo/rss.xml", domain: "bbc.com", category: "World", lang: "es" },
+  { name: "DW Español", url: "https://rss.dw.com/rdf/rss-es-all", domain: "dw.com", category: "World", lang: "es" },
+  { name: "France 24 ES", url: "https://www.france24.com/es/rss", domain: "france24.com", category: "World", lang: "es" },
+  { name: "La Vanguardia", url: "https://www.lavanguardia.com/rss/home.xml", domain: "lavanguardia.com", category: "World", lang: "es" },
+  { name: "Expansión", url: "https://e00-expansion.uecdn.es/rss/portada.xml", domain: "expansion.com", category: "Business", lang: "es" },
+  { name: "El Confidencial", url: "https://rss.elconfidencial.com/espana/", domain: "elconfidencial.com", category: "Politics", lang: "es" },
+  // Latin America
+  { name: "LATAM Infobae", url: "https://www.infobae.com/feeds/rss/", domain: "infobae.com", category: "World", lang: "es" },
+  { name: "Clarín", url: "https://www.clarin.com/rss/lo-ultimo/", domain: "clarin.com", category: "World", lang: "es" },
+  { name: "La Nación AR", url: "https://www.lanacion.com.ar/arc/outboundfeeds/rss/", domain: "lanacion.com.ar", category: "World", lang: "es" },
+  { name: "El Tiempo CO", url: "https://www.eltiempo.com/rss/portada.xml", domain: "eltiempo.com", category: "World", lang: "es" },
+  // Sport
+  { name: "Marca", url: "https://www.marca.com/rss/portada.html", domain: "marca.com", category: "Sports", lang: "es" },
+  { name: "AS Fútbol", url: "https://as.com/rss/feeds/futbol.xml", domain: "as.com", category: "Sports", lang: "es" },
+  // Science
+  { name: "Muy Interesante", url: "https://www.muyinteresante.es/rss", domain: "muyinteresante.es", category: "Science", lang: "es" },
+  // English wire: minimal
+  { name: "Reuters", url: "https://feeds.reuters.com/reuters/topNews", domain: "reuters.com", category: "World", lang: "en" },
+];
+
+// ─── Portuguese Sources ────────────────────────────────────────────────────────
+/**
+ * Challenge: Portuguese spans two major markets with different conventions.
+ * Brazil (Brazilian Portuguese) and Portugal (European Portuguese) are mutually
+ * intelligible but distinct. We use sources from both equally.
+ *
+ * Brazilian anchors: G1 (Globo), Folha de S.Paulo, Agência Brasil (public wire).
+ * Portuguese anchors: Público, Jornal de Notícias, RTP.
+ * Cross-market: BBC Brasil, DW Português cover both.
+ */
+const PT_PRIMARY_SOURCES: RSSSource[] = [
+  // Brazilian sources
+  { name: "G1 Globo", url: "https://g1.globo.com/rss/g1/", domain: "g1.globo.com", category: "World", lang: "pt" },
+  { name: "Folha de S.Paulo", url: "https://feeds.folha.uol.com.br/emcimadahora/rss091.xml", domain: "folha.uol.com.br", category: "World", lang: "pt" },
+  { name: "Agência Brasil", url: "https://agenciabrasil.ebc.com.br/rss/ultimasnoticias/feed.xml", domain: "agenciabrasil.ebc.com.br", category: "World", lang: "pt" },
+  { name: "UOL Notícias", url: "https://rss.uol.com.br/feed/noticias.xml", domain: "uol.com.br", category: "World", lang: "pt" },
+  { name: "Estadão", url: "https://www.estadao.com.br/rss/ultimas.xml", domain: "estadao.com.br", category: "World", lang: "pt" },
+  { name: "Veja", url: "https://veja.abril.com.br/feed/", domain: "veja.abril.com.br", category: "World", lang: "pt" },
+  // Portuguese (Portugal) sources
+  { name: "Público", url: "https://www.publico.pt/rss", domain: "publico.pt", category: "World", lang: "pt" },
+  { name: "Jornal de Notícias", url: "https://www.jn.pt/rss/", domain: "jn.pt", category: "World", lang: "pt" },
+  { name: "Expresso", url: "https://expresso.pt/rss", domain: "expresso.pt", category: "World", lang: "pt" },
+  { name: "RTP Notícias", url: "https://www.rtp.pt/noticias/rss/todo-o-site", domain: "rtp.pt", category: "World", lang: "pt" },
+  // Cross-market
+  { name: "BBC Brasil", url: "https://feeds.bbci.co.uk/portuguese/rss.xml", domain: "bbc.com", category: "World", lang: "pt" },
+  { name: "DW Português", url: "https://rss.dw.com/rdf/rss-por-all", domain: "dw.com", category: "World", lang: "pt" },
+  { name: "France 24 PT", url: "https://www.france24.com/pt/rss", domain: "france24.com", category: "World", lang: "pt" },
+  // Sport
+  { name: "ESPN Brasil", url: "https://www.espnbrasil.com.br/rss/news", domain: "espnbrasil.com.br", category: "Sports", lang: "pt" },
+  { name: "O Jogo", url: "https://www.ojogo.pt/rss/", domain: "ojogo.pt", category: "Sports", lang: "pt" },
+  // English wire: minimal
+  { name: "Reuters", url: "https://feeds.reuters.com/reuters/topNews", domain: "reuters.com", category: "World", lang: "en" },
+];
+
+// ─── Chinese Sources ───────────────────────────────────────────────────────────
+/**
+ * Challenge: Mainland Chinese outlets (Xinhua, People's Daily) publish RSS but
+ * are state-controlled and not independent journalism. We exclusively use
+ * international public broadcasters publishing in Chinese.
+ *
+ * BBC Chinese, DW Chinese, RFI Chinese, and Radio Free Asia all maintain
+ * professionally managed RSS feeds and cover global news from an independent
+ * editorial perspective. South China Morning Post (HK) provides regional depth.
+ *
+ * This means the Chinese edition has a shorter source list than other editions —
+ * quality of source independence takes priority over quantity.
+ */
+const ZH_PRIMARY_SOURCES: RSSSource[] = [
+  { name: "BBC 中文", url: "https://feeds.bbci.co.uk/zhongwen/simp/rss.xml", domain: "bbc.com", category: "World", lang: "zh" },
+  { name: "DW 中文", url: "https://rss.dw.com/rdf/rss-chi-all", domain: "dw.com", category: "World", lang: "zh" },
+  { name: "RFI 中文", url: "https://www.rfi.fr/cn/rss", domain: "rfi.fr", category: "World", lang: "zh" },
+  { name: "自由亚洲电台", url: "https://www.rfa.org/mandarin/rss2.xml", domain: "rfa.org", category: "World", lang: "zh" },
+  { name: "美国之音中文", url: "https://www.voachinese.com/api/zu-yqieis", domain: "voachinese.com", category: "World", lang: "zh" },
+  { name: "南华早报", url: "https://www.scmp.com/rss/91/feed", domain: "scmp.com", category: "World", lang: "zh" },
+  { name: "法广中文 科技", url: "https://www.rfi.fr/cn/经济/rss", domain: "rfi.fr", category: "Business", lang: "zh" },
+  { name: "BBC 中文 科学", url: "https://feeds.bbci.co.uk/zhongwen/simp/science-environment/rss.xml", domain: "bbc.com", category: "Science", lang: "zh" },
+  { name: "BBC 中文 体育", url: "https://feeds.bbci.co.uk/zhongwen/simp/sport/rss.xml", domain: "bbc.com", category: "Sports", lang: "zh" },
+  // English wire for global depth the Chinese-language pool may miss
+  { name: "Reuters", url: "https://feeds.reuters.com/reuters/topNews", domain: "reuters.com", category: "World", lang: "en" },
+  { name: "Al Jazeera", url: "https://www.aljazeera.com/xml/rss/all.xml", domain: "aljazeera.com", category: "World", lang: "en" },
+];
+
+// ─── Russian Sources ───────────────────────────────────────────────────────────
+/**
+ * Challenge: Post-2022, several major independent Russian outlets have been
+ * blocked in Russia or shut down. We use:
+ *   - Meduza (Latvia) — largest independent Russian outlet post-2022
+ *   - BBC Russian Service — stable, internationally maintained
+ *   - DW Russian — professionally maintained, balanced
+ *   - Radio Free Europe / Radio Liberty — independent, veteran Russian journalism
+ *   - The Insider — investigative, based in Riga
+ *
+ * We do NOT include TASS, RIA Novosti, RT — state-controlled outlets.
+ *
+ * Note: Meduza's RSS may require CORS proxy in some environments. The
+ * RSS fetcher handles failures silently — if Meduza fails, other sources cover.
+ */
+const RU_PRIMARY_SOURCES: RSSSource[] = [
+  { name: "BBC Русская служба", url: "https://feeds.bbci.co.uk/russian/rss.xml", domain: "bbc.com", category: "World", lang: "ru" },
+  { name: "DW Русская служба", url: "https://rss.dw.com/rdf/rss-rus-all", domain: "dw.com", category: "World", lang: "ru" },
+  { name: "Радио Свобода", url: "https://www.svoboda.org/api/zu-kqeiiit", domain: "svoboda.org", category: "World", lang: "ru" },
+  { name: "Meduza", url: "https://meduza.io/rss/all", domain: "meduza.io", category: "World", lang: "ru" },
+  { name: "Медуза Новости", url: "https://meduza.io/rss/news", domain: "meduza.io", category: "World", lang: "ru" },
+  { name: "RFI Русская", url: "https://www.rfi.fr/ru/rss", domain: "rfi.fr", category: "World", lang: "ru" },
+  { name: "France 24 RU", url: "https://www.france24.com/ru/rss", domain: "france24.com", category: "World", lang: "ru" },
+  { name: "Голос Америки", url: "https://www.golosameriki.com/api/zuy-yqeiit", domain: "golosameriki.com", category: "World", lang: "ru" },
+  { name: "Euronews RU", url: "https://ru.euronews.com/rss?level=theme&name=news", domain: "euronews.com", category: "World", lang: "ru" },
+  // English wire for global coverage
+  { name: "Reuters", url: "https://feeds.reuters.com/reuters/topNews", domain: "reuters.com", category: "World", lang: "en" },
+  { name: "Al Jazeera", url: "https://www.aljazeera.com/xml/rss/all.xml", domain: "aljazeera.com", category: "World", lang: "en" },
   { name: "BBC News", url: "https://feeds.bbci.co.uk/news/world/rss.xml", domain: "bbc.com", category: "World", lang: "en" },
 ];
 
 // ─── Edition Source Map ───────────────────────────────────────────────────────
 /**
- * Maps edition ID → RSS source list.
- * Edition-specific lists supplement the global baseline.
- * Exported so the admin UI can show which sources feed each edition.
- */
-/**
- * v2.2.0: Simplified to 3 edition source pools.
+ * v3.0.0: 7 canonical edition IDs only. Legacy 8-edition aliases removed.
  *
  * Each pool is designed to produce genuinely different stories:
- *   "en" — international English-language press: Reuters, BBC, NYT, Guardian,
- *            FT, Economist, wired/tech/science/sports in English. Broad global pool.
- *   "fr" — French-language primary sources FIRST (RFI, France 24, Le Monde,
- *            Le Figaro, AFP FR, L'Équipe, Les Échos), then minimal English wire.
- *            Topics naturally skew: French politics, Ligue 1, francophone Africa.
- *   "de" — German-language primary sources FIRST (DW, Spiegel, FAZ, SZ, Zeit,
- *            Handelsblatt, Kicker), then minimal English wire.
- *            Topics naturally skew: Bundestag, Bundesliga, DAX, DACH region.
- *
- * Backwards compatibility: old 8-edition IDs (en-WORLD, fr-FR, de-DE etc.)
- * are mapped to the nearest new edition so no existing digests break.
+ *   "en" — international English press: Reuters, BBC, NYT, Guardian, FT, Economist
+ *   "fr" — French primary sources: RFI, France 24, Le Monde, AFP FR
+ *   "de" — German primary sources: DW, Spiegel, FAZ, Süddeutsche, Zeit
+ *   "es" — Spanish primary sources: EFE, El País, BBC Mundo, DW ES; plus LATAM
+ *   "pt" — Portuguese sources: G1/Folha (Brazil) + Público/JN (Portugal) equally
+ *   "zh" — Chinese-language international broadcasters: BBC Chinese, DW Chinese, RFI
+ *   "ru" — Independent Russian-language sources: Meduza, BBC Russian, DW Russian
  */
 export const EDITION_RSS_SOURCES: Record<string, RSSSource[]> = {
-  // ── v2.2.0 primary editions ─────────────────────────────────────────────────
-  "en":      EN_GLOBAL_SOURCES,
-  "fr":      [...FR_PRIMARY_SOURCES],
-  "de":      [...DE_PRIMARY_SOURCES],
-
-  // ── Backwards-compat aliases (old 8-edition IDs) ──────────────────────────
-  "en-WORLD": EN_GLOBAL_SOURCES,
-  "en-US":    EN_GLOBAL_SOURCES,
-  "en-CA":    EN_GLOBAL_SOURCES,
-  "en-GB":    EN_GLOBAL_SOURCES,
-  "en-AU":    EN_GLOBAL_SOURCES,
-  "fr-FR":    [...FR_PRIMARY_SOURCES],
-  "fr-CA":    [...FR_PRIMARY_SOURCES],
-  "de-DE":    [...DE_PRIMARY_SOURCES],
+  "en": EN_GLOBAL_SOURCES,
+  "fr": [...FR_PRIMARY_SOURCES],
+  "de": [...DE_PRIMARY_SOURCES],
+  "es": [...ES_PRIMARY_SOURCES],
+  "pt": [...PT_PRIMARY_SOURCES],
+  "zh": [...ZH_PRIMARY_SOURCES],
+  "ru": [...RU_PRIMARY_SOURCES],
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -513,7 +339,7 @@ const MAX_ITEMS_PER_SOURCE = 6;
 
 /**
  * Extract a tag's text content, handling CDATA and plain text.
- * Uses non-crossing [^<]* instead of greedy [\s\S]*? to avoid ReDoS.
+ * Non-crossing [^<]* instead of greedy [\s\S]*? avoids ReDoS.
  */
 function extractTag(xml: string, tag: string): string | null {
   const patterns = [
@@ -541,7 +367,6 @@ function extractItems(feedXml: string, atomStyle = false) {
   const safe = feedXml.slice(0, MAX_FEED_BYTES);
   const items: Array<{ title: string; link: string; pubDate: string }> = [];
 
-  // Use Array.from() for matchAll — required for ES2015+ iterator compatibility
   for (const match of Array.from(safe.matchAll(/<item[^>]*>([\s\S]*?)<\/item>/gi))) {
     const xml = match[1];
     const title = extractTag(xml, "title") || "";
@@ -574,14 +399,13 @@ function parseRSSDate(s: string): Date | null {
 
 /**
  * Normalize title for similarity comparison.
- * Catches wire story duplicates (Reuters + AP running the same headline).
- * Works across French and German titles too — lowercasing handles accents
- * sufficiently for dedup purposes (exact dedup, not fuzzy).
+ * Strips punctuation but preserves Unicode (handles Chinese, Russian, Arabic).
+ * Dedup catches wire story duplicates across sources.
  */
 function normTitle(title: string): string {
   return title
     .toLowerCase()
-    .replace(/[^a-z0-9\u00e0-\u024f ]/g, "")  // keep latin extended chars (é, ü, ö etc.)
+    .replace(/[^\w\u00C0-\u024F\u0400-\u04FF\u4E00-\u9FFF\u3040-\u30FF ]/g, "")  // keep Latin, Cyrillic, CJK
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 60);
@@ -593,7 +417,7 @@ async function fetchFeed(source: RSSSource): Promise<TrendStory[]> {
   try {
     const res = await fetch(source.url, {
       headers: {
-        "User-Agent": "CupOfNews-Bot/2.0 (RSS; https://github.com/paulfxyz/cup-of-news)",
+        "User-Agent": "CupOfNews-Bot/3.0 (RSS; https://github.com/paulfxyz/cup-of-news)",
         "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml, */*",
       },
       signal: AbortSignal.timeout(10000),
@@ -621,7 +445,6 @@ async function fetchFeed(source: RSSSource): Promise<TrendStory[]> {
         category: source.category,
       }));
   } catch {
-    // Silent failure — one dead source doesn't block the pipeline
     return [];
   }
 }
@@ -631,8 +454,8 @@ async function fetchFeed(source: RSSSource): Promise<TrendStory[]> {
 /**
  * Fetch trending stories from the appropriate RSS sources for the given edition.
  *
- * v2.0.0: editionId parameter selects the correct source set.
- * Falls back to en-WORLD sources if edition not recognised.
+ * v3.0.0: supports 7 edition IDs (en, fr, de, es, pt, zh, ru).
+ * Falls back to English sources if edition not recognised.
  *
  * Results are interleaved round-robin (1 per source per pass) to maximize
  * editorial diversity before truncation.
@@ -648,7 +471,6 @@ export async function fetchTrendingStories(
 
   const settled = await Promise.allSettled(sources.map(s => fetchFeed(s)));
 
-  // Round-robin interleave for diversity
   const buckets = settled
     .filter((r): r is PromiseFulfilledResult<TrendStory[]> => r.status === "fulfilled" && r.value.length > 0)
     .map(r => r.value);
@@ -661,7 +483,6 @@ export async function fetchTrendingStories(
     }
   }
 
-  // Two-pass dedup: URL then title prefix
   const seenUrls = new Set<string>();
   const seenTitles = new Set<string>();
   const deduped = interleaved.filter(s => {

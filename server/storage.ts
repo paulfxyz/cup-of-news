@@ -1,7 +1,7 @@
 /**
  * @file server/storage.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 2.3.0
+ * @version 3.0.0
  *
  * Cup of News — SQLite Storage Layer
  *
@@ -98,7 +98,7 @@ sqlite.exec(`
     closing_quote_author TEXT,
     generated_at         TEXT,
     published_at         TEXT,
-    edition              TEXT    NOT NULL DEFAULT 'en-WORLD',
+    edition              TEXT    NOT NULL DEFAULT 'en',
     UNIQUE(date, edition)
   );
 
@@ -120,7 +120,7 @@ sqlite.exec(`
 // ─── v2.0.0 Migration: add edition column (step 1) ───────────────────────────
 // SQLite supports ADD COLUMN but not DROP/MODIFY. This is safe to run repeatedly.
 try {
-  sqlite.exec(`ALTER TABLE digests ADD COLUMN edition TEXT NOT NULL DEFAULT 'en-WORLD';`);
+  sqlite.exec(`ALTER TABLE digests ADD COLUMN edition TEXT NOT NULL DEFAULT 'en';`);
   console.log("✅ Migration v2.0.0: added digests.edition column");
 } catch {
   // Column already exists — expected on all runs after first migration
@@ -174,7 +174,7 @@ try {
         closing_quote_author TEXT,
         generated_at         TEXT,
         published_at         TEXT,
-        edition              TEXT    NOT NULL DEFAULT 'en-WORLD',
+        edition              TEXT    NOT NULL DEFAULT 'en',
         UNIQUE(date, edition)
       );
 
@@ -184,7 +184,7 @@ try {
       SELECT
         id, date, status, stories_json, closing_quote, closing_quote_author,
         generated_at, published_at,
-        COALESCE(edition, 'en-WORLD')
+        COALESCE(edition, 'en')
       FROM digests;
 
       DROP TABLE digests;
@@ -231,7 +231,7 @@ function mapDigestRow(row: any): any {
     closingQuoteAuthor:   row.closingQuoteAuthor   ?? row.closing_quote_author,
     generatedAt:          row.generatedAt          ?? row.generated_at,
     publishedAt:          row.publishedAt          ?? row.published_at,
-    edition:              row.edition              ?? "en-WORLD",
+    edition:              row.edition              ?? "en",
   };
 }
 
@@ -332,7 +332,7 @@ class Storage implements IStorage {
    * (stories_json, closing_quote, etc). We must manually map to camelCase to match
    * the Digest TypeScript type that Drizzle's ORM queries produce automatically.
    */
-  getDigestByDate(date: string, edition = "en-WORLD"): Digest | undefined {
+  getDigestByDate(date: string, edition = "en"): Digest | undefined {
     const row = sqlite.prepare(
       `SELECT * FROM digests WHERE date = ? AND edition = ? LIMIT 1`
     ).get(date, edition) as any;
@@ -347,7 +347,7 @@ class Storage implements IStorage {
    * JSON.parse(undefined) → '"undefined" is not valid JSON' error on every page load.
    * Fix: mapDigestRow() converts snake_case → camelCase before returning.
    */
-  getLatestPublishedDigest(edition = "en-WORLD"): Digest | undefined {
+  getLatestPublishedDigest(edition = "en"): Digest | undefined {
     const row = sqlite.prepare(
       `SELECT * FROM digests WHERE status = 'published' AND edition = ? ORDER BY date DESC LIMIT 1`
     ).get(edition) as any;

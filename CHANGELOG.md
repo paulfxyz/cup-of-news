@@ -1,3 +1,82 @@
+## [3.0.0] — 2026-03-23
+
+**7 languages. Dark mode default. Refresh UX. Repo overhaul.**
+
+### New language editions
+Four new editions added to Cup of News: Spanish (es 🇪🇸), Portuguese (pt 🇧🇷),
+Chinese Simplified (zh 🇨🇳), and Russian (ru 🌍). Each has:
+  - Its own curated RSS source pool (15-18 native-language sources each)
+  - AI generation instructions in the native language with cultural/editorial focus
+  - Localised UI strings for every reader label
+  - Category palette entries in `generateCategoryImage()` for SVG fallbacks
+  - Full `aiRegionalFocus` guidance (e.g. LATAM for Spanish, Brazil+Portugal for PT,
+    Asia-Pacific for Chinese, Eastern Europe + CIS for Russian)
+
+Removed: all 8 legacy edition aliases (en-WORLD, en-US, en-CA, en-GB, en-AU,
+fr-FR, fr-CA, de-DE). The principle is now strict: 1 edition = 1 language.
+
+### Dark mode by default (ThemeProvider.tsx)
+The app now opens in dark mode on first visit. The red/black editorial palette
+and the celebration QuoteCard were always designed for dark backgrounds — this
+makes the experience consistent from the first load.
+Theme preference is persisted in localStorage ("cup_theme" key) so users who
+prefer light mode keep their choice across sessions.
+
+### Refresh UX
+Two ways to refresh the digest:
+  1. Logo button: hover over the red "C" square — it becomes a ↻ refresh icon.
+     Click to check if a new digest is available and reset to card 0.
+  2. QuoteCard button: large "New digest" button (localised per language) appears
+     below the quote with a staggered fade-in (1.4s delay — after the reader
+     has absorbed the quote). Clicking refreshes and returns to story 1.
+Both buttons call React Query's `refetch()` on the digest query — no page reload.
+
+### Landing page (cupof.news)
+Language selector replaced flag tab buttons with a native <select> dropdown.
+Supports all 7 languages. The EN/FR/DE copy is preserved from v2.3.0.
+ES, PT, ZH, RU copy written natively by Claude — no machine translation.
+
+### localStorage key reset
+`cup_edition_v3` replaces `cup_edition_v2` to avoid stale values from prior versions.
+
+### Version surfaces updated
+package.json, routes.ts, all @version headers, README badge,
+landing hero badge, all 7 footer_copy translations, CHANGELOG.
+
+---
+
+### Challenges & how they were fixed
+
+**Challenge 1: Unicode dedup regex in trends.ts**
+The old `normTitle()` used `[^a-z0-9\u00e0-\u024f]` which would strip Cyrillic
+and CJK characters entirely, making all Chinese or Russian story titles deduplicate
+as empty strings. Attempted fix: Unicode property escapes `/\p{L}/gu` — rejected
+by the TypeScript compiler (target: ES2017, but Unicode property escapes require
+explicit flag support). Final fix: explicit Unicode range whitelist covering Latin
+Extended (0xC0-0x24F), Cyrillic (0x400-0x4FF), and CJK (0x4E00-0x9FFF, 0x3040-0x30FF).
+
+**Challenge 2: Portuguese edition — Brazil vs Portugal**
+Creating two separate editions ("pt-BR" and "pt-PT") would mean two digest slots
+per day with largely similar stories. Better design: one "pt" edition drawing
+from BOTH Brazilian (G1, Folha, Estadão) and Portuguese (Público, JN, Expresso)
+sources equally, letting the AI synthesise a single digest that covers both markets.
+This matches how Portuguese speakers actually consume news — Brazilians read
+Portuguese press and vice versa for major stories.
+
+**Challenge 3: Chinese RSS source scarcity**
+Mainland Chinese outlets (Xinhua, People's Daily) do publish RSS but are
+state-controlled. Independent Chinese-language journalism operates primarily
+through international public broadcasters: BBC Chinese, DW Chinese, RFI Chinese,
+Radio Free Asia, and Voice of America Chinese. The Chinese edition pool is
+shorter than other editions (11 vs 15-18 sources) but all sources are
+independent. Source quality > source quantity.
+
+**Challenge 4: Russian feeds post-2022**
+Several major Russian outlets are now blocked inside Russia or have shut down.
+The reliable independent Russian RSS sources that remain: Meduza (Riga),
+BBC Russian Service, DW Russian, Radio Free Europe/Liberty, RFI Russian.
+TASS and RIA Novosti are explicitly excluded from the source pool.
+
 ## [2.3.0] — 2026-03-23
 
 **Celebration quote card. Better image quality. Native French polish.**

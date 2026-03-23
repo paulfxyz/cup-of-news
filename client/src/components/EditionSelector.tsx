@@ -1,12 +1,12 @@
 /**
  * @file client/src/components/EditionSelector.tsx
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 2.0.0
+ * @version 3.0.0
  *
  * Cup of News — Edition Selector Dropdown
  *
  * Displays the current edition as a flag in the header.
- * Clicking opens a dropdown listing all 8 editions grouped by language.
+ * Clicking opens a dropdown listing all 7 language editions.
  * Selection is persisted in localStorage under key "cup_edition".
  *
  * Design decisions:
@@ -28,7 +28,7 @@ interface Props {
   onChange: (edition: Edition) => void;
 }
 
-// 3 editions — no grouping needed
+// 7 editions — flat list (no grouping needed)
 
 export function EditionSelector({ current, onChange }: Props) {
   const [open, setOpen] = useState(false);
@@ -82,7 +82,7 @@ export function EditionSelector({ current, onChange }: Props) {
             </p>
           </div>
 
-          {/* 3 editions — flat list */}
+          {/* 7 editions — flat list */}
           {EDITIONS.map(edition => (
             <button
               key={edition.id}
@@ -113,7 +113,7 @@ export function EditionSelector({ current, onChange }: Props) {
           {/* Footer */}
           <div className="px-4 py-2 border-t border-border bg-muted/20">
             <p className="text-[9px] text-muted-foreground font-ui">
-              Each edition generates independently in the local language
+              7 languages · each edition generates independently
             </p>
           </div>
         </div>
@@ -124,7 +124,7 @@ export function EditionSelector({ current, onChange }: Props) {
 
 // ─── Hook: persist edition in localStorage ────────────────────────────────────
 
-const STORAGE_KEY = "cup_edition_v2"; // v2.2.0: reset key to avoid stale 8-edition values
+const STORAGE_KEY = "cup_edition_v3"; // v3.0.0: reset key (7 editions: en/fr/de/es/pt/zh/ru)
 
 export function useEdition() {
   const getSaved = (): Edition => {

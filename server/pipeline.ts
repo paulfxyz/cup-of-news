@@ -1,7 +1,7 @@
 /**
  * @file server/pipeline.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 2.3.0
+ * @version 3.0.0
  *
  * Cup of News — Daily Digest Generation Pipeline
  *
@@ -240,6 +240,47 @@ function generateCategoryImage(title: string, category: string): string {
     Other:        { bg: "#111111", accent: "#222222", dot: "#888888" },
     Autre:        { bg: "#111111", accent: "#222222", dot: "#888888" },
     Sonstiges:    { bg: "#111111", accent: "#222222", dot: "#888888" },
+    // Spanish
+    Tecnología:   { bg: "#0f1729", accent: "#1d3461", dot: "#3b82f6" },
+    Ciencia:      { bg: "#0d1f0d", accent: "#1a3a1a", dot: "#22c55e" },
+    Economía:     { bg: "#1a0e00", accent: "#3d2000", dot: "#f59e0b" },
+    Política:     { bg: "#1a0000", accent: "#3d0000", dot: "#E3120B" },
+    Mundo:        { bg: "#0f0f1a", accent: "#1d1d3a", dot: "#8b5cf6" },
+    Cultura:      { bg: "#1a0f1a", accent: "#3a1f3a", dot: "#ec4899" },
+    Salud:        { bg: "#001a1a", accent: "#003a3a", dot: "#14b8a6" },
+    "Medio Ambiente": { bg: "#051a05", accent: "#0a3a0a", dot: "#84cc16" },
+    Deportes:     { bg: "#1a0a00", accent: "#3a1500", dot: "#f97316" },
+    Otros:        { bg: "#111111", accent: "#222222", dot: "#888888" },
+    // Portuguese
+    Tecnologia:   { bg: "#0f1729", accent: "#1d3461", dot: "#3b82f6" },
+    Ciência:      { bg: "#0d1f0d", accent: "#1a3a1a", dot: "#22c55e" },
+    // Economia / Política / Mundo / Cultura / Salud overlap with Spanish
+    Saúde:        { bg: "#001a1a", accent: "#003a3a", dot: "#14b8a6" },
+    "Meio Ambiente": { bg: "#051a05", accent: "#0a3a0a", dot: "#84cc16" },
+    Esportes:     { bg: "#1a0a00", accent: "#3a1500", dot: "#f97316" },
+    Outros:       { bg: "#111111", accent: "#222222", dot: "#888888" },
+    // Chinese (Simplified)
+    "科技":        { bg: "#0f1729", accent: "#1d3461", dot: "#3b82f6" },
+    "科学":        { bg: "#0d1f0d", accent: "#1a3a1a", dot: "#22c55e" },
+    "经济":        { bg: "#1a0e00", accent: "#3d2000", dot: "#f59e0b" },
+    "政治":        { bg: "#1a0000", accent: "#3d0000", dot: "#E3120B" },
+    "国际":        { bg: "#0f0f1a", accent: "#1d1d3a", dot: "#8b5cf6" },
+    "文化":        { bg: "#1a0f1a", accent: "#3a1f3a", dot: "#ec4899" },
+    "健康":        { bg: "#001a1a", accent: "#003a3a", dot: "#14b8a6" },
+    "环境":        { bg: "#051a05", accent: "#0a3a0a", dot: "#84cc16" },
+    "体育":        { bg: "#1a0a00", accent: "#3a1500", dot: "#f97316" },
+    "其他":        { bg: "#111111", accent: "#222222", dot: "#888888" },
+    // Russian (Cyrillic)
+    "Технологии":  { bg: "#0f1729", accent: "#1d3461", dot: "#3b82f6" },
+    "Наука":       { bg: "#0d1f0d", accent: "#1a3a1a", dot: "#22c55e" },
+    "Экономика":   { bg: "#1a0e00", accent: "#3d2000", dot: "#f59e0b" },
+    "Политика":    { bg: "#1a0000", accent: "#3d0000", dot: "#E3120B" },
+    "Мир":         { bg: "#0f0f1a", accent: "#1d1d3a", dot: "#8b5cf6" },
+    "Культура":    { bg: "#1a0f1a", accent: "#3a1f3a", dot: "#ec4899" },
+    "Здоровье":    { bg: "#001a1a", accent: "#003a3a", dot: "#14b8a6" },
+    "Экология":    { bg: "#051a05", accent: "#0a3a0a", dot: "#84cc16" },
+    "Спорт":       { bg: "#1a0a00", accent: "#3a1500", dot: "#f97316" },
+    "Другое":      { bg: "#111111", accent: "#222222", dot: "#888888" },
   };
   const p = palettes[category] || palettes.Other;
   const short = title.length > 60 ? title.slice(0, 57) + "..." : title;

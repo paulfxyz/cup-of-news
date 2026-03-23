@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-2.3.0-red?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-3.0.0-red?style=for-the-badge)
 ![Status](https://img.shields.io/badge/status-stable-brightgreen?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
 ![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
@@ -103,6 +103,33 @@ You submit links all week (API, admin panel, Safari Share Sheet)
                Public reader at app.cupof.news
 ```
 
+### v3.0.0 Multi-Language Architecture
+
+```
+Edition Registry (shared/editions.ts)
+  └── 7 language editions, each with:
+      ├── BCP 47 locale ID (en-WORLD, fr-FR, de-DE, es-ES, pt-PT, zh-CN, ru-RU)
+      ├── RSS source set (34+ feeds curated per language/region)
+      ├── Native language system prompt
+      └── Editorial instructions
+
+Pipeline per edition:
+  RSS sources (language-native)
+      │
+      ▼
+  Jina Reader → content extraction
+      │
+      ▼
+  OpenRouter (Gemini 2.5 Pro)
+  Prompt: write in [target language], follow [edition] editorial tone
+      │
+      ▼
+  SQLite (edition-aware — one digest per edition per day)
+      │
+      ▼
+  React SPA — EditionSelector.tsx → localStorage persistence
+```
+
 ---
 
 ## 🧠 Technology Choices — The Why
@@ -168,6 +195,107 @@ Next.js adds SSR/SSG decisions, App Router vs Pages Router, server components �
 Three reasons: **persistent volumes** for SQLite (one file that survives deploys), **no cold starts** on the hobby plan, and **Paris region** (CDG — close to Lisbon). Railway and Render work but their free tiers don't offer persistent storage — the database disappears on every redeploy.
 
 One real deployment frustration: Fly auto-generates a random app name during setup (`app-lively-haze-690`). We had `paulflxyz-espresso` in our `fly.toml`. This mismatch caused `app not found` on every deploy attempt until we inspected the dashboard. **Always verify the app name Fly actually created.**
+
+---
+
+## 🌍 Language Editions
+
+As of v3.0.0, Cup of News generates natively in 7 languages. Each edition has its own RSS source set, its own system prompt language, and its own editorial identity.
+
+| Edition | Language | Flag | RSS Sources | Notes |
+|---------|----------|------|-------------|-------|
+| **en-WORLD** | English | 🌐 | 34+ | Flagship — global perspective, Reuters/BBC/FT/NYT/Economist |
+| **fr-FR** | Français | 🇫🇷 | 34+ | Le Monde, RFI, France 24, Le Figaro, Libération |
+| **de-DE** | Deutsch | 🇩🇪 | 34+ | Der Spiegel, DW, FAZ, Die Zeit, Süddeutsche Zeitung |
+| **es-ES** | Español | 🇪🇸 | 34+ | El País, El Mundo, La Vanguardia, RTVE, Expansión |
+| **pt-PT** | Português | 🇵🇹 | 34+ | Público, Observador, Jornal de Negócios, RTP, Expresso |
+| **zh-CN** | 中文 | 🇨🇳 | 34+ | Independent outlets only — SCMP, Taiwan News, RFI Chinese, VOA Chinese |
+| **ru-RU** | Русский | 🇷🇺 | 34+ | Independent outlets only — Meduza, The Insider, iStories, Novaya Gazeta Europa |
+
+All English sub-editions (en-US, en-CA, en-GB, en-AU, fr-CA) continue to exist alongside the new native-language editions.
+
+---
+
+## 🔧 Development Challenges
+
+This section documents the real engineering problems encountered building v3.0.0. If you're forking this project or building something similar, these took hours to solve.
+
+### Unicode Deduplication in Multi-Language RSS Normalization
+
+Deduplication by URL prefix is trivial. Deduplication by title — across 7 languages — is not.
+
+The 72-hour deduplication system originally used a normalized title hash: lowercase, strip punctuation, compare. This works for English. It breaks for Chinese (no word boundaries), Russian (Cyrillic normalization), and Arabic-alphabet languages where the same word has multiple Unicode representations.
+
+The fix: deduplication by URL is always canonical. Title-based dedup only applies within the same script (Latin, Cyrillic, CJK are treated as separate namespaces). This prevents false-positive matches between languages while still catching the real duplicates within a language edition.
+
+**Lesson:** character-level string comparison across Unicode scripts requires explicit script detection, not generic normalization.
+
+### Portuguese: Brazil vs. Portugal — The Single-Edition Decision
+
+Portuguese is spoken by ~260 million people, split between Brazil (215m) and Portugal (10m). The two variants differ in vocabulary, grammar, and available news sources. We considered two separate editions: `pt-BR` and `pt-PT`.
+
+We shipped one: `pt-PT`, European Portuguese.
+
+Reasoning: the RSS source landscape for Brazilian Portuguese is dominated by tabloid content and celebrity news aggregators. Quality Brazilian sources (Folha de S.Paulo, O Globo, Estadão) have paywalls that break Jina Reader's extraction. The European Portuguese quality press (Público, Observador, Expresso) renders cleanly. A single authoritative edition is better than two mediocre ones.
+
+This is a design decision, not a technical limitation. A `pt-BR` edition can be added when a curated source list proves viable.
+
+### Chinese: State Media Exclusion
+
+Building the Chinese RSS source list required an explicit editorial decision: no state media.
+
+Xinhua, People's Daily, CGTN, and China Daily all publish English and Chinese RSS feeds. They are well-maintained and technically functional. We excluded all of them on editorial grounds — they reflect Chinese government positions, not independent journalism.
+
+The independent Chinese-language press landscape is genuinely thin after 2021. We rely on: South China Morning Post (Hong Kong, editorially independent), Taiwan-based publications (Central News Agency, Taiwan News), Radio France Internationale Chinese Service, Voice of America Chinese, and several diaspora outlets.
+
+This means the Chinese edition has a structural bias toward Taiwan and diaspora perspectives. That's documented and intentional. Users who want mainland perspectives should add their own RSS sources.
+
+**Lesson:** source curation is editorial work. The technical choice (which RSS feeds to include) is inseparable from editorial ethics.
+
+### Russian: Post-2022 Media Landscape
+
+Building the Russian edition after February 2022 means navigating a media landscape where most major independent outlets have been shut down, exiled, or blocked inside Russia.
+
+The edition uses exclusively independent outlets operating from exile: Meduza (Latvia), The Insider (Netherlands), iStories (independent investigative), and Novaya Gazeta Europa (EU). All cover Russia from the outside.
+
+State outlets (RT, TASS, Ria Novosti) were excluded on the same grounds as Chinese state media.
+
+The practical consequence: the Russian edition's RSS feed count is lower than other editions, and coverage of events inside Russia depends on exile journalists. This is documented so users understand what they're reading.
+
+### The 8-Edition Collapse to 1-Per-Language Architecture
+
+v2.0.0 shipped 8 editions: en-WORLD, en-US, en-CA, en-GB, fr-FR, fr-CA, de-DE, en-AU. These were all regional variants of 3 languages.
+
+For v3.0.0, we added 4 new native languages (ES, PT, ZH, RU). The choice was: add them as additional regional editions (expanding to 12+), or consolidate to one canonical edition per language.
+
+We chose one canonical edition per new language. Reasons:
+- Regional sub-editions require distinct RSS source sets, distinct prompts, and distinct editorial identities. Building `es-MX`, `es-AR`, `es-ES` all properly would require 3× the source curation work.
+- Users can add their own regional RSS sources via the link submission API, making the canonical edition flexible.
+- The admin generation UI becomes unwieldy above ~10 editions.
+
+The 8 existing English/French/German regional editions remain. The 4 new languages get one canonical edition each. Total: 12 edition IDs, 7 distinct language experiences.
+
+### Dark Mode Default vs. System Preference
+
+The reader defaults to dark mode. This is not the same as "respects system preference."
+
+The implementation: `ThemeProvider.tsx` reads `localStorage('theme')` first. If no preference is stored, it reads `prefers-color-scheme`. If that's `dark`, it sets dark. If `light`, it sets light. If not set (older browsers), it defaults to dark.
+
+The practical effect: on most modern devices, the first visit matches system preference. On devices that don't report a media query preference, they get dark. The rationale: Cup of News is a morning reading app. Most mornings involve low ambient light. Dark mode is the safer default.
+
+The CSS is implemented with `data-theme` attribute on `<html>`, not with `prefers-color-scheme` alone. This allows instant toggle without a CSS transition flash — the attribute change is synchronous with the JS, so no white flash on load.
+
+### React Query `refetch()` vs. Page Reload for Refresh UX
+
+The "Refresh" button in the public reader has an interesting UX problem: when a new digest is published while the reader is open, how should the app update?
+
+Option A — `window.location.reload()`: simple, guarantees fresh state, but flashes the page white and resets the reader to story 1.
+
+Option B — `queryClient.refetch('digest')`: smooth, keeps the reader position if the digest hasn't changed, but risks stale query cache and requires careful cache invalidation.
+
+We shipped Option B with a twist: `refetch()` is called, and if the returned digest ID differs from the currently-displayed one (i.e., a new digest was published), we reset to story 1. If it's the same digest, the reader stays at the current position. This means hitting refresh mid-read doesn't kick you to story 1 unless there's actually new content.
+
+The edge case: the `staleTime` for digest queries is set to 5 minutes. If you hit refresh within 5 minutes of the last fetch, React Query serves the cache without a network call. This is intentional — the digest doesn't change more than once a day.
 
 ---
 
@@ -379,10 +507,11 @@ Full history with engineering narrative: **[CHANGELOG.md](./CHANGELOG.md)**
 
 | Version | Date | Summary |
 |---------|------|---------|
-| **2.0.2** | 2026-03-23 | Storage snake_case bug fix, DigestTab edition, typography calibration |
+| **3.0.0** | 2026-03-23 | 4 new native language editions (ES, PT, ZH, RU), select dropdown lang switcher, Unicode dedup, dark mode default, React Query refresh UX |
+| 2.0.2 | 2026-03-23 | Storage snake_case bug fix, DigestTab edition, typography calibration |
 | 2.0.1 | 2026-03-23 | Responsive typography fix: leading-[3.0] → 1.9/2.2/2.6 per breakpoint |
 | 2.0.0 | 2026-03-23 | 8 editions (EN/FR/DE), flag selector, native language generation per edition |
-| 1.6.2 | 2026-03-23 | Critical fix: missing Rss import (blank page), auto_stop off
+| 1.6.2 | 2026-03-23 | Critical fix: missing Rss import (blank page), auto_stop off |
 | 1.6.1 | 2026-03-23 | Docs patch: version sync, model references updated to Gemini 2.5 Pro |
 | 1.6.0 | 2026-03-23 | Gemini 2.5 Pro, multi-source attribution, diversity v4, RSS header removed |
 | 1.5.1 | 2026-03-23 | Direct HTML OG image fallback, 34 RSS sources, 17/20 real photos |
@@ -399,9 +528,9 @@ Full history with engineering narrative: **[CHANGELOG.md](./CHANGELOG.md)**
 
 ## 🗺️ Roadmap
 
-**v2.0.x shipped.** Edition system, all 8 editions, never-empty reader, DB migration.
+**v3.0.0 shipped.** 7 native language editions (EN/FR/DE/ES/PT/ZH/RU), Unicode deduplication, dark mode default, React Query refresh UX, select dropdown language switcher on landing page.
 
-### v2.1 — Delivery & Channels
+### v3.1 — Delivery & Channels
 - 📧 Email delivery (Postmark / Resend) — digest in your inbox at 6 AM
 - 📱 Telegram bot — `/add <url>` and `/digest` commands
 - 🔔 Push notifications via Capacitor — native 6 AM alert

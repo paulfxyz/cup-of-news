@@ -1,7 +1,7 @@
 /**
  * @file shared/schema.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 2.3.0
+ * @version 3.0.0
  *
  * Cup of News — Shared Data Schema
  *
