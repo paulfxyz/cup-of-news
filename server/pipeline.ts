@@ -157,59 +157,63 @@ function isValidOgImage(url: string | null): boolean {
 }
 
 /**
- * Generate a contextual editorial image via OpenRouter's image generation.
- * Uses google/gemini-3.1-flash-image-preview — fast, cheap, high quality.
+ * Generate a category-styled SVG placeholder image for stories without a valid OG image.
  *
- * Falls back to picsum if generation fails (non-blocking).
- * Called only when OG image is missing or invalid.
+ * Why SVG instead of an image generation API:
+ *   OpenRouter's image generation models (Gemini Flash Image, DALL-E) are either
+ *   unreliable via the chat completions endpoint or require separate API keys.
+ *   A well-designed SVG placeholder that matches the story category is more reliable,
+ *   instant, and looks intentionally editorial rather than like a broken image.
+ *
+ *   The SVG uses the story's category to pick a colour scheme, adds a subtle grid
+ *   pattern for texture, and displays the category label — clean, on-brand, zero cost.
  */
-async function generateStoryImage(
-  title: string,
-  category: string,
-  apiKey: string
-): Promise<string> {
-  try {
-    const prompt = `Editorial news photograph, high quality journalism style. ${category} story: "${title}". Photorealistic, documentary style, no text, no logos, cinematic composition.`;
+function generateCategoryImage(title: string, category: string): string {
+  // Category → colour palette (background, accent, text)
+  const palettes: Record<string, { bg: string; accent: string; dot: string }> = {
+    Technology:   { bg: "#0f1729", accent: "#1d3461", dot: "#3b82f6" },
+    Science:      { bg: "#0d1f0d", accent: "#1a3a1a", dot: "#22c55e" },
+    Business:     { bg: "#1a0e00", accent: "#3d2000", dot: "#f59e0b" },
+    Politics:     { bg: "#1a0000", accent: "#3d0000", dot: "#E3120B" },
+    World:        { bg: "#0f0f1a", accent: "#1d1d3a", dot: "#8b5cf6" },
+    Culture:      { bg: "#1a0f1a", accent: "#3a1f3a", dot: "#ec4899" },
+    Health:       { bg: "#001a1a", accent: "#003a3a", dot: "#14b8a6" },
+    Environment:  { bg: "#051a05", accent: "#0a3a0a", dot: "#84cc16" },
+    Sports:       { bg: "#1a0a00", accent: "#3a1500", dot: "#f97316" },
+    Other:        { bg: "#111111", accent: "#222222", dot: "#888888" },
+  };
 
-    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://github.com/paulfxyz/cup-of-news",
-        "X-Title": "Cup of News",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3.1-flash-image-preview",
-        messages: [{ role: "user", content: prompt }],
-      }),
-      signal: AbortSignal.timeout(20000),
-    });
-
-    if (!res.ok) throw new Error(`Image gen HTTP ${res.status}`);
-    const data = await res.json();
-
-    // Gemini image response: content parts with image_url
-    const parts = data?.choices?.[0]?.message?.content;
-    if (Array.isArray(parts)) {
-      for (const part of parts) {
-        if (part?.type === "image_url" && part?.image_url?.url) {
-          return part.image_url.url;
-        }
-      }
-    }
-    // Some models return base64 inline
-    if (typeof parts === "string" && parts.startsWith("data:image")) {
-      return parts;
-    }
-
-    throw new Error("No image in response");
-  } catch (e) {
-    console.warn(`⚠️  Image generation failed for "${title}":`, (e as Error).message);
-    // Graceful fallback — seeded picsum (deterministic, not random)
-    const numericSeed = parseInt(sha256(title).slice(0, 8), 16) % 1000;
-    return `https://picsum.photos/seed/${numericSeed}/800/450`;
+  const p = palettes[category] || palettes.Other;
+  const shortTitle = title.length > 60 ? title.slice(0, 57) + "…" : title;
+  // Word-wrap title into 2 lines max
+  const words = shortTitle.split(" ");
+  const lines: string[] = [];
+  let line = "";
+  for (const w of words) {
+    if ((line + " " + w).trim().length > 32) { lines.push(line.trim()); line = w; }
+    else line = (line + " " + w).trim();
   }
+  if (line) lines.push(line.trim());
+  const titleLines = lines.slice(0, 2);
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450">
+  <defs>
+    <pattern id="g" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0L0 0 0 40" fill="none" stroke="${p.accent}" stroke-width="0.5" opacity="0.4"/>
+    </pattern>
+  </defs>
+  <rect width="800" height="450" fill="${p.bg}"/>
+  <rect width="800" height="450" fill="url(#g)"/>
+  <rect width="4" height="450" fill="${p.dot}"/>
+  <rect x="40" y="180" width="720" height="2" fill="${p.accent}" opacity="0.6"/>
+  <text x="40" y="160" font-family="Helvetica Neue,Arial,sans-serif" font-size="11" font-weight="700" letter-spacing="3" fill="${p.dot}" text-transform="uppercase" opacity="0.9">${category.toUpperCase()}</text>
+  ${titleLines.map((l, i) => `<text x="40" y="${215 + i * 38}" font-family="Helvetica Neue,Arial,sans-serif" font-size="26" font-weight="800" fill="#ffffff" opacity="0.92">${l.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</text>`).join("
+  ")}
+  <circle cx="760" cy="400" r="60" fill="${p.dot}" opacity="0.06"/>
+  <circle cx="760" cy="400" r="30" fill="${p.dot}" opacity="0.08"/>
+</svg>`;
+
+  return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
 }
 
 // ─── Jina Reader ──────────────────────────────────────────────────────────────
@@ -618,15 +622,12 @@ Required JSON response:
   console.log(`🖼️  ${stories.length - needsGeneration.length} valid OG images, ${needsGeneration.length} need generation`);
 
   if (needsGeneration.length > 0) {
-    // Batch in groups of 4
-    for (let i = 0; i < needsGeneration.length; i += 4) {
-      const batch = needsGeneration.slice(i, i + 4);
-      await Promise.allSettled(batch.map(async (story) => {
-        const parts = story.imageUrl.replace("__GENERATE__:", "").split(":");
-        const title = parts.slice(0, -1).join(":");
-        const category = parts[parts.length - 1];
-        story.imageUrl = await generateStoryImage(title, category, apiKey);
-      }));
+    // Generate category-styled SVG images synchronously (instant, no API call)
+    for (const story of needsGeneration) {
+      const parts = story.imageUrl.replace("__GENERATE__:", "").split(":");
+      const category = parts[parts.length - 1];
+      const title = parts.slice(0, -1).join(":");
+      story.imageUrl = generateCategoryImage(title, category);
     }
   }
 
