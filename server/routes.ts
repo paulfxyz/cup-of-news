@@ -1,7 +1,7 @@
 /**
  * @file server/routes.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 2.1.2
+ * @version 2.2.0
  *
  * Cup of News — REST API Routes
  *
@@ -100,7 +100,7 @@ export function registerRoutes(httpServer: Server, app: Express) {
    * Public. Used by uptime monitors, Docker HEALTHCHECK, GitHub Actions.
    */
   app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok", version: "2.1.4" });
+    res.json({ status: "ok", version: "2.2.0" });
   });
 
   // ── Setup ──────────────────────────────────────────────────────────────────
@@ -228,7 +228,7 @@ export function registerRoutes(httpServer: Server, app: Express) {
    * the worst possible first impression and discourages generating new editions.
    */
   app.get("/api/digest/latest", (req, res) => {
-    const requestedEdition = (req.query.edition as string) || "en-WORLD";
+    const requestedEdition = (req.query.edition as string) || "en";
 
     // Try exact edition first
     let digest = storage.getLatestPublishedDigest(requestedEdition);
@@ -299,7 +299,7 @@ export function registerRoutes(httpServer: Server, app: Express) {
       });
     }
 
-    const edition = (req.body?.edition as string) || "en-WORLD";
+    const edition = (req.body?.edition as string) || "en";
 
     try {
       const result = await runDailyPipeline(apiKey, edition);

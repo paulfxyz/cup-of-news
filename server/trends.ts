@@ -1,7 +1,7 @@
 /**
  * @file server/trends.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 2.1.2
+ * @version 2.2.0
  *
  * Cup of News — RSS Trend Fallback Engine (Edition-Aware)
  *
@@ -465,14 +465,36 @@ const DE_PRIMARY_SOURCES: RSSSource[] = [
  * Edition-specific lists supplement the global baseline.
  * Exported so the admin UI can show which sources feed each edition.
  */
+/**
+ * v2.2.0: Simplified to 3 edition source pools.
+ *
+ * Each pool is designed to produce genuinely different stories:
+ *   "en" — international English-language press: Reuters, BBC, NYT, Guardian,
+ *            FT, Economist, wired/tech/science/sports in English. Broad global pool.
+ *   "fr" — French-language primary sources FIRST (RFI, France 24, Le Monde,
+ *            Le Figaro, AFP FR, L'Équipe, Les Échos), then minimal English wire.
+ *            Topics naturally skew: French politics, Ligue 1, francophone Africa.
+ *   "de" — German-language primary sources FIRST (DW, Spiegel, FAZ, SZ, Zeit,
+ *            Handelsblatt, Kicker), then minimal English wire.
+ *            Topics naturally skew: Bundestag, Bundesliga, DAX, DACH region.
+ *
+ * Backwards compatibility: old 8-edition IDs (en-WORLD, fr-FR, de-DE etc.)
+ * are mapped to the nearest new edition so no existing digests break.
+ */
 export const EDITION_RSS_SOURCES: Record<string, RSSSource[]> = {
+  // ── v2.2.0 primary editions ─────────────────────────────────────────────────
+  "en":      EN_GLOBAL_SOURCES,
+  "fr":      [...FR_PRIMARY_SOURCES],
+  "de":      [...DE_PRIMARY_SOURCES],
+
+  // ── Backwards-compat aliases (old 8-edition IDs) ──────────────────────────
   "en-WORLD": EN_GLOBAL_SOURCES,
-  "en-US":    [...EN_GLOBAL_SOURCES, ...EN_US_EXTRA],
-  "en-CA":    [...EN_GLOBAL_SOURCES, ...EN_CA_EXTRA],
-  "en-GB":    [...EN_GLOBAL_SOURCES, ...EN_GB_EXTRA],
-  "en-AU":    [...EN_GLOBAL_SOURCES, ...EN_AU_EXTRA],
+  "en-US":    EN_GLOBAL_SOURCES,
+  "en-CA":    EN_GLOBAL_SOURCES,
+  "en-GB":    EN_GLOBAL_SOURCES,
+  "en-AU":    EN_GLOBAL_SOURCES,
   "fr-FR":    [...FR_PRIMARY_SOURCES],
-  "fr-CA":    [...FR_PRIMARY_SOURCES, ...FR_CA_EXTRA],
+  "fr-CA":    [...FR_PRIMARY_SOURCES],
   "de-DE":    [...DE_PRIMARY_SOURCES],
 };
 
@@ -617,11 +639,11 @@ async function fetchFeed(source: RSSSource): Promise<TrendStory[]> {
  */
 export async function fetchTrendingStories(
   needed = 20,
-  editionId = "en-WORLD"
+  editionId = "en"
 ): Promise<TrendStory[]> {
   if (needed <= 0) return [];
 
-  const sources = EDITION_RSS_SOURCES[editionId] ?? EDITION_RSS_SOURCES["en-WORLD"];
+  const sources = EDITION_RSS_SOURCES[editionId] ?? EDITION_RSS_SOURCES["en"];
   console.log(`📡 [${editionId}] Fetching from ${sources.length} RSS sources…`);
 
   const settled = await Promise.allSettled(sources.map(s => fetchFeed(s)));

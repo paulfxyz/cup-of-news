@@ -1,7 +1,7 @@
 /**
  * @file server/storage.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 2.1.2
+ * @version 2.2.0
  *
  * Cup of News — SQLite Storage Layer
  *

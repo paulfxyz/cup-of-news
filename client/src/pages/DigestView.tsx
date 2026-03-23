@@ -302,7 +302,7 @@ export default function DigestView() {
           <span className="text-sm text-muted-foreground font-ui tabular-nums font-medium">
             {isQuoteCard
               ? <span className="text-[#E3120B]">✦</span>
-              : `${cardIndex + 1} / ${digest.stories.length}`
+              : `${cardIndex + 1} ${edition.ui.of} ${digest.stories.length}`
             }
           </span>
 

@@ -5,7 +5,7 @@ import path from "path";
 /**
  * @file server/static.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 2.1.2
+ * @version 2.2.0
  *
  * Static file serving + SPA hash-route redirects.
  *

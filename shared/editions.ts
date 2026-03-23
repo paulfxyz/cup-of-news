@@ -1,396 +1,231 @@
 /**
  * @file shared/editions.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 2.1.2
+ * @version 2.2.0
  *
  * Cup of News — Edition Registry
  *
- * Context:
- *   v2.0.0 introduces the Edition System: 8 geographic/linguistic editions
- *   that each generate their own independent digest in the appropriate language,
- *   sourced from regionally-relevant RSS feeds.
+ * v2.2.0: Simplified from 8 editions to 3.
  *
- * Design decisions:
+ * WHY 3 EDITIONS (not 8):
+ *   The original 8 editions (en-WORLD, en-US, en-CA, en-GB, fr-FR, fr-CA, de-DE, en-AU)
+ *   created too many variants of essentially the same English content. Five of the eight
+ *   editions were in English with only minor regional focus differences — readers switching
+ *   between them would see largely the same 20 stories with slightly different framing.
  *
- *   WHY SEPARATE DIGESTS PER EDITION (not just UI translation):
- *     A French edition isn't just the World edition translated. The editorial
- *     selection changes: Le Monde leads over NYT, French politics matters more,
- *     sport means football (Ligue 1, Champions League) not NFL. The AI must
- *     receive French-language sources and instructions in French to produce
- *     genuinely French editorial content — not a translated Anglo-Saxon digest.
+ *   Three editions with fully independent RSS source pools is cleaner and more impactful:
+ *   each edition genuinely reads differently because it draws from different publications
+ *   in different languages. The English edition covers global news from an international
+ *   English-language perspective. The French edition draws from French press (Le Monde,
+ *   RFI, France 24, L'Équipe). The German edition draws from German press (DW, Spiegel,
+ *   FAZ, Kicker). The 20 topics are genuinely different — not just translations.
  *
- *   WHY THE EDITION KEY INCLUDES LANGUAGE (e.g. "fr-FR" not just "FR"):
- *     Canada gets two editions (English and French). The same ISO country code
- *     can't differentiate them. Using BCP 47 locale tags (language-REGION)
- *     gives a clean namespace that maps directly to i18n conventions and
- *     correctly handles multilingual countries.
+ * EDITION IDs (BCP 47):
+ *   "en" — English, global perspective
+ *   "fr" — Français
+ *   "de" — Deutsch
  *
- *   WHY STORE EDITION IN THE DIGEST ROW:
- *     The digests table previously used (date) as the unique key, meaning only
- *     one digest per day was possible. For v2.0.0 the unique key becomes
- *     (date, edition), allowing up to 8 independent digests per day.
- *     This is a backwards-compatible migration: existing rows get edition = "en-WORLD".
+ * DEFAULT: English ("en")
  *
- *   LANGUAGE IN AI PROMPTS:
- *     The system prompt for French/German editions instructs the AI to write
- *     titles and summaries in the target language. The category names are also
- *     translated so the UI can display them correctly. The diversity mandate
- *     is adapted: French edition emphasises European/francophone coverage;
- *     German edition emphasises DACH and EU institutional news.
+ * RSS SOURCE STRATEGY:
+ *   English: international wire services + major English broadsheets + global tech/science press
+ *   French: French-language primary sources first (RFI, France 24, AFP FR, Le Monde, Le Figaro,
+ *            L'Équipe, Les Échos), then 2-3 English wires for global context
+ *   German: German-language primary sources first (DW, Spiegel, FAZ, SZ, Zeit, Kicker, Handelsblatt),
+ *            then 2-3 English wires for global context
  *
- *   RSS SOURCE STRATEGY PER EDITION:
- *     Each edition has a "primary" source list (regionally-focused, correct language)
- *     and falls back to global wire services (Reuters, AP, AFP) which cover all regions.
- *     French feeds use Le Monde, Le Figaro, Libération, RFI, Europe 1.
- *     German feeds use FAZ, Der Spiegel, Süddeutsche Zeitung, DW, Tagesspiegel.
- *     Both also retain international English-language sources for global context —
- *     the AI is instructed to write summaries in the edition language regardless of
- *     the source language.
- *
- *   CHALLENGE: French/German RSS feeds are harder to get than English ones.
- *     Many major French newspapers don't publish full public RSS. We use:
- *     - Le Monde: has a good public RSS
- *     - Le Figaro: public RSS available (politique, international)
- *     - RFI (Radio France Internationale): excellent free RSS, very reliable
- *     - France 24: solid French-language RSS
- *     - Europe 1: available
- *     German:
- *     - Der Spiegel: German-language feed available
- *     - Süddeutsche Zeitung: RSS available
- *     - FAZ: has RSS
- *     - Deutsche Welle: excellent multi-topic feeds, very reliable
- *     - Zeit Online: good RSS
- *
- *   This file is shared/ so both server (pipeline, trends) and client (UI, localStorage)
- *   can import the edition definitions without duplication.
+ *   Key design: non-English editions receive primarily native-language RSS content so the AI
+ *   summarises from authentic source material rather than translating English wire copy.
+ *   This is the difference between "French journalism" and "English journalism in French."
  */
 
 // ─── Edition Type ──────────────────────────────────────────────────────────────
 
 export interface Edition {
-  /** BCP 47 locale tag — used as DB key and localStorage key */
-  id: string;
+  /** BCP 47 language tag — used as DB key and localStorage key */
+  id: "en" | "fr" | "de";
 
-  /** Display name in the UI */
+  /** Display name */
   name: string;
 
-  /** ISO 3166-1 alpha-2 country code for flag display */
-  country: string;
-
-  /** Flag emoji — shown in the header selector */
+  /** Flag emoji */
   flag: string;
 
-  /** BCP 47 language code — drives AI prompt language */
+  /** ISO 639-1 language code */
   language: "en" | "fr" | "de";
 
-  /** Human-readable language name in that language */
+  /** Language name in that language */
   languageName: string;
 
-  /** Continent/region — used for editorial diversity mandate */
-  region: "americas" | "europe" | "global" | "oceania";
-
-  /** Short description shown in the edition picker */
+  /** Short description for the edition picker */
   description: string;
 
   /**
-   * UI strings for the reader interface in this edition's language.
-   * Used to localise navigation, labels, and CTAs in DigestView.
-   * Kept minimal — only strings visible in the reader, not the admin panel.
-   */
-  ui: {
-    readSources: string;      // "Read sources" button
-    showingSince: string;     // "x of y"
-    closingThought: string;   // "Today's Thought"
-    noDigestYet: string;      // empty state headline
-    noDigestSub: string;      // empty state subtext
-    fallbackNotice: string;   // when showing cross-edition fallback
-    generateLink: string;     // "Generate →" in fallback banner
-    prevStory: string;        // "Prev" nav button
-    nextStory: string;        // "Next" nav button
-    allStories: string;       // grid overlay title
-    closingQuoteOf: string;   // "Closing Thought"
-  };
-
-  /**
-   * Language instruction injected into the AI system prompt.
-   * Should be in BOTH English (so the model understands) AND the target language
-   * (to reinforce the instruction).
+   * Language instruction injected as the FIRST rule in the AI system prompt.
+   * Written in both English (so the model parses it) and the target language
+   * (reinforcement signal that activates native-language generation pathways).
    */
   aiLanguageInstruction: string;
 
   /**
-   * Regional editorial focus — added to the AI prompt to tune source priority
-   * and story selection towards this edition's readership.
+   * Regional and editorial focus — adjusts story selection priorities.
+   * For French: French politics, EU affairs, Ligue 1, francophone Africa.
+   * For German: Bundestag, DAX, Bundesliga, DACH region.
    */
   aiRegionalFocus: string;
 
   /**
-   * Category names in the target language.
-   * English editions use the default English categories.
-   * Used for display in the reader UI.
+   * Sport slot instruction — adapted per language/culture.
+   * Sports coverage differs significantly: French readers want football (Ligue 1),
+   * rugby, tennis, cycling. German readers want Bundesliga, Formel 1, handball.
+   */
+  aiSportSlot: string;
+
+  /**
+   * Category names in the target language for the AI to use in JSON output.
+   * The AI is instructed to use exactly these strings as "category" values.
    */
   categories: Record<string, string>;
+
+  /**
+   * Reader UI strings — localised interface labels.
+   * All strings visible in the reader interface are edition-aware.
+   */
+  ui: {
+    readSources: string;
+    closingThought: string;
+    noDigestYet: string;
+    noDigestSub: string;
+    fallbackNotice: string;
+    generateLink: string;
+    prevStory: string;
+    nextStory: string;
+    allStories: string;
+    of: string;
+  };
 }
 
 // ─── Edition Registry ─────────────────────────────────────────────────────────
 
 export const EDITIONS: Edition[] = [
+  // ── English ────────────────────────────────────────────────────────────────
   {
-    id: "en-WORLD",
-    name: "World",
-    country: "WORLD",
+    id: "en",
+    name: "English",
     flag: "🌐",
     language: "en",
     languageName: "English",
-    region: "global",
-    description: "Global English edition — 20 stories from around the world",
-    aiLanguageInstruction: "Write all titles and summaries in English.",
-    aiRegionalFocus: "Provide balanced global coverage. No single region should dominate.",
-    ui: {
-      readSources: "Read sources",
-      showingSince: "of",
-      closingThought: "Today's Thought",
-      noDigestYet: "No digest yet",
-      noDigestSub: "Generate and publish a digest from the admin panel to start reading.",
-      fallbackNotice: "not generated yet — showing latest available edition.",
-      generateLink: "Generate →",
-      prevStory: "Prev",
-      nextStory: "Next",
-      allStories: "All Stories",
-      closingQuoteOf: "Closing Thought",
-    },
+    description: "Global English edition — international perspective",
+    aiLanguageInstruction: "Write all titles, summaries and the closing quote in English.",
+    aiRegionalFocus:
+      "Provide genuinely global coverage. No single country or region should dominate. " +
+      "Actively seek stories from underrepresented regions: Africa, South America, Southeast Asia, " +
+      "Central Asia, Pacific Islands. English-language sources are your primary pool.",
+    aiSportSlot: "any major international sport (football/soccer, tennis, F1, athletics, basketball, cricket, rugby)",
     categories: {
       Technology: "Technology", Science: "Science", Business: "Business",
       Politics: "Politics", World: "World", Culture: "Culture",
       Health: "Health", Environment: "Environment", Sports: "Sports", Other: "Other",
     },
-  },
-  {
-    id: "en-US",
-    name: "United States",
-    country: "US",
-    flag: "🇺🇸",
-    language: "en",
-    languageName: "English",
-    region: "americas",
-    description: "US English — American perspective with global context",
-    aiLanguageInstruction: "Write all titles and summaries in American English.",
-    aiRegionalFocus:
-      "Prioritise stories with US relevance: American politics, US economy, Silicon Valley tech, US sports (NFL, NBA, MLB, MLS), US foreign policy. Still maintain global breadth — at least 8 stories from outside the US.",
     ui: {
       readSources: "Read sources",
-      showingSince: "of",
       closingThought: "Today's Thought",
       noDigestYet: "No digest yet",
-      noDigestSub: "Generate and publish a digest from the admin panel to start reading.",
-      fallbackNotice: "not generated yet — showing latest available edition.",
+      noDigestSub: "Generate and publish a digest from the admin panel.",
+      fallbackNotice: "not generated yet — showing latest available.",
       generateLink: "Generate →",
       prevStory: "Prev",
       nextStory: "Next",
       allStories: "All Stories",
-      closingQuoteOf: "Closing Thought",
-    },
-    categories: {
-      Technology: "Technology", Science: "Science", Business: "Business",
-      Politics: "Politics", World: "World", Culture: "Culture",
-      Health: "Health", Environment: "Environment", Sports: "Sports", Other: "Other",
+      of: "of",
     },
   },
+
+  // ── Français ───────────────────────────────────────────────────────────────
   {
-    id: "en-CA",
-    name: "Canada (English)",
-    country: "CA",
-    flag: "🇨🇦",
-    language: "en",
-    languageName: "English",
-    region: "americas",
-    description: "Canadian English — Canadian focus with global coverage",
-    aiLanguageInstruction: "Write all titles and summaries in Canadian English.",
-    aiRegionalFocus:
-      "Prioritise stories relevant to Canada: Canadian politics, the Canadian economy (energy, housing, trade with US), Canadian sports (NHL, CFL, Canadian Olympic athletes), Canadian-US relations. Include strong global coverage — at least 8 non-North-American stories.",
-    ui: {
-      readSources: "Read sources",
-      showingSince: "of",
-      closingThought: "Today's Thought",
-      noDigestYet: "No digest yet",
-      noDigestSub: "Generate and publish a digest from the admin panel to start reading.",
-      fallbackNotice: "not generated yet — showing latest available edition.",
-      generateLink: "Generate →",
-      prevStory: "Prev",
-      nextStory: "Next",
-      allStories: "All Stories",
-      closingQuoteOf: "Closing Thought",
-    },
-    categories: {
-      Technology: "Technology", Science: "Science", Business: "Business",
-      Politics: "Politics", World: "World", Culture: "Culture",
-      Health: "Health", Environment: "Environment", Sports: "Sports", Other: "Other",
-    },
-  },
-  {
-    id: "fr-CA",
-    name: "Canada (Français)",
-    country: "CA",
-    flag: "🇨🇦",
-    language: "fr",
-    languageName: "Français",
-    region: "americas",
-    description: "Édition canadienne française — actualités en français",
-    aiLanguageInstruction:
-      "IMPORTANT: Write ALL titles and summaries in FRENCH (français). This is a French-Canadian edition. Use Quebec French conventions where appropriate. All text must be in French — no English titles or summaries.",
-    aiRegionalFocus:
-      "Prioritise stories relevant to French Canada: Quebec politics and culture, Canadian-French relations, francophone Canada, the Canadian economy and US-Canada trade, hockey (NHL) as the primary sport. Include strong international francophone coverage (France, Belgium, Senegal, Morocco). At least 6 stories from outside North America.",
-    ui: {
-      readSources: "Lire les sources",
-      showingSince: "sur",
-      closingThought: "Pensée du jour",
-      noDigestYet: "Aucun digest disponible",
-      noDigestSub: "Générez et publiez un digest depuis le panneau d'administration pour commencer à lire.",
-      fallbackNotice: "pas encore généré — affichage de la dernière édition disponible.",
-      generateLink: "Générer →",
-      prevStory: "Préc.",
-      nextStory: "Suiv.",
-      allStories: "Toutes les actualités",
-      closingQuoteOf: "Pensée de clôture",
-    },
-    categories: {
-      Technology: "Technologie", Science: "Science", Business: "Économie",
-      Politics: "Politique", World: "Monde", Culture: "Culture",
-      Health: "Santé", Environment: "Environnement", Sports: "Sport", Other: "Autre",
-    },
-  },
-  {
-    id: "en-GB",
-    name: "United Kingdom",
-    country: "GB",
-    flag: "🇬🇧",
-    language: "en",
-    languageName: "English",
-    region: "europe",
-    description: "UK English — British perspective with world coverage",
-    aiLanguageInstruction: "Write all titles and summaries in British English (use -ise, -our spellings).",
-    aiRegionalFocus:
-      "Prioritise stories relevant to British readers: UK politics (Parliament, PM, parties), the British economy, UK-EU relations post-Brexit, Premier League and British sports (cricket, rugby, Formula 1), Commonwealth affairs. Maintain strong global coverage — at least 8 non-UK stories.",
-    ui: {
-      readSources: "Read sources",
-      showingSince: "of",
-      closingThought: "Today's Thought",
-      noDigestYet: "No digest yet",
-      noDigestSub: "Generate and publish a digest from the admin panel to start reading.",
-      fallbackNotice: "not generated yet — showing latest available edition.",
-      generateLink: "Generate →",
-      prevStory: "Prev",
-      nextStory: "Next",
-      allStories: "All Stories",
-      closingQuoteOf: "Closing Thought",
-    },
-    categories: {
-      Technology: "Technology", Science: "Science", Business: "Business",
-      Politics: "Politics", World: "World", Culture: "Culture",
-      Health: "Health", Environment: "Environment", Sports: "Sports", Other: "Other",
-    },
-  },
-  {
-    id: "fr-FR",
-    name: "France",
-    country: "FR",
+    id: "fr",
+    name: "Français",
     flag: "🇫🇷",
     language: "fr",
     languageName: "Français",
-    region: "europe",
-    description: "Édition française — l'actualité mondiale en français",
+    description: "Édition française — actualité mondiale en français",
     aiLanguageInstruction:
-      "IMPORTANT: Write ALL titles and summaries in FRENCH (français). This is a French edition for French readers. Use standard French (not Quebec). All text must be in French — including category names, headlines, and summaries. Never write in English.",
+      "RÈGLE ABSOLUE : Écris TOUS les champs en FRANÇAIS. " +
+      "This is a French-language edition. Every single output field must be in French: " +
+      "title (titre), summary (résumé), closingQuote (citation), closingQuoteAuthor (attribution). " +
+      "AUCUN mot en anglais dans les titres ou résumés.",
     aiRegionalFocus:
-      "Prioritise stories relevant to French readers: French politics (Élysée, Assemblée nationale, partis), the French economy (CAC 40, industrie française, PME), European Union politics (since France is central to EU), French culture (cinéma, littérature, gastronomie), football (Ligue 1, équipe de France, Champions League), francophone Africa. Still include 8+ international stories for global coverage.",
-    ui: {
-      readSources: "Lire les sources",
-      showingSince: "sur",
-      closingThought: "Pensée du jour",
-      noDigestYet: "Aucun digest disponible",
-      noDigestSub: "Générez et publiez un digest depuis le panneau d'administration pour commencer à lire.",
-      fallbackNotice: "pas encore généré — affichage de la dernière édition disponible.",
-      generateLink: "Générer →",
-      prevStory: "Préc.",
-      nextStory: "Suiv.",
-      allStories: "Toutes les actualités",
-      closingQuoteOf: "Pensée de clôture",
-    },
+      "Prioritise stories relevant to French readers: politique française (Élysée, Assemblée, partis), " +
+      "économie française (CAC 40, entreprises françaises, emploi), Union européenne, " +
+      "culture française (cinéma, littérature, gastronomie), Afrique francophone. " +
+      "Inclure au moins 8 histoires de portée internationale (hors France). " +
+      "Sources en français en priorité: RFI, France 24, Le Monde, Le Figaro, AFP.",
+    aiSportSlot:
+      "football (Ligue 1, équipe de France, Champions League), rugby, tennis, cyclisme, Formule 1",
     categories: {
       Technology: "Technologie", Science: "Science", Business: "Économie",
       Politics: "Politique", World: "Monde", Culture: "Culture",
       Health: "Santé", Environment: "Environnement", Sports: "Sport", Other: "Autre",
     },
+    ui: {
+      readSources: "Lire les sources",
+      closingThought: "Pensée du jour",
+      noDigestYet: "Aucun digest disponible",
+      noDigestSub: "Générez et publiez un digest depuis le panneau d'administration.",
+      fallbackNotice: "pas encore généré — affichage de la dernière édition disponible.",
+      generateLink: "Générer →",
+      prevStory: "Préc.",
+      nextStory: "Suiv.",
+      allStories: "Toutes les actualités",
+      of: "sur",
+    },
   },
+
+  // ── Deutsch ────────────────────────────────────────────────────────────────
   {
-    id: "de-DE",
-    name: "Deutschland",
-    country: "DE",
+    id: "de",
+    name: "Deutsch",
     flag: "🇩🇪",
     language: "de",
     languageName: "Deutsch",
-    region: "europe",
     description: "Deutsche Ausgabe — Weltnachrichten auf Deutsch",
     aiLanguageInstruction:
-      "WICHTIG: Schreibe ALLE Titel und Zusammenfassungen auf DEUTSCH. Dies ist eine deutsche Ausgabe für deutschsprachige Leser. Alle Texte müssen auf Deutsch sein — einschließlich Kategorienamen, Schlagzeilen und Zusammenfassungen. Niemals auf Englisch schreiben.",
+      "ABSOLUTE REGEL: Schreibe ALLE Felder auf DEUTSCH. " +
+      "This is a German-language edition. Every single output field must be in German: " +
+      "title (Titel), summary (Zusammenfassung), closingQuote (Zitat), closingQuoteAuthor (Zuschreibung). " +
+      "KEIN englisches Wort in Titeln oder Zusammenfassungen.",
     aiRegionalFocus:
-      "Prioritise stories relevant to German readers: German politics (Bundestag, Bundesregierung, Parteien), the German economy (DAX, Automobilindustrie, Mittelstand, Energiewende), EU politics (Germany as central EU actor), DACH region (Austria, Switzerland), German sports (Bundesliga, DFB-Elf, Formel 1). Include at least 8 international stories for global coverage. Sports must include Bundesliga/German football.",
-    ui: {
-      readSources: "Quellen lesen",
-      showingSince: "von",
-      closingThought: "Gedanke des Tages",
-      noDigestYet: "Noch kein Digest",
-      noDigestSub: "Erstellen und veröffentlichen Sie einen Digest über das Admin-Panel, um mit dem Lesen zu beginnen.",
-      fallbackNotice: "noch nicht generiert — zeige neueste verfügbare Ausgabe.",
-      generateLink: "Generieren →",
-      prevStory: "Vorh.",
-      nextStory: "Näch.",
-      allStories: "Alle Nachrichten",
-      closingQuoteOf: "Abschlusszitat",
-    },
+      "Prioritisiere Nachrichten für deutschsprachige Leser: deutsche Politik (Bundestag, Bundesregierung, Parteien), " +
+      "deutsche Wirtschaft (DAX, Mittelstand, Energiewende, Automobilindustrie), " +
+      "EU-Politik (Deutschland als zentraler EU-Akteur), DACH-Region (Österreich, Schweiz). " +
+      "Mindestens 8 internationale Geschichten einschließen (außerhalb DACH). " +
+      "Deutsche Quellen bevorzugen: DW, Spiegel, FAZ, Süddeutsche, Zeit, Handelsblatt.",
+    aiSportSlot:
+      "Bundesliga, DFB-Nationalmannschaft, Formel 1, Tennis (ATP/WTA), Handball, Leichtathletik",
     categories: {
       Technology: "Technologie", Science: "Wissenschaft", Business: "Wirtschaft",
       Politics: "Politik", World: "Welt", Culture: "Kultur",
       Health: "Gesundheit", Environment: "Umwelt", Sports: "Sport", Other: "Sonstiges",
     },
-  },
-  {
-    id: "en-AU",
-    name: "Australia",
-    country: "AU",
-    flag: "🇦🇺",
-    language: "en",
-    languageName: "English",
-    region: "oceania",
-    description: "Australian English — Asia-Pacific focus with world news",
-    aiLanguageInstruction: "Write all titles and summaries in Australian English.",
-    aiRegionalFocus:
-      "Prioritise stories relevant to Australian readers: Australian politics (Parliament, PM, major parties), the Australian economy (mining, housing, China trade), Asia-Pacific region (China, Japan, SE Asia, Pacific Islands), Australian sports (AFL, NRL, cricket, tennis, swimming). Strong Asia coverage since Australia is geographically in the Asia-Pacific. Include 6+ non-Australian stories.",
     ui: {
-      readSources: "Read sources",
-      showingSince: "of",
-      closingThought: "Today's Thought",
-      noDigestYet: "No digest yet",
-      noDigestSub: "Generate and publish a digest from the admin panel to start reading.",
-      fallbackNotice: "not generated yet — showing latest available edition.",
-      generateLink: "Generate →",
-      prevStory: "Prev",
-      nextStory: "Next",
-      allStories: "All Stories",
-      closingQuoteOf: "Closing Thought",
-    },
-    categories: {
-      Technology: "Technology", Science: "Science", Business: "Business",
-      Politics: "Politics", World: "World", Culture: "Culture",
-      Health: "Health", Environment: "Environment", Sports: "Sports", Other: "Other",
+      readSources: "Quellen lesen",
+      closingThought: "Gedanke des Tages",
+      noDigestYet: "Noch kein Digest",
+      noDigestSub: "Erstellen Sie einen Digest über das Admin-Panel.",
+      fallbackNotice: "noch nicht generiert — zeige neueste verfügbare Ausgabe.",
+      generateLink: "Generieren →",
+      prevStory: "Vorh.",
+      nextStory: "Näch.",
+      allStories: "Alle Nachrichten",
+      of: "von",
     },
   },
 ];
 
-/** Look up an edition by ID — falls back to World edition if not found */
+/** Look up edition by ID — falls back to English */
 export function getEdition(id: string): Edition {
   return EDITIONS.find(e => e.id === id) ?? EDITIONS[0];
 }
 
 /** The default edition shown on first load */
-export const DEFAULT_EDITION = EDITIONS[0]; // en-WORLD
+export const DEFAULT_EDITION = EDITIONS[0]; // English

@@ -28,12 +28,7 @@ interface Props {
   onChange: (edition: Edition) => void;
 }
 
-// Group editions by language for the dropdown
-const LANGUAGE_GROUPS = [
-  { lang: "en", label: "English", editions: EDITIONS.filter(e => e.language === "en") },
-  { lang: "fr", label: "Français", editions: EDITIONS.filter(e => e.language === "fr") },
-  { lang: "de", label: "Deutsch", editions: EDITIONS.filter(e => e.language === "de") },
-];
+// 3 editions — no grouping needed
 
 export function EditionSelector({ current, onChange }: Props) {
   const [open, setOpen] = useState(false);
@@ -87,44 +82,32 @@ export function EditionSelector({ current, onChange }: Props) {
             </p>
           </div>
 
-          {/* Language groups */}
-          {LANGUAGE_GROUPS.map(group => (
-            <div key={group.lang}>
-              {/* Language header */}
-              <div className="px-4 py-1.5 border-b border-border/50">
-                <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground font-ui">
-                  {group.label}
+          {/* 3 editions — flat list */}
+          {EDITIONS.map(edition => (
+            <button
+              key={edition.id}
+              onClick={() => { onChange(edition); setOpen(false); }}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-accent/60 ${
+                edition.id === current.id
+                  ? "bg-[#E3120B]/10 border-l-2 border-[#E3120B]"
+                  : "border-l-2 border-transparent"
+              }`}
+            >
+              <span className="text-2xl leading-none flex-shrink-0">{edition.flag}</span>
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-bold font-display leading-tight ${
+                  edition.id === current.id ? "text-[#E3120B]" : ""
+                }`}>
+                  {edition.name}
+                </p>
+                <p className="text-[11px] text-muted-foreground font-ui mt-0.5">
+                  {edition.description}
                 </p>
               </div>
-
-              {/* Edition rows */}
-              {group.editions.map(edition => (
-                <button
-                  key={edition.id}
-                  onClick={() => { onChange(edition); setOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-accent/60 ${
-                    edition.id === current.id
-                      ? "bg-[#E3120B]/10 border-l-2 border-[#E3120B]"
-                      : "border-l-2 border-transparent"
-                  }`}
-                >
-                  <span className="text-lg leading-none flex-shrink-0">{edition.flag}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-bold font-display leading-tight ${
-                      edition.id === current.id ? "text-[#E3120B]" : ""
-                    }`}>
-                      {edition.name}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground font-ui mt-0.5 truncate">
-                      {edition.description.split("—")[1]?.trim() ?? edition.description}
-                    </p>
-                  </div>
-                  {edition.id === current.id && (
-                    <span className="text-[#E3120B] text-xs flex-shrink-0">✦</span>
-                  )}
-                </button>
-              ))}
-            </div>
+              {edition.id === current.id && (
+                <span className="text-[#E3120B] font-bold flex-shrink-0">✦</span>
+              )}
+            </button>
           ))}
 
           {/* Footer */}
@@ -141,7 +124,7 @@ export function EditionSelector({ current, onChange }: Props) {
 
 // ─── Hook: persist edition in localStorage ────────────────────────────────────
 
-const STORAGE_KEY = "cup_edition";
+const STORAGE_KEY = "cup_edition_v2"; // v2.2.0: reset key to avoid stale 8-edition values
 
 export function useEdition() {
   const getSaved = (): Edition => {
@@ -152,7 +135,7 @@ export function useEdition() {
         if (found) return found;
       }
     } catch {}
-    return EDITIONS[0]; // Default: en-WORLD
+    return EDITIONS[0]; // Default: en
   };
 
   const [edition, setEditionState] = useState<Edition>(getSaved);

@@ -1,3 +1,62 @@
+## [2.2.0] — 2026-03-23
+
+**3 editions (EN/FR/DE). Fixed incoherent sources. Stronger geographic diversity.**
+
+### Engineering notes
+
+**Simplifying from 8 editions to 3.**
+Five of the eight editions were English with minor regional differences. Readers switching
+between en-WORLD, en-US, en-GB, en-CA, en-AU saw essentially the same 20 stories.
+The meaningful axis is LANGUAGE, not region. Three genuinely different editions:
+- English: international press, global perspective, no regional bias
+- Français: French-language sources first (RFI, France 24, Le Monde, Le Figaro, AFP FR,
+  L'Équipe, Les Échos). Topics naturally skew toward French domestic news, EU affairs,
+  Ligue 1, francophone Africa — a digest you'd read in Paris, not London.
+- Deutsch: German-language sources first (DW, Spiegel, FAZ, SZ, Zeit, Handelsblatt,
+  Kicker). Topics naturally skew toward Bundestag, DAX, Bundesliga, DACH region —
+  a digest you'd read in Berlin, not Washington.
+
+Backwards-compat aliases keep old 8-edition digest IDs working.
+
+**Source enrichment bug: wrong sources appearing on stories.**
+The `enrichStorySources()` function had a "topical fallback" that ran when Jaccard
+keyword matching found no relevant articles. It would take the first N articles from
+`allProcessed` in insertion order. Since `allProcessed = [...userProcessed, ...trendLinks]`,
+those first articles were the earliest RSS stories fetched — completely unrelated.
+This was why sources from story #1 kept appearing on stories #10-#20.
+
+Fix: removed the fallback entirely. We only add a source if it has a genuine keyword
+overlap (Jaccard score > 0). A story with 2 relevant sources is better than a story
+with 4 where 2 are noise. With a diverse 60+ article RSS pool, Jaccard finds genuine
+matches for almost every story anyway.
+
+**Stronger geographic diversity prompt.**
+Previous prompt had 5 mandatory geographic slots. New prompt has 7 mandatory slots
+with per-COUNTRY caps (max 1 story per country) and per-REGION caps (max 2 per region).
+Added explicit coverage requirements for South Asia, Central Asia/Eastern Europe, and
+a broadened Middle East/North Africa requirement (not just Iran/Israel). Added a
+self-check instruction: "list each story's primary country — if any appears twice, replace."
+This directly addresses the recurring problem of 5 US stories + 3 Iran stories + nothing
+from South America or Africa.
+
+**Edition sport slot now per-edition field.**
+The hardcoded ternary `edition.id === "de-DE" ? "Bundesliga..." : ...` replaced with
+`edition.aiSportSlot` on each Edition object. Cleaner, no magic ID comparisons.
+
+### ✨ Changed
+- 8 editions → 3 editions: `en`, `fr`, `de`
+- Edition IDs simplified (BCP 47 language tags, no country suffix)
+- localStorage key reset to `cup_edition_v2` to clear stale 8-edition values
+- Edition picker dropdown simplified to flat 3-item list (no language group headers)
+- Reader counter uses `edition.ui.of` for localisation ("1 of 20" / "1 sur 20" / "1 von 20")
+
+### ✨ Fixed
+- Source enrichment: removed random fallback, genuine-only keyword-matched sources
+- Geography: 7 mandatory regional slots, max 1 story per country, max 2 per region
+- Sport slot: uses `edition.aiSportSlot` instead of hardcoded ID ternary
+
+---
+
 ## [2.1.4] — 2026-03-23
 
 **2 paragraphs, 50-70 words each. 4+ sources per story. All 8 editions regenerated.**

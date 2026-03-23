@@ -1,7 +1,7 @@
 /**
  * @file server/pipeline.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 2.1.3
+ * @version 2.2.0
  *
  * Cup of News — Daily Digest Generation Pipeline
  *
@@ -667,26 +667,26 @@ function enrichStorySources(
       .filter(c => c.score > 0) // Must share at least 1 meaningful word
       .sort((a, b) => b.score - a.score);
 
-    // Add best-matching candidates up to needed count
+    // Add best-matching candidates only — never pad with unrelated articles.
+    //
+    // v2.2.0 BUG FIX: the previous version had a "topical fallback" that took the
+    // first N articles from allProcessed when Jaccard found no keyword matches.
+    // allProcessed[0..N] are the first RSS articles fetched — completely unrelated
+    // to the story. This caused "sources from story #1 appearing on story #15."
+    //
+    // Correct behaviour: if we can't find a genuinely matching article for a source
+    // slot, leave the slot empty. A story with 2 genuine sources is better than a
+    // story with 4 where 2 are misleading noise.
+    //
+    // The minimum is now enforced by having diverse RSS pools — if there are 60+
+    // articles in the pool covering global news, Jaccard will find keyword matches
+    // for almost every story. The only exception is highly niche topics (a specific
+    // local election, a rare science paper) where we rightly show fewer sources.
     const added = candidates.slice(0, needed);
 
-    // If still short, add highest-scored candidates regardless (topical fallback)
-    if (added.length < needed) {
-      const remaining = allProcessed
-        .filter(p => !storySourceUrls.has(p.link.url) && !added.some(a => a.url === p.link.url))
-        .slice(0, needed - added.length)
-        .map(p => ({
-          url: p.link.url,
-          title: p.title || p.link.url,
-          domain: (() => { try { return new URL(p.link.url).hostname.replace("www.",""); } catch { return p.link.url; } })(),
-          score: 0,
-        }));
-      added.push(...remaining);
-    }
-
-    // Append to story sources
+    // Append to story sources (genuine matches only)
     if (!story.sources) story.sources = [];
-    for (const c of added.slice(0, needed)) {
+    for (const c of added) {
       story.sources.push({ url: c.url, title: c.title, domain: c.domain });
     }
   }
@@ -707,7 +707,7 @@ function enrichStorySources(
  */
 export async function runDailyPipeline(
   apiKey: string,
-  editionId = "en-WORLD"
+  editionId = "en"
 ): Promise<{ digestId: number; storiesCount: number; edition: string }> {
   const today = getTodayDate();
   const edition = getEdition(editionId);
@@ -863,15 +863,8 @@ YOU MUST write EVERY output field in ${edition.languageName}:
   const regionalBlock = `🌍 EDITION: ${edition.flag} ${edition.name} (${editionId})
 REGIONAL FOCUS: ${edition.aiRegionalFocus}`;
 
-  const sportSlot = edition.id.startsWith("fr")
-    ? "football (Ligue 1, Champions League), rugby, tennis, cyclisme"
-    : edition.id === "de-DE"
-    ? "Bundesliga, DFB-Nationalmannschaft, Formel 1, Tennis, Handball"
-    : edition.id === "en-AU"
-    ? "AFL, NRL, cricket, tennis, swimming"
-    : edition.id === "en-GB"
-    ? "Premier League, cricket, rugby union, Formula 1"
-    : "any major sport (football, tennis, F1, athletics, basketball)";
+    // v2.2.0: use the edition's own aiSportSlot
+  const sportSlot = edition.aiSportSlot;
 
   const systemPrompt = `You are the editorial AI for "Cup of News" — a curated morning news digest inspired by The Economist Espresso. Your writing is intelligent, slightly opinionated, and respects the reader's time.
 ${languageBlock}
@@ -888,19 +881,32 @@ HARD LIMITS — breaking any of these means the digest has FAILED:
 - MAX 3 stories in any single category
 - If multiple articles cover the SAME NEWS EVENT from different outlets — do NOT treat them as separate stories. Group them using additionalIdxs (multi-source) instead. One story, multiple perspectives.
 
-MANDATORY SLOTS — your 20 stories MUST include ALL of the following:
-✦ AT LEAST 2 Technology or Science stories (AI breakthroughs, medical research, space, climate tech)
-✦ AT LEAST 2 Business or Economics stories (markets, M&A, central banks, trade, earnings)
+MANDATORY TOPIC SLOTS — your 20 stories MUST include ALL of the following:
+✦ AT LEAST 2 Technology or Science stories (AI, medical research, space, climate tech)
+✦ AT LEAST 2 Business or Economics stories (markets, central banks, trade, M&A, earnings)
 ✦ AT LEAST 2 Sports stories — specifically: ${sportSlot}
-✦ AT LEAST 1 Culture story (film, music, art, books, fashion, architecture)
-✦ AT LEAST 1 Health or Environment story (medicine, climate change, nature, food systems)
-✦ AT LEAST 1 story from SUB-SAHARAN AFRICA (not North Africa / Middle East)
-✦ AT LEAST 1 story from ASIA-PACIFIC (Japan, India, China, SE Asia, Australia — NOT Middle East)
-✦ AT LEAST 1 story from THE AMERICAS (USA, Canada, Brazil, Mexico, Latin America)
-✦ AT LEAST 1 story from EUROPE (EU, UK, Russia — separate from Middle East)
-✦ NO MORE THAN 3 stories from the Middle East/Iran/Israel/Gaza conflict zone
+✦ AT LEAST 1 Culture story (film, music, art, books, fashion, theatre, food)
+✦ AT LEAST 1 Health or Environment story (medicine, climate, biodiversity, food systems)
 
-BEFORE FINALISING: count your stories per category and region. If you're short on a mandatory slot, REMOVE a story from an over-represented area and replace it.
+MANDATORY GEOGRAPHIC DIVERSITY — 20 stories, 20 different angles on the world:
+✦ AT LEAST 2 stories from SUB-SAHARAN AFRICA (Nigeria, Kenya, South Africa, Ethiopia, Ghana, Senegal — NOT North Africa)
+✦ AT LEAST 2 stories from ASIA-PACIFIC (Japan, India, China, South Korea, SE Asia, Australia, Pacific — NOT Middle East)
+✦ AT LEAST 2 stories from THE AMERICAS (USA, Canada, Brazil, Mexico, Argentina, Colombia, Chile — any region)
+✦ AT LEAST 2 stories from EUROPE (EU institutions, UK, Germany, France, Italy, Spain, Nordics, Eastern Europe)
+✦ AT LEAST 1 story from THE MIDDLE EAST / NORTH AFRICA (Jordan, Saudi Arabia, Turkey, Egypt, Morocco — beyond just Iran/Israel)
+✦ AT LEAST 1 story from SOUTH ASIA (India, Pakistan, Bangladesh, Sri Lanka)
+✦ AT LEAST 1 story from CENTRAL ASIA or EASTERN EUROPE (Ukraine, Georgia, Kazakhstan, Uzbekistan etc.)
+
+GEOGRAPHIC HARD LIMITS:
+✗ MAX 1 story per country (e.g. only 1 USA story, only 1 France story, only 1 China story)
+✗ MAX 2 stories from any single geographic region
+✗ MAX 2 stories on the Iran/Israel/Gaza conflict specifically — pick the 2 most newsworthy angles only
+✗ NO story where the same country appears as protagonist in 2 separate entries
+
+SELF-CHECK BEFORE SUBMITTING:
+List each story's primary country. If any country appears more than once, replace the duplicate.
+Count stories per region. If any region has 3+, replace the extra with an underrepresented region.
+Aim for: every continent represented, no dominant narrative, a reader finishes knowing what's happening EVERYWHERE.
 
 QUALITY:
 - Each summary: EXACTLY 2 paragraphs separated by a blank line (\n\n). Each paragraph: 50-70 words.
