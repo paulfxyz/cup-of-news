@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-3.2.0-red?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-3.2.2-red?style=for-the-badge)
 ![Status](https://img.shields.io/badge/status-stable-brightgreen?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
 ![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
@@ -200,7 +200,7 @@ One real deployment frustration: Fly auto-generates a random app name during set
 
 ## 🌍 Language Editions
 
-As of v3.2.0, Cup of News generates natively in **9 languages**. Each edition has its own RSS source set, its own system prompt language, and its own editorial identity. The principle: 1 edition = 1 language.
+As of v3.2.2, Cup of News generates natively in **9 languages**. Each edition has its own RSS source set, its own system prompt language, and its own editorial identity. The principle: 1 edition = 1 language.
 
 | Edition | Language | Flag | Key Sources | Notes |
 |---------|----------|------|-------------|-------|
@@ -523,6 +523,7 @@ Full history with engineering narrative: **[CHANGELOG.md](./CHANGELOG.md)**
 
 | Version | Date | Summary |
 |---------|------|---------|
+| **3.2.2** | 2026-03-25 | Modal click-outside close, card slide animation, triple-click generate. Twice-daily cron (6 AM + 4 PM GMT). FTP + Fly.io deploy automation |
 | **3.2.0** | 2026-03-25 | Turkish + Italian editions (9 languages total), logo hard-refresh (1250ms spinner + window.location.reload()), landing page full rewrite |
 | **3.0.0** | 2026-03-23 | 4 new native language editions (ES, PT, ZH, RU), select dropdown lang switcher, Unicode dedup, dark mode default, React Query refresh UX |
 | 2.0.2 | 2026-03-23 | Storage snake_case bug fix, DigestTab edition, typography calibration |
@@ -545,7 +546,7 @@ Full history with engineering narrative: **[CHANGELOG.md](./CHANGELOG.md)**
 
 ## 🗺️ Roadmap
 
-**v3.2.0 shipped.** 9 native language editions (EN/FR/DE/ES/PT/ZH/RU/TR/IT), logo hard-refresh UX, complete landing page rewrite removing all legacy edition references.
+**v3.2.2 shipped.** 9 native language editions (EN/FR/DE/ES/PT/ZH/RU/TR/IT), logo hard-refresh UX, complete landing page rewrite removing all legacy edition references.
 
 ### v3.2 — Delivery & Channels
 - 📧 Email delivery (Postmark / Resend) — digest in your inbox at 6 AM
