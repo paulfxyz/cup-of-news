@@ -531,49 +531,10 @@ Summary: "${summary.slice(0, 300)}"`;
 
     console.log(`  🔍 Wikimedia queries for "${title.slice(0, 50)}": ${queries.join(" | ")}`);
 
-    // ── Step 2: Try each query → vision relevance check ────────────────────
-    //
-    // For each query, find the best Wikimedia candidate by size/ratio scoring,
-    // then pass it through a vision model (gemini-2.0-flash-lite) to verify
-    // the image actually matches the story.
-    //
-    // WHY VISION CHECK:
-    //   Wikimedia's text search matches individual keywords, not semantic meaning.
-    //   "Meta" (company) → Minecraft (game) because "meta" appears in internal index.
-    //   "Hot" (paradox) → hot air balloon photo.
-    //   "Insetti" (Italian: insects) → museum wall poster diagram, not a news photo.
-    //   A vision model sees the actual image and rejects these in ~1.5s at negligible cost.
-    //
-    // THRESHOLD: score >= 5 on a 0-10 scale.
-    //   5 = tangentially related but clearly a real photo (acceptable)
-    //   4 = misleading or unrelated (reject → try next query)
-    //   0 = video game, diagram, map, illustration (immediately reject)
-    //
-    // FAIL-OPEN: If the vision API errors, we accept the image and log a warning.
-    //   A slightly wrong image is better than a picsum placeholder.
-    //   Vision errors should be rare (flash-lite is extremely reliable).
-    //
-    // COST: ~$0.001 per story (1 vision check at $0.075/M tokens, ~80 tokens each).
-    //   Negligible vs. the $0.07 Gemini 2.5 Pro digest generation cost.
-    for (const query of queries) {
-      const img = await wikimediaBestPhoto(query);
-      if (!img) continue;
-
-      const visionScore = await checkImageRelevanceWithVision(img, title, apiKey);
-
-      if (visionScore >= 5) {
-        console.log(`  ✅ Vision check passed (score ${visionScore}/10) for: "${query}"`);
-        return img;
-      } else {
-        console.log(`  🚫 Vision check failed (score ${visionScore}/10) — skipping: "${query}"`);
-        // Try next query
-      }
-    }
-
-    // All 5 queries failed vision check — fall through to picsum.
-    // This is the correct outcome: no misleading image is better than Minecraft.
-    console.log(`  ⚠️  All queries failed vision check for: "${title.slice(0, 50)}"`);
-    return null;
+    // ── Step 2: Try each query → vision relevance check (shared helper) ───
+    // runQueriesWithVisionCheck: tries each query, passes candidate through
+    // gemini-2.0-flash-lite vision check, returns first image scoring ≥5/10.
+    return await runQueriesWithVisionCheck(queries, title, apiKey);
 
   } catch (err) {
     console.warn(`  ⚠️  fetchFromWikimediaMultiQuery error: ${err}`);
@@ -779,14 +740,36 @@ Context: "${summary.slice(0, 150)}"`;
       }
     } catch { return null; }
     queries = queries.slice(0, 5).filter(q => typeof q === "string" && q.length > 2);
-    for (const query of queries) {
-      const img = await wikimediaBestPhoto(query);
-      if (img) return img;
-    }
-    return null;
+    // Same vision-checked loop as the main function — reject diagrams, screenshots, etc.
+    return await runQueriesWithVisionCheck(queries, title, apiKey);
   } catch {
     return null;
   }
+}
+
+/**
+ * runQueriesWithVisionCheck — shared helper used by both query generators.
+ * Tries each query against Wikimedia, vision-checks each candidate, returns
+ * the first image that passes. Returns null if all 5 fail.
+ */
+async function runQueriesWithVisionCheck(
+  queries: string[],
+  title: string,
+  apiKey: string
+): Promise<string | null> {
+  for (const query of queries) {
+    const img = await wikimediaBestPhoto(query);
+    if (!img) continue;
+    const visionScore = await checkImageRelevanceWithVision(img, title, apiKey);
+    if (visionScore >= 5) {
+      console.log(`  ✅ Vision check passed (score ${visionScore}/10) for: "${query}"`);
+      return img;
+    } else {
+      console.log(`  🚫 Vision check failed (score ${visionScore}/10) — skipping: "${query}"`);
+    }
+  }
+  console.log(`  ⚠️  All queries failed vision check for: "${title.slice(0, 50)}"`);
+  return null;
 }
 
 /**
