@@ -41,7 +41,7 @@ import express from "express";
 import { storage } from "./storage";
 import type { DigestStory } from "@shared/schema";
 import { runDailyPipeline, swapStory, reprocessDigestImages } from "./pipeline";
-import { rehostImage, ensureImagesDir } from "./images";
+import { rehostImage, ensureImagesDir, deleteCachedImage } from "./images";
 
 // ─── Auth Middleware ──────────────────────────────────────────────────────────
 
@@ -847,22 +847,36 @@ export function registerRoutes(httpServer: Server, app: Express) {
    * Fixes broken, irrelevant, or externally-hosted images.
    * Runs per-story: fetches OG from source → rehosts as WebP.
    * Falls back to Wikimedia (via full pipeline) or SVG if OG fails.
+   *
+   * Body: { force?: boolean }
+   *   force=true: deletes cached WebP files and re-runs the full image pipeline
+   *   for already-hosted images (re-crops with current entropy strategy).
    */
   app.post("/api/digest/:id/reprocess-images", requireApiKey, async (req, res) => {
     const digest = storage.getDigest(Number(req.params.id));
     if (!digest) return res.status(404).json({ error: "Digest not found" });
 
+    const force = req.body?.force === true;
     const apiKey = storage.getConfig("openrouter_key") || "";
     const stories: DigestStory[] = JSON.parse(digest.storiesJson);
     const results: Array<{ title: string; imageUrl: string; changed: boolean }> = [];
 
     for (const story of stories) {
       const oldUrl = story.imageUrl;
+
+      // Force mode: delete cached file and clear imageUrl so reprocessDigestImages re-runs
+      if (force && story.imageUrl.startsWith("/images/")) {
+        const hash = path.basename(story.imageUrl, ".webp");
+        deleteCachedImage(hash);
+        story.imageUrl = "";  // clear so reprocessDigestImages doesn't skip it
+      }
+
       try {
         const newUrl = await reprocessDigestImages(story, apiKey);
         story.imageUrl = newUrl;
         results.push({ title: story.title.slice(0, 50), imageUrl: newUrl, changed: newUrl !== oldUrl });
       } catch (e: any) {
+        story.imageUrl = oldUrl;  // restore on error
         results.push({ title: story.title.slice(0, 50), imageUrl: oldUrl, changed: false });
       }
     }
