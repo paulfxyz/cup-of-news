@@ -1,7 +1,7 @@
 /**
  * @file server/routes.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.2.7
+ * @version 3.2.8
  *
  * Cup of News — REST API Routes
  *
@@ -100,7 +100,7 @@ export function registerRoutes(httpServer: Server, app: Express) {
    * Public. Used by uptime monitors, Docker HEALTHCHECK, GitHub Actions.
    */
   app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok", version: "3.2.7" });
+    res.json({ status: "ok", version: "3.2.8" });
   });
 
   // ── Setup ──────────────────────────────────────────────────────────────────
@@ -328,6 +328,50 @@ export function registerRoutes(httpServer: Server, app: Express) {
     const stored = storage.getConfig("digest_pin") || "123456"; // default PIN
     const valid = String(pin) === stored;
     res.json({ valid });
+  });
+
+
+  /**
+   * POST /api/digest/generate-with-pin
+   * Public-facing generate endpoint authenticated by the digest PIN instead of
+   * the admin key. Used by the PinKeypad component in DigestView.
+   *
+   * Body: { pin: "123456", edition: "en" }
+   *
+   * Why a separate endpoint:
+   *   The public reader has no admin key stored (unless user visited /#/admin).
+   *   The PIN is a lightweight numeric secret specifically for reader-side generation.
+   *   This endpoint verifies the PIN then runs the same pipeline as /api/digest/generate.
+   *
+   * Returns an immediate 202 Accepted and runs the pipeline async so the client
+   * can poll /api/digest/latest for the new digest instead of holding a 90s connection.
+   * This avoids the 502 timeout problem entirely.
+   */
+  app.post("/api/digest/generate-with-pin", async (req, res) => {
+    const { pin, edition: editionId = "en" } = req.body || {};
+
+    // Verify PIN
+    const storedPin = storage.getConfig("digest_pin") || "123456";
+    if (String(pin) !== storedPin) {
+      return res.status(401).json({ error: "Invalid PIN." });
+    }
+
+    const apiKey = storage.getConfig("openrouter_key");
+    if (!apiKey) {
+      return res.status(400).json({ error: "OpenRouter API key not configured." });
+    }
+
+    // Respond immediately — client will poll for the new digest
+    res.json({ success: true, message: "Generation started", edition: editionId });
+
+    // Run pipeline async (fire-and-forget)
+    runDailyPipeline(apiKey, editionId)
+      .then(result => {
+        console.log(`[PIN generate] ${editionId}: digest ${result.digestId} created, ${result.storiesCount} stories`);
+      })
+      .catch(err => {
+        console.error(`[PIN generate] ${editionId} failed:`, err.message);
+      });
   });
 
   app.post("/api/digest/generate", requireApiKey, async (req, res) => {

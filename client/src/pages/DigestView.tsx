@@ -1,7 +1,7 @@
 /**
  * @file client/src/pages/DigestView.tsx
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.2.7
+ * @version 3.2.8
  *
  * Cup of News — Public Digest Reader
  *
@@ -765,17 +765,21 @@ function QuoteCard({ quote, author, date, label = "Today's Thought", refreshLabe
 // Current PIN shown as ● dots with shake animation on wrong entry.
 
 function PinKeypad({ edition, onClose }: { edition: any; onClose: () => void }) {
-  const [digits,      setDigits]      = useState<string[]>([]);
-  const [shake,       setShake]       = useState(false);
-  const [attempts,    setAttempts]    = useState(0);
-  const [locked,      setLocked]      = useState(false);
-  const [lockSecs,    setLockSecs]    = useState(0);
-  const [generating,  setGenerating]  = useState(false);
-  const [genSecs,     setGenSecs]     = useState(0);
-  const [error,       setError]       = useState("");
-  const genInterval   = useRef<ReturnType<typeof setInterval> | null>(null);
+  // ── State ──────────────────────────────────────────────────────────────────
+  const [digits,     setDigits]     = useState<string[]>([]);
+  const [shake,      setShake]      = useState(false);
+  const [attempts,   setAttempts]   = useState(0);
+  const [locked,     setLocked]     = useState(false);
+  const [lockSecs,   setLockSecs]   = useState(0);
+  const [phase,      setPhase]      = useState<"pin" | "generating" | "polling" | "done" | "error">("pin");
+  const [genSecs,    setGenSecs]    = useState(0);
+  const [errorMsg,   setErrorMsg]   = useState("");
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Lockout countdown
+  // Cleanup on unmount
+  useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
+
+  // ── Lockout countdown ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!locked) return;
     const t = setInterval(() => {
@@ -787,25 +791,34 @@ function PinKeypad({ edition, onClose }: { edition: any; onClose: () => void }) 
     return () => clearInterval(t);
   }, [locked]);
 
-  // Generation elapsed counter
-  useEffect(() => {
-    return () => { if (genInterval.current) clearInterval(genInterval.current); };
-  }, []);
+  // ── Generation elapsed counter ────────────────────────────────────────────
+  const startGenTimer = () => {
+    let s = 0;
+    timerRef.current = setInterval(() => { s += 1; setGenSecs(s); }, 1000);
+  };
 
-  const press = (d: string) => {
-    if (locked || generating) return;
+  const stopGenTimer = () => {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+  };
+
+  // ── Input handlers ────────────────────────────────────────────────────────
+  const press = useCallback((d: string) => {
+    if (locked || phase !== "pin") return;
     setDigits(prev => prev.length < 8 ? [...prev, d] : prev);
-  };
+  }, [locked, phase]);
 
-  const backspace = () => {
-    if (locked || generating) return;
+  const backspace = useCallback(() => {
+    if (locked || phase !== "pin") return;
     setDigits(prev => prev.slice(0, -1));
-  };
+  }, [locked, phase]);
 
-  const confirm = async () => {
-    if (locked || generating || digits.length < 4) return;
+  // ── Submit PIN ────────────────────────────────────────────────────────────
+  const submit = useCallback(async () => {
+    if (locked || phase !== "pin" || digits.length < 4) return;
     const pin = digits.join("");
 
+    // 1. Verify PIN server-side
+    let valid = false;
     try {
       const r = await fetch("/api/admin/verify-pin", {
         method: "POST",
@@ -813,76 +826,103 @@ function PinKeypad({ edition, onClose }: { edition: any; onClose: () => void }) 
         body: JSON.stringify({ pin }),
       });
       const data = await r.json();
-
-      if (!data.valid) {
-        // Wrong PIN — shake and increment attempts
-        setShake(true);
-        setDigits([]);
-        setTimeout(() => setShake(false), 500);
-        const next = attempts + 1;
-        setAttempts(next);
-        if (next >= 3) { setLocked(true); setLockSecs(30); }
-        return;
-      }
+      valid = !!data.valid;
     } catch {
-      setError("Connection error. Try again.");
+      setErrorMsg("Connection error. Try again.");
       setDigits([]);
       return;
     }
 
-    // PIN correct — generate digest
-    const adminKey = localStorage.getItem("adminKey") || "";
-    if (!adminKey) {
-      onClose();
-      window.location.href = "/#/admin";
+    if (!valid) {
+      setShake(true);
+      setDigits([]);
+      setTimeout(() => setShake(false), 500);
+      const next = attempts + 1;
+      setAttempts(next);
+      if (next >= 3) { setLocked(true); setLockSecs(30); }
       return;
     }
 
-    setGenerating(true);
+    // 2. PIN correct — fire generate-with-pin (returns immediately, runs async)
+    setPhase("generating");
     setGenSecs(0);
-    setError("");
-    let secs = 0;
-    genInterval.current = setInterval(() => { secs += 1; setGenSecs(secs); }, 1000);
+    setErrorMsg("");
+    startGenTimer();
 
     try {
-      const res = await fetch("/api/digest/generate", {
+      const res = await fetch("/api/digest/generate-with-pin", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
-        body: JSON.stringify({ edition: edition.id }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin, edition: edition.id }),
       });
-      if (genInterval.current) clearInterval(genInterval.current);
-      if (res.ok || res.status === 409) {
-        setTimeout(() => window.location.reload(), 400);
-      } else {
-        const e = await res.json().catch(() => ({}));
-        setError(e.error || "Generation failed. Try again.");
-        setGenerating(false);
-      }
-    } catch {
-      if (genInterval.current) clearInterval(genInterval.current);
-      setError("Network error. Try again.");
-      setGenerating(false);
-    }
-  };
 
-  // Keyboard support
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        stopGenTimer();
+        setErrorMsg(e.error || "Generation failed. Try again.");
+        setPhase("error");
+        return;
+      }
+
+      // 3. Server acknowledged — poll /api/digest/latest until a fresh digest appears
+      setPhase("polling");
+      const currentDigestDate = new Date().toISOString().slice(0, 10); // today YYYY-MM-DD
+      let polls = 0;
+      const MAX_POLLS = 120; // 120 × 1s = 2 minutes max
+
+      const poll = setInterval(async () => {
+        polls += 1;
+        try {
+          const dr = await fetch(`/api/digest/latest?edition=${encodeURIComponent(edition.id)}`);
+          if (dr.ok) {
+            const data = await dr.json();
+            // Success: a digest for today exists
+            if (data && data.date === currentDigestDate && data.status === "published") {
+              clearInterval(poll);
+              stopGenTimer();
+              setPhase("done");
+              setTimeout(() => window.location.reload(), 800);
+              return;
+            }
+          }
+        } catch { /* keep polling */ }
+
+        if (polls >= MAX_POLLS) {
+          clearInterval(poll);
+          stopGenTimer();
+          // Pipeline probably succeeded but digest isn't published yet — reload anyway
+          setTimeout(() => window.location.reload(), 500);
+        }
+      }, 1000);
+
+    } catch {
+      stopGenTimer();
+      setErrorMsg("Network error. Try again.");
+      setPhase("error");
+    }
+  }, [locked, phase, digits, attempts, edition.id]);
+
+  // ── Keyboard ──────────────────────────────────────────────────────────────
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key >= "0" && e.key <= "9") press(e.key);
       else if (e.key === "Backspace") backspace();
-      else if (e.key === "Enter") confirm();
-      else if (e.key === "Escape") onClose();
+      else if (e.key === "Enter") submit();
+      else if (e.key === "Escape" && phase === "pin") onClose();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  });
+  }, [press, backspace, submit, phase, onClose]);
 
+  // ── Render ────────────────────────────────────────────────────────────────
   const KEYS = [["1","2","3"],["4","5","6"],["7","8","9"]];
+  const PIN_LENGTH = 6; // default PIN is 123456 — show 6 dots
+  const dotCount = Math.max(digits.length, PIN_LENGTH);
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4"
-      onClick={onClose}
+      onClick={phase === "pin" ? onClose : undefined}
     >
       <div
         className="bg-card border border-border w-full max-w-xs shadow-2xl"
@@ -898,116 +938,158 @@ function PinKeypad({ edition, onClose }: { edition: any; onClose: () => void }) 
               {edition.flag} {edition.name}
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center hover:bg-accent rounded text-muted-foreground hover:text-foreground"
-          >
-            <X size={14} />
-          </button>
+          {phase === "pin" && (
+            <button
+              onClick={onClose}
+              className="w-8 h-8 flex items-center justify-center hover:bg-accent rounded text-muted-foreground hover:text-foreground"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
 
         <div className="px-5 py-5 space-y-4">
-          {/* PIN display — dots */}
-          <div className={`flex justify-center gap-3 py-2 ${shake ? "animate-[pin-shake_0.4s_ease]" : ""}`}>
-            <style>{`
-              @keyframes pin-shake {
-                0%,100%{ transform:translateX(0) }
-                20%{ transform:translateX(-6px) }
-                40%{ transform:translateX(6px) }
-                60%{ transform:translateX(-4px) }
-                80%{ transform:translateX(4px) }
-              }
-            `}</style>
-            {Array.from({ length: Math.max(digits.length, 4) }).map((_, i) => (
-              <div
-                key={i}
-                className={`w-3 h-3 rounded-full border-2 transition-all duration-150 ${
-                  i < digits.length
-                    ? "bg-[#E3120B] border-[#E3120B]"
-                    : "bg-transparent border-border"
-                }`}
-              />
-            ))}
-          </div>
 
-          {/* Lock / error message */}
-          {locked && (
-            <p className="text-center text-xs text-amber-500 font-ui">
-              Too many attempts. Wait {lockSecs}s.
-            </p>
-          )}
-          {error && !locked && (
-            <p className="text-center text-xs text-[#E3120B] font-ui">{error}</p>
-          )}
-
-          {/* Generating state */}
-          {generating && (
-            <div className="text-center space-y-1">
-              <div className="flex justify-center">
-                <Loader2 size={20} className="text-[#E3120B] animate-spin" />
+          {/* ── PIN entry phase ─────────────────────────────────────────── */}
+          {phase === "pin" && (
+            <>
+              {/* Dot display — always shows PIN_LENGTH dots minimum */}
+              <div className={`flex justify-center gap-2.5 py-2 ${shake ? "animate-[pin-shake_0.4s_ease]" : ""}`}>
+                <style>{`
+                  @keyframes pin-shake {
+                    0%,100%{ transform:translateX(0) }
+                    20%{ transform:translateX(-8px) }
+                    40%{ transform:translateX(8px) }
+                    60%{ transform:translateX(-5px) }
+                    80%{ transform:translateX(5px) }
+                  }
+                `}</style>
+                {Array.from({ length: dotCount }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={`w-3 h-3 rounded-full border-2 transition-all duration-150 ${
+                      i < digits.length
+                        ? "bg-[#E3120B] border-[#E3120B] scale-110"
+                        : "bg-transparent border-border"
+                    }`}
+                  />
+                ))}
               </div>
-              <p className="text-xs text-muted-foreground font-ui">
-                Generating {edition.name} digest… {genSecs}s
-              </p>
+
+              {/* Lockout or error message */}
+              {locked && (
+                <p className="text-center text-xs text-amber-500 font-ui">
+                  Too many attempts — wait {lockSecs}s
+                </p>
+              )}
+              {errorMsg && !locked && (
+                <p className="text-center text-xs text-[#E3120B] font-ui">{errorMsg}</p>
+              )}
+              {!locked && !errorMsg && attempts > 0 && (
+                <p className="text-center text-xs text-muted-foreground font-ui">
+                  Wrong PIN — {3 - attempts} attempt{3 - attempts !== 1 ? "s" : ""} left
+                </p>
+              )}
+
+              {/* Numpad */}
+              <div className="space-y-1.5">
+                {KEYS.map(row => (
+                  <div key={row[0]} className="grid grid-cols-3 gap-1.5">
+                    {row.map(k => (
+                      <button
+                        key={k}
+                        onClick={() => press(k)}
+                        disabled={locked}
+                        className="h-13 py-3 bg-accent hover:bg-accent/70 active:bg-accent/50 text-foreground font-bold text-xl font-ui transition-colors disabled:opacity-30 active:scale-95 select-none"
+                      >
+                        {k}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+                {/* Bottom row: backspace | 0 | OK */}
+                <div className="grid grid-cols-3 gap-1.5">
+                  <button
+                    onClick={backspace}
+                    disabled={locked || digits.length === 0}
+                    className="py-3 bg-accent hover:bg-accent/70 text-muted-foreground transition-colors disabled:opacity-30 flex items-center justify-center active:scale-95"
+                  >
+                    <svg width="18" height="14" viewBox="0 0 18 14" fill="none">
+                      <path d="M6 1L1 7l5 6M1 7h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => press("0")}
+                    disabled={locked}
+                    className="py-3 bg-accent hover:bg-accent/70 active:bg-accent/50 text-foreground font-bold text-xl font-ui transition-colors disabled:opacity-30 active:scale-95 select-none"
+                  >
+                    0
+                  </button>
+                  <button
+                    onClick={submit}
+                    disabled={locked || digits.length < 4}
+                    className="py-3 bg-[#E3120B] hover:bg-[#B50D08] active:bg-[#900A06] text-white font-bold text-sm font-ui transition-colors disabled:opacity-30 active:scale-95 uppercase tracking-wider"
+                  >
+                    OK
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ── Generating / polling phase ──────────────────────────────── */}
+          {(phase === "generating" || phase === "polling") && (
+            <div className="py-6 text-center space-y-4">
+              <Loader2 size={32} className="text-[#E3120B] animate-spin mx-auto" />
+              <div className="space-y-1">
+                <p className="text-sm font-bold font-ui text-foreground">
+                  {phase === "generating" ? "Starting pipeline…" : "Generating digest…"}
+                </p>
+                <p className="text-xs text-muted-foreground font-ui">
+                  {edition.flag} {edition.name} · {genSecs}s
+                </p>
+                <p className="text-[10px] text-muted-foreground/50 font-ui mt-2">
+                  This takes 30–90 seconds. Don't close this window.
+                </p>
+              </div>
             </div>
           )}
 
-          {/* Numpad */}
-          {!generating && (
-            <div className="space-y-1.5">
-              {KEYS.map(row => (
-                <div key={row[0]} className="grid grid-cols-3 gap-1.5">
-                  {row.map(k => (
-                    <button
-                      key={k}
-                      onClick={() => press(k)}
-                      disabled={locked}
-                      className="h-12 bg-accent hover:bg-accent/80 text-foreground font-bold text-lg font-ui transition-colors disabled:opacity-30 active:scale-95"
-                    >
-                      {k}
-                    </button>
-                  ))}
-                </div>
-              ))}
-              {/* Bottom row: backspace | 0 | confirm */}
-              <div className="grid grid-cols-3 gap-1.5">
-                <button
-                  onClick={backspace}
-                  disabled={locked || digits.length === 0}
-                  className="h-12 bg-accent hover:bg-accent/80 text-muted-foreground transition-colors disabled:opacity-30 flex items-center justify-center active:scale-95"
-                >
-                  <svg width="18" height="14" viewBox="0 0 18 14" fill="none">
-                    <path d="M7 1L1 7l6 6M1 7h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-                  </svg>
-                </button>
-                <button
-                  onClick={() => press("0")}
-                  disabled={locked}
-                  className="h-12 bg-accent hover:bg-accent/80 text-foreground font-bold text-lg font-ui transition-colors disabled:opacity-30 active:scale-95"
-                >
-                  0
-                </button>
-                <button
-                  onClick={confirm}
-                  disabled={locked || digits.length < 4}
-                  className="h-12 bg-[#E3120B] hover:bg-[#B50D08] text-white font-bold text-sm font-ui transition-colors disabled:opacity-30 active:scale-95 uppercase tracking-wide"
-                >
-                  OK
-                </button>
+          {/* ── Done phase ──────────────────────────────────────────────── */}
+          {phase === "done" && (
+            <div className="py-6 text-center space-y-3">
+              <div className="w-10 h-10 bg-[#E3120B] flex items-center justify-center mx-auto">
+                <span className="text-white text-lg">✓</span>
               </div>
+              <p className="text-sm font-bold font-ui text-foreground">Digest ready!</p>
+              <p className="text-xs text-muted-foreground font-ui">Reloading…</p>
+            </div>
+          )}
+
+          {/* ── Error phase ─────────────────────────────────────────────── */}
+          {phase === "error" && (
+            <div className="py-4 text-center space-y-4">
+              <p className="text-xs text-[#E3120B] font-ui">{errorMsg}</p>
+              <button
+                onClick={() => { setPhase("pin"); setErrorMsg(""); setDigits([]); }}
+                className="px-4 py-2 border border-border text-xs font-bold font-ui hover:bg-accent transition-colors"
+              >
+                Try again
+              </button>
             </div>
           )}
         </div>
 
-        <div className="px-5 pb-4">
+        <div className="px-5 pb-4 border-t border-border/50 pt-3">
           <p className="text-[9px] text-muted-foreground/40 font-ui text-center">
-            Default PIN: 123456 · Change in admin panel
+            Default PIN: 123456 · Change in admin panel → Overview
           </p>
         </div>
       </div>
     </div>
   );
 }
+
 
 // ─── Grid Overlay ─────────────────────────────────────────────────────────────
 

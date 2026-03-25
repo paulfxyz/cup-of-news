@@ -1,3 +1,56 @@
+## [3.2.8] — 2026-03-25
+
+**Fixed PIN keypad (6 dots, PIN-only auth, polling). Fixed admin digest generation (async + polling).**
+
+### Bug fix: PIN keypad
+
+**Problem 1 — only 4 dots:** `Math.max(digits.length, 4)` always showed 4 dots
+even for the 6-digit default PIN `123456`. Fixed to `PIN_LENGTH = 6` so the
+display always shows 6 empty/filled dots.
+
+**Problem 2 — "no code works":** After PIN verification, the keypad read
+`localStorage.getItem("adminKey")` and redirected to `/#/admin` if absent.
+This meant it only worked if the user had previously visited the admin panel.
+Root cause: the admin key isn't available to the public reader by design.
+
+Fix: new endpoint `POST /api/digest/generate-with-pin` that accepts `{ pin, edition }`
+and verifies the PIN itself before running the pipeline. The admin key is never
+needed on the client side. The endpoint returns immediately (202) and runs the
+pipeline async — the client then polls `/api/digest/latest` every second until
+a fresh digest for today appears.
+
+**Problem 3 — no loading feedback during 90s generation:** The previous design
+called fetch() and awaited the full 90s response inside the component, causing
+the UI to appear frozen. New flow:
+  1. POST `/api/digest/generate-with-pin` — returns in ~50ms
+  2. UI immediately shows "Generating… Xs" phase with Loader2 spinner
+  3. Polls `/api/digest/latest?edition=X` every 1s
+  4. When today's published digest appears → "Digest ready!" → hard reload
+  5. After 2 min max → reload anyway
+
+**Other keypad fixes:**
+  - Keyboard handler now has correct deps (useCallback on press/backspace/submit)
+  - 4 phases: pin / generating / polling / done / error — distinct UI for each
+  - "Try again" button in error phase
+  - Close button hidden during generation (can't cancel a running pipeline)
+
+### Bug fix: admin panel generate
+
+**Problem:** POST `/api/digest/generate` takes 30-170s. The browser (and Fly's
+proxy at 75s) drops the connection before the response arrives. The mutation
+was awaiting `r.json()` on the response, which timed out.
+
+**Fix in both OverviewTab and DigestTab:**
+  - `fetch()` is fired with `.catch(() => {})` — we don't await the response body
+  - An elapsed-second counter starts immediately
+  - A 3-second poll of `/api/digests` watches for a new digest for today's date
+    and the selected edition
+  - When found: `invalidateQueries` + success toast with story count + elapsed time
+  - After 3 min: give up and show "refresh to see result"
+  - Button shows `Generating… 12s` during the wait
+
+---
+
 ## [3.2.7] — 2026-03-25
 
 **PIN keypad for digest generation. Click-outside to close grid overlay. Admin PIN settings.**

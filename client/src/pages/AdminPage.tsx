@@ -1,7 +1,7 @@
 /**
  * @file client/src/pages/AdminPage.tsx
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.2.7
+ * @version 3.2.8
  *
  * Cup of News — Admin Panel
  *
@@ -138,18 +138,73 @@ function OverviewTab({ headers }: { headers: Record<string, string> }) {
 
   const [selectedEdition, setSelectedEdition] = useState<Edition>(EDITIONS[0]);
 
-  const generateMutation = useMutation({
-    mutationFn: async () => {
-      const r = await apiRequest("POST", "/api/digest/generate", { edition: selectedEdition.id }, headers);
-      if (!r.ok) throw new Error((await r.json()).error);
-      return r.json();
-    },
-    onSuccess: (data) => {
-      toast({ title: `${selectedEdition.flag} Digest generated — ${data.storiesCount} stories ready (${selectedEdition.name})` });
-      qc.invalidateQueries({ queryKey: ["/api/digests"] });
-    },
-    onError: (e: any) => toast({ title: "Generation failed", description: e.message, variant: "destructive" }),
-  });
+  // ── Generate mutation (v3.2.8) ────────────────────────────────────────────
+  // The pipeline takes 30-90s. Instead of holding the HTTP connection open
+  // (which causes 502 on Fly.io), we:
+  //   1. POST /api/digest/generate with a short timeout to start the pipeline
+  //   2. Immediately set isPending=true and poll /api/digests every 3s
+  //   3. When a new digest for today appears, invalidate queries + toast
+  const [generating, setGenerating] = useState(false);
+  const [genSecs,    setGenSecs]    = useState(0);
+  const genTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollRef     = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopTimers = () => {
+    if (genTimerRef.current) { clearInterval(genTimerRef.current); genTimerRef.current = null; }
+    if (pollRef.current)     { clearInterval(pollRef.current);     pollRef.current = null; }
+  };
+
+  const handleGenerate = async () => {
+    if (generating) return;
+    setGenerating(true);
+    setGenSecs(0);
+
+    // Start elapsed counter
+    let s = 0;
+    genTimerRef.current = setInterval(() => { s += 1; setGenSecs(s); }, 1000);
+
+    // Fire the generate request — we don't await the body, just start it
+    // Use a long timeout so the request actually reaches the server
+    const ctrl = new AbortController();
+    fetch("/api/digest/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...headers },
+      body: JSON.stringify({ edition: selectedEdition.id }),
+      signal: ctrl.signal,
+    }).catch(() => { /* timeout/502 expected — pipeline still runs on server */ });
+
+    // Poll /api/digests every 3s waiting for new digest for today
+    const today = new Date().toISOString().slice(0, 10);
+    let polls = 0;
+    pollRef.current = setInterval(async () => {
+      polls += 1;
+      try {
+        const r = await apiRequest("GET", "/api/digests", undefined, headers);
+        if (r.ok) {
+          const all = await r.json();
+          const fresh = all.find((d: any) => d.date === today && d.edition === selectedEdition.id);
+          if (fresh) {
+            stopTimers();
+            setGenerating(false);
+            qc.invalidateQueries({ queryKey: ["/api/digests"] });
+            toast({ title: `${selectedEdition.flag} Digest ready — ${fresh.storiesCount ?? "20"} stories (${selectedEdition.name})` });
+            return;
+          }
+        }
+      } catch { /* keep polling */ }
+      // After 3 min, give up and reload
+      if (polls >= 60) {
+        ctrl.abort();
+        stopTimers();
+        setGenerating(false);
+        qc.invalidateQueries({ queryKey: ["/api/digests"] });
+        toast({ title: "Generation may still be running", description: "Refresh in a moment to see the result." });
+      }
+    }, 3000);
+  };
+
+  // Fake mutation object for UI compatibility
+  const generateMutation = { isPending: generating, mutate: handleGenerate };
 
   const publishedCount = (digests as DigestResponse[]).filter(d => d.status === "published").length;
   const unprocessed = (links as Link[]).filter((l: any) => !l.processedAt).length;
@@ -198,8 +253,8 @@ function OverviewTab({ headers }: { headers: Record<string, string> }) {
             data-testid="generate-digest-btn"
             className="flex items-center gap-2 px-5 py-2.5 bg-[#E3120B] text-white text-sm font-bold hover:bg-[#B50D08] transition-colors disabled:opacity-40 font-ui"
           >
-            {generateMutation.isPending ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-            {selectedEdition.flag} Generate — {selectedEdition.name}
+            {generating ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+            {generating ? `Generating… ${genSecs}s` : `${selectedEdition.flag} Generate — ${selectedEdition.name}`}
           </button>
           <a href="/#/" className="flex items-center gap-2 px-5 py-2.5 border border-border text-sm font-ui hover:bg-accent transition-colors">
             <Eye size={13} /> View Digest
@@ -470,18 +525,58 @@ function DigestTab({ headers }: { headers: Record<string, string> }) {
     queryFn: async () => { const r = await apiRequest("GET", "/api/digests", undefined, headers); return r.ok ? r.json() : []; },
   });
 
-  const generateMutation = useMutation({
-    mutationFn: async () => {
-      const r = await apiRequest("POST", "/api/digest/generate", { edition: selectedEdition.id }, headers);
-      if (!r.ok) throw new Error((await r.json()).error);
-      return r.json();
-    },
-    onSuccess: (data) => {
-      toast({ title: `${selectedEdition.flag} Generated — ${data.storiesCount} stories (${selectedEdition.name})` });
-      qc.invalidateQueries({ queryKey: ["/api/digests"] });
-    },
-    onError: (e: any) => toast({ title: "Generation failed", description: e.message, variant: "destructive" }),
-  });
+  // ── Generate mutation (v3.2.8) — async fire-and-forget + polling ──────────
+  const [generating2, setGenerating2] = useState(false);
+  const [genSecs2,    setGenSecs2]    = useState(0);
+  const genTimerRef2 = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollRef2     = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopTimers2 = () => {
+    if (genTimerRef2.current) { clearInterval(genTimerRef2.current); genTimerRef2.current = null; }
+    if (pollRef2.current)     { clearInterval(pollRef2.current);     pollRef2.current = null; }
+  };
+
+  const handleGenerate2 = async () => {
+    if (generating2) return;
+    setGenerating2(true);
+    setGenSecs2(0);
+    let s = 0;
+    genTimerRef2.current = setInterval(() => { s += 1; setGenSecs2(s); }, 1000);
+
+    fetch("/api/digest/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...headers },
+      body: JSON.stringify({ edition: selectedEdition.id }),
+    }).catch(() => {});
+
+    const today = new Date().toISOString().slice(0, 10);
+    let polls = 0;
+    pollRef2.current = setInterval(async () => {
+      polls += 1;
+      try {
+        const r = await apiRequest("GET", "/api/digests", undefined, headers);
+        if (r.ok) {
+          const all = await r.json();
+          const fresh = all.find((d: any) => d.date === today && d.edition === selectedEdition.id);
+          if (fresh) {
+            stopTimers2();
+            setGenerating2(false);
+            qc.invalidateQueries({ queryKey: ["/api/digests"] });
+            toast({ title: `${selectedEdition.flag} Digest ready — ${fresh.storiesCount ?? "20"} stories (${selectedEdition.name})` });
+            return;
+          }
+        }
+      } catch {}
+      if (polls >= 60) {
+        stopTimers2();
+        setGenerating2(false);
+        qc.invalidateQueries({ queryKey: ["/api/digests"] });
+        toast({ title: "Refresh to see result", description: "Generation may still be running." });
+      }
+    }, 3000);
+  };
+
+  const generateMutation = { isPending: generating2, mutate: handleGenerate2 };
 
   const publishMutation = useMutation({
     mutationFn: async ({ id, publish }: { id: number; publish: boolean }) => {
