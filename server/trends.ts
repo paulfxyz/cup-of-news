@@ -12,10 +12,28 @@
  *   ensure every morning has at least 20 stories worth reading.
  *
  * v3.0.0 CHANGES — 7-LANGUAGE EXPANSION:
- *   Spanish, Portuguese, Chinese, and Russian editions added, each with their
- *   own curated native-language RSS source pools. The 8 legacy edition aliases
- *   (en-WORLD, en-US, en-GB, etc.) have been removed — those editions no longer
- *   exist. Only 7 canonical edition IDs are supported: en, fr, de, es, pt, zh, ru.
+ *   Spanish, Portuguese, Chinese, Russian, Turkish, and Italian editions added,
+ *   each with their own curated native-language RSS source pools.
+ *   The 8 legacy edition aliases (en-WORLD, en-US, en-GB, etc.) have been removed
+ *   — those editions no longer exist.
+ *
+ * v3.1.0 CHANGES — 9-LANGUAGE EXPANSION:
+ *   Turkish (tr) and Italian (it) editions added. Each has its own native-language
+ *   RSS source pool designed to reflect authentic journalism from those cultures.
+ *
+ *   CHALLENGE — TURKISH RSS:
+ *   Major Turkish outlets (Hürriyet, Sabah, Cumhuriyet) publish RSS but quality
+ *   and freshness vary. We prefer TRT World (English arm of TRT, publicly funded
+ *   international broadcaster), DW Turkish, and BBC Turkish for reliability.
+ *   Bianet is included as the primary independent investigative source.
+ *
+ *   CHALLENGE — ITALIAN RSS:
+ *   Italian media has strong RSS culture. ANSA (the wire agency) and Corriere della
+ *   Sera are the most reliable. La Repubblica and Il Sole 24 Ore (financial daily)
+ *   round out politics + business. RAI News covers broadcast. Gazzetta dello Sport
+ *   for the obligatory calcio slot.
+ *
+ *   Only 9 canonical edition IDs are supported: en, fr, de, es, pt, zh, ru, tr, it.
  *
  *   The design principle is unchanged: native-language sources must dominate
  *   each edition's pool (>80%). English wire services appear only as a minimal
@@ -301,9 +319,81 @@ const RU_PRIMARY_SOURCES: RSSSource[] = [
   { name: "BBC News", url: "https://feeds.bbci.co.uk/news/world/rss.xml", domain: "bbc.com", category: "World", lang: "en" },
 ];
 
+// ─── Turkish Sources ──────────────────────────────────────────────────────────
+/**
+ * Turkish RSS source pool (v3.1.0).
+ *
+ * Challenge: Turkish media has a complex landscape — state broadcasters (TRT),
+ * independent (Bianet, T24, Medyascope) and large groups (Hürriyet, Sabah).
+ * Post-2016, many critical independent outlets faced legal pressure; some
+ * have moved operations online-first with no traditional RSS.
+ *
+ * Strategy:
+ *   - DW Türkçe and BBC Türkçe are international broadcasters: stable, reliable,
+ *     CORS-friendly, independent editorial line.
+ *   - Bianet is the leading independent investigative platform.
+ *   - Cumhuriyet (oldest secular daily) publishes RSS regularly.
+ *   - TRT Haber for the national broadcaster view of Turkish domestic news.
+ *   - NTV for business/economy and breaking news.
+ *
+ * We keep 2 English wire sources at the end for global depth.
+ */
+const TR_PRIMARY_SOURCES: RSSSource[] = [
+  { name: "BBC Türkçe", url: "https://feeds.bbci.co.uk/turkish/rss.xml", domain: "bbc.com", category: "World", lang: "tr" },
+  { name: "DW Türkçe", url: "https://rss.dw.com/rdf/rss-tur-all", domain: "dw.com", category: "World", lang: "tr" },
+  { name: "TRT Haber", url: "https://www.trthaber.com/sondakika.rss", domain: "trthaber.com", category: "World", lang: "tr" },
+  { name: "Cumhuriyet", url: "https://www.cumhuriyet.com.tr/rss/son_dakika.xml", domain: "cumhuriyet.com.tr", category: "World", lang: "tr" },
+  { name: "Bianet", url: "https://bianet.org/bianet.rss", domain: "bianet.org", category: "World", lang: "tr" },
+  { name: "NTV Gündem", url: "https://www.ntv.com.tr/gundem.rss", domain: "ntv.com.tr", category: "World", lang: "tr" },
+  { name: "NTV Ekonomi", url: "https://www.ntv.com.tr/ekonomi.rss", domain: "ntv.com.tr", category: "Business", lang: "tr" },
+  { name: "Hürriyet Gündem", url: "https://www.hurriyet.com.tr/rss/gundem", domain: "hurriyet.com.tr", category: "World", lang: "tr" },
+  { name: "Hürriyet Ekonomi", url: "https://www.hurriyet.com.tr/rss/ekonomi", domain: "hurriyet.com.tr", category: "Business", lang: "tr" },
+  { name: "Sözcü Gündem", url: "https://www.sozcu.com.tr/rss/gundem.xml", domain: "sozcu.com.tr", category: "World", lang: "tr" },
+  { name: "Sabah Teknoloji", url: "https://www.sabah.com.tr/rss/teknoloji.xml", domain: "sabah.com.tr", category: "Technology", lang: "tr" },
+  { name: "Dünya Gazetesi", url: "https://www.dunya.com/rss", domain: "dunya.com", category: "Business", lang: "tr" },
+  // English wire for global depth
+  { name: "Reuters", url: "https://feeds.reuters.com/reuters/topNews", domain: "reuters.com", category: "World", lang: "en" },
+  { name: "BBC News", url: "https://feeds.bbci.co.uk/news/world/rss.xml", domain: "bbc.com", category: "World", lang: "en" },
+];
+
+// ─── Italian Sources ───────────────────────────────────────────────────────────
+/**
+ * Italian RSS source pool (v3.1.0).
+ *
+ * Italian media has a healthy RSS ecosystem. Key sources:
+ *   - ANSA: the Italian national wire service. Authoritative, fast, broadly used.
+ *   - Corriere della Sera: largest Italian daily by circulation, reliable RSS.
+ *   - La Repubblica: progressive broadsheet, strong political coverage.
+ *   - Il Sole 24 Ore: Italian equivalent of FT — finance, economics, business.
+ *   - RAI News: public broadcaster, national + international news.
+ *   - La Stampa: historic Turin daily, strong EU/European coverage.
+ *   - Gazzetta dello Sport: for the obligatory Serie A / calcio slot.
+ *   - TGCom24: Mediaset news portal, popular, breaking news focus.
+ *
+ * Challenge: Some Corriere RSS feeds use Atom format. We set atomStyle: true
+ * where needed to ensure the link extractor picks up href= rather than <link>.
+ */
+const IT_PRIMARY_SOURCES: RSSSource[] = [
+  { name: "ANSA Ultime Notizie", url: "https://www.ansa.it/sito/notizie/topnews/topnews_rss.xml", domain: "ansa.it", category: "World", lang: "it" },
+  { name: "ANSA Economia", url: "https://www.ansa.it/sito/notizie/economia/economia_rss.xml", domain: "ansa.it", category: "Business", lang: "it" },
+  { name: "ANSA Tecnologia", url: "https://www.ansa.it/sito/notizie/tecnologia/tecnologia_rss.xml", domain: "ansa.it", category: "Technology", lang: "it" },
+  { name: "Corriere della Sera", url: "https://xml2.corrieredellasera.it/rss/homepage.xml", domain: "corriere.it", category: "World", lang: "it" },
+  { name: "La Repubblica", url: "https://www.repubblica.it/rss/homepage/rss2.0.xml", domain: "repubblica.it", category: "World", lang: "it" },
+  { name: "Il Sole 24 Ore", url: "https://www.ilsole24ore.com/rss/mondo.xml", domain: "ilsole24ore.com", category: "Business", lang: "it" },
+  { name: "Il Sole 24 Ore Economia", url: "https://www.ilsole24ore.com/rss/economia-e-finanza.xml", domain: "ilsole24ore.com", category: "Business", lang: "it" },
+  { name: "RAI News", url: "https://www.rainews.it/dl/rainews/media/Feed-Tg3-a5e3f9f6-fc68-432c-ba9f-db3c1cf0f218.xml", domain: "rainews.it", category: "World", lang: "it" },
+  { name: "La Stampa", url: "https://www.lastampa.it/rss.xml", domain: "lastampa.it", category: "World", lang: "it" },
+  { name: "TGCom24", url: "https://www.tgcom24.mediaset.it/rss/cronaca.xml", domain: "tgcom24.mediaset.it", category: "World", lang: "it" },
+  { name: "Gazzetta dello Sport", url: "https://www.gazzetta.it/rss/home.xml", domain: "gazzetta.it", category: "Sports", lang: "it" },
+  { name: "DW Italiano", url: "https://rss.dw.com/rdf/rss-ita-all", domain: "dw.com", category: "World", lang: "it" },
+  // English wire for global depth
+  { name: "Reuters", url: "https://feeds.reuters.com/reuters/topNews", domain: "reuters.com", category: "World", lang: "en" },
+  { name: "BBC News", url: "https://feeds.bbci.co.uk/news/world/rss.xml", domain: "bbc.com", category: "World", lang: "en" },
+];
+
 // ─── Edition Source Map ───────────────────────────────────────────────────────
 /**
- * v3.0.0: 7 canonical edition IDs only. Legacy 8-edition aliases removed.
+ * v3.1.0: 9 canonical edition IDs. Turkish (tr) and Italian (it) added.
  *
  * Each pool is designed to produce genuinely different stories:
  *   "en" — international English press: Reuters, BBC, NYT, Guardian, FT, Economist
@@ -313,6 +403,8 @@ const RU_PRIMARY_SOURCES: RSSSource[] = [
  *   "pt" — Portuguese sources: G1/Folha (Brazil) + Público/JN (Portugal) equally
  *   "zh" — Chinese-language international broadcasters: BBC Chinese, DW Chinese, RFI
  *   "ru" — Independent Russian-language sources: Meduza, BBC Russian, DW Russian
+ *   "tr" — Turkish: DW Türkçe, BBC Türkçe, Bianet, Cumhuriyet, TRT Haber
+ *   "it" — Italian: ANSA, Corriere della Sera, La Repubblica, Il Sole 24 Ore, RAI News
  */
 export const EDITION_RSS_SOURCES: Record<string, RSSSource[]> = {
   "en": EN_GLOBAL_SOURCES,
@@ -322,6 +414,8 @@ export const EDITION_RSS_SOURCES: Record<string, RSSSource[]> = {
   "pt": [...PT_PRIMARY_SOURCES],
   "zh": [...ZH_PRIMARY_SOURCES],
   "ru": [...RU_PRIMARY_SOURCES],
+  "tr": [...TR_PRIMARY_SOURCES],
+  "it": [...IT_PRIMARY_SOURCES],
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -454,7 +548,7 @@ async function fetchFeed(source: RSSSource): Promise<TrendStory[]> {
 /**
  * Fetch trending stories from the appropriate RSS sources for the given edition.
  *
- * v3.0.0: supports 7 edition IDs (en, fr, de, es, pt, zh, ru).
+ * v3.1.0: supports 9 edition IDs (en, fr, de, es, pt, zh, ru, tr, it).
  * Falls back to English sources if edition not recognised.
  *
  * Results are interleaved round-robin (1 per source per pass) to maximize

@@ -1,15 +1,16 @@
 /**
  * @file shared/editions.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.0.0
+ * @version 3.1.0
  *
  * Cup of News — Edition Registry
  *
  * PHILOSOPHY: 1 edition = 1 language.
  *
  *   The original 8 editions (en-WORLD, en-US, en-CA, en-GB, fr-FR, fr-CA, de-DE, en-AU)
- *   were collapsed to 3 in v2.2.0. In v3.0.0, we expand to 7 languages:
+ *   were collapsed to 3 in v2.2.0. In v3.0.0, we expanded to 7 languages:
  *   English, French, German, Spanish, Portuguese, Chinese, Russian.
+ *   In v3.1.0 we expand further to 9 languages, adding Turkish and Italian.
  *
  *   Each edition is genuinely different — different RSS sources, different topics,
  *   different cultural framing. Chinese readers care about different stories than
@@ -24,6 +25,8 @@
  *   "pt" — Português
  *   "zh" — 中文 (Chinese)
  *   "ru" — Русский (Russian)
+ *   "tr" — Türkçe (Turkish)
+ *   "it" — Italiano (Italian)
  *
  * DEFAULT: English ("en")
  *
@@ -47,7 +50,7 @@
 
 export interface Edition {
   /** BCP 47 language tag — used as DB key and localStorage key */
-  id: "en" | "fr" | "de" | "es" | "pt" | "zh" | "ru";
+  id: "en" | "fr" | "de" | "es" | "pt" | "zh" | "ru" | "tr" | "it";
 
   /** Display name in that language */
   name: string;
@@ -399,6 +402,94 @@ export const EDITIONS: Edition[] = [
       of: "из",
       refreshDigest: "Новый дайджест",
       morningComplete: "Вы прочитали дайджест на сегодня",
+    },
+  },
+
+  // ── Türkçe ───────────────────────────────────────────────────────────────────────
+  {
+    id: "tr",
+    name: "Türkçe",
+    flag: "🇹🇷",
+    language: "tr",
+    languageName: "Türkçe",
+    description: "Türkçe baskı — dünyadan haberler",
+    aiLanguageInstruction:
+      "KESİN KURAL: TÜM alanları TÜRKÇE olarak yaz. " +
+      "This is a Turkish-language edition. Every single output field must be in Turkish: " +
+      "title (başlık), summary (özet), closingQuote (kapanış alıntısı), closingQuoteAuthor (alıntı kaynağı). " +
+      "Başlıklarda veya özetlerde İNGILIZCE kelime KULLANILAMAZ.",
+    aiRegionalFocus:
+      "Türk okuyucular için öncelikli haberler: Türkiye iç siyaseti (TBMM, hükümet, siyasi partiler), " +
+      "Türkiye ekonomisi (TCMB, dolar kuru, enflasyon, piyasalar), " +
+      "Bölgesel siyaset (Orta Doğu, Kafkasya, Balkanlar, NATO), " +
+      "Avrupa Birliği ve Türkiye-AB ilişkileri, " +
+      "Türkiye teknoloji ve girişim ekosistemi. " +
+      "En az 8 uluslararası haber dahil edilmeli (Türkiye dışından). " +
+      "Öncelikli Kaynaklar: BBC Türkçe, DW Türkçe, Bianet, Cumhuriyet, TRT Haber.",
+    aiSportSlot:
+      "futbol (Süper Lig, Milli Takım, UEFA Şampiyonlar Ligi), basketbol (BSL, NBA), tenis, F1",
+    categories: {
+      Technology: "Teknoloji", Science: "Bilim", Business: "Ekonomi",
+      Politics: "Siyaset", World: "Dünya", Culture: "Kültür",
+      Health: "Sağlık", Environment: "Çevre", Sports: "Spor", Other: "Diğer",
+    },
+    ui: {
+      readSources: "Kaynaklara bak",
+      closingThought: "Günün düşüncesi",
+      noDigestYet: "Henüz özet yok",
+      noDigestSub: "Yönetim panelinden bir özet oluşturun ve yayınlayın.",
+      fallbackNotice: "henüz oluşturulmadı — mevcut son baskı gösteriliyor.",
+      generateLink: "Oluştur →",
+      prevStory: "Önceki",
+      nextStory: "Sonraki",
+      allStories: "Tüm haberler",
+      of: "/",
+      refreshDigest: "Yeni özet",
+      morningComplete: "Bugünkü özeti okudunuz",
+    },
+  },
+
+  // ── Italiano ─────────────────────────────────────────────────────────────────────
+  {
+    id: "it",
+    name: "Italiano",
+    flag: "🇮🇹",
+    language: "it",
+    languageName: "Italiano",
+    description: "Edizione italiana — notizie dal mondo",
+    aiLanguageInstruction:
+      "REGOLA ASSOLUTA: Scrivi TUTTI i campi in ITALIANO. " +
+      "This is an Italian-language edition. Every single output field must be in Italian: " +
+      "title (titolo), summary (sintesi), closingQuote (citazione), closingQuoteAuthor (attribuzione). " +
+      "NESSUNA parola in inglese in titoli o sintesi.",
+    aiRegionalFocus:
+      "Priorità alle notizie rilevanti per i lettori italiani: politica italiana (Parlamento, Governo, Quirinale, partiti), " +
+      "economia italiana (FTSE MIB, PMI, disoccupazione, turismo), " +
+      "Unione Europea dalla prospettiva italiana (Italia come quarta economia UE), " +
+      "cultura italiana (cinema, letteratura, gastronomia, moda, design), " +
+      "scienza e tecnologia (ricerca universitaria italiana, startup italiane). " +
+      "Includere almeno 8 notizie di portata internazionale (fuori dall'Italia). " +
+      "Fonti prioritarie: ANSA, Corriere della Sera, La Repubblica, Il Sole 24 Ore, RAI News, La Stampa.",
+    aiSportSlot:
+      "calcio (Serie A, Nazionale italiana, Champions League), Formula 1 (piloti Ferrari), tennis, ciclismo (Giro d’Italia), sci alpino",
+    categories: {
+      Technology: "Tecnologia", Science: "Scienza", Business: "Economia",
+      Politics: "Politica", World: "Mondo", Culture: "Cultura",
+      Health: "Salute", Environment: "Ambiente", Sports: "Sport", Other: "Altro",
+    },
+    ui: {
+      readSources: "Leggi le fonti",
+      closingThought: "Pensiero del giorno",
+      noDigestYet: "Nessuna rassegna ancora",
+      noDigestSub: "Genera e pubblica una rassegna dal pannello di amministrazione.",
+      fallbackNotice: "non ancora generata — viene mostrata l’ultima edizione disponibile.",
+      generateLink: "Genera →",
+      prevStory: "Prec.",
+      nextStory: "Succ.",
+      allStories: "Tutte le notizie",
+      of: "di",
+      refreshDigest: "Nuova rassegna",
+      morningComplete: "Hai letto la rassegna di oggi",
     },
   },
 ];

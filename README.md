@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-3.0.0-red?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-3.1.0-red?style=for-the-badge)
 ![Status](https://img.shields.io/badge/status-stable-brightgreen?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
 ![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
@@ -200,19 +200,19 @@ One real deployment frustration: Fly auto-generates a random app name during set
 
 ## 🌍 Language Editions
 
-As of v3.0.0, Cup of News generates natively in 7 languages. Each edition has its own RSS source set, its own system prompt language, and its own editorial identity.
+As of v3.1.0, Cup of News generates natively in **9 languages**. Each edition has its own RSS source set, its own system prompt language, and its own editorial identity. The principle: 1 edition = 1 language.
 
-| Edition | Language | Flag | RSS Sources | Notes |
+| Edition | Language | Flag | Key Sources | Notes |
 |---------|----------|------|-------------|-------|
-| **en-WORLD** | English | 🌐 | 34+ | Flagship — global perspective, Reuters/BBC/FT/NYT/Economist |
-| **fr-FR** | Français | 🇫🇷 | 34+ | Le Monde, RFI, France 24, Le Figaro, Libération |
-| **de-DE** | Deutsch | 🇩🇪 | 34+ | Der Spiegel, DW, FAZ, Die Zeit, Süddeutsche Zeitung |
-| **es-ES** | Español | 🇪🇸 | 34+ | El País, El Mundo, La Vanguardia, RTVE, Expansión |
-| **pt-PT** | Português | 🇵🇹 | 34+ | Público, Observador, Jornal de Negócios, RTP, Expresso |
-| **zh-CN** | 中文 | 🇨🇳 | 34+ | Independent outlets only — SCMP, Taiwan News, RFI Chinese, VOA Chinese |
-| **ru-RU** | Русский | 🇷🇺 | 34+ | Independent outlets only — Meduza, The Insider, iStories, Novaya Gazeta Europa |
-
-All English sub-editions (en-US, en-CA, en-GB, en-AU, fr-CA) continue to exist alongside the new native-language editions.
+| **en** | English | 🌐 | Reuters, BBC, FT, Economist, NYT, Guardian | Global flagship |
+| **fr** | Français | 🇫🇷 | Le Monde, RFI, France 24, AFP, Le Figaro | French editorial focus |
+| **de** | Deutsch | 🇩🇪 | DW, Spiegel, FAZ, Süddeutsche, Die Zeit | DACH region coverage |
+| **es** | Español | 🇪🇸 | El País, EFE, BBC Mundo, La Vanguardia | Spain + Latin America |
+| **pt** | Português | 🇧🇷 | Folha, G1, Público, JN, Agencia Brasil | Brazil + Portugal blend |
+| **zh** | 中文 | 🇨🇳 | BBC中文, DW中文, RFI中文, 自由亚洲 | Independent outlets only |
+| **ru** | Русский | 🌍 | BBCРусская, DWРусская, Meduza, Радио Свобода | Independent outlets only |
+| **tr** | Türkçe | 🇹🇷 | BBC Türkçe, DW Türkçe, Bianet, Cumhuriyet, TRT Haber | **NEW v3.1.0** |
+| **it** | Italiano | 🇮🇹 | ANSA, Corriere della Sera, La Repubblica, Il Sole 24 Ore | **NEW v3.1.0** |
 
 ---
 
@@ -284,6 +284,22 @@ The implementation: `ThemeProvider.tsx` reads `localStorage('theme')` first. If 
 The practical effect: on most modern devices, the first visit matches system preference. On devices that don't report a media query preference, they get dark. The rationale: Cup of News is a morning reading app. Most mornings involve low ambient light. Dark mode is the safer default.
 
 The CSS is implemented with `data-theme` attribute on `<html>`, not with `prefers-color-scheme` alone. This allows instant toggle without a CSS transition flash — the attribute change is synchronous with the JS, so no white flash on load.
+
+### v3.1.0: Turkish and Italian RSS Landscape
+
+Adding Turkish required navigating a politically complex media landscape. Post-2016, many independent Turkish outlets moved to online-only distribution with no stable RSS. TRT Haber (state broadcaster) publishes reliable RSS but offers a single editorial voice. The solution: anchor on international public broadcasters (BBC Türkçe, DW Türkçe) as the independent spine, then layer domestic outlets (Cumhuriyet, Bianet, NTV) for local texture. Bianet is the de-facto standard for independent Turkish investigative journalism.
+
+For Italian, the main challenge was ANSA feed selection. ANSA publishes 15+ endpoint URLs but the top-news endpoint rotates only 10 headlines — too thin for 20 stories. The solution: combine 3 ANSA feeds (top news + economia + tecnologia) to build a richer pool. Gazzetta dello Sport covers the non-negotiable calcio sport slot — omitting it would make the Italian edition feel culturally wrong to Italian readers.
+
+### v3.1.0: Hard Reload vs. React Query refetch()
+
+The original logo-click called React Query's `refetch()`. This re-fetched `/api/digest/latest` but didn't reload the JavaScript bundle. During the ~30-second window of a Fly.io zero-downtime deployment, a user who clicked the logo would see "digest refreshed" but still run old code. `window.location.reload()` is the only reliable guarantee the user gets the latest bundle.
+
+The 1250ms spinner before the reload serves two purposes: (1) it makes the click feel intentional rather than accidental, and (2) it gives the `logoSpinning` state time to render the animation before React unmounts. A `disabled={logoSpinning}` guard prevents double-click race conditions.
+
+### v3.1.0: Landing Page Copy Archaeology
+
+The cupof.news landing page had accumulated contradictory version references across 15+ development sessions. The stat counter showed "8" (from v2.0.0's 8-edition era). The editions section heading said "3 World Editions" (from when there were only EN/FR/DE). Body copy in three different sections still referenced the old model. Rather than patching, the entire page was rewritten from scratch with a fresh `grep` audit at the end: zero occurrences of "8 editions", "3 languages", "3 world editions".
 
 ### React Query `refetch()` vs. Page Reload for Refresh UX
 
@@ -507,6 +523,7 @@ Full history with engineering narrative: **[CHANGELOG.md](./CHANGELOG.md)**
 
 | Version | Date | Summary |
 |---------|------|---------|
+| **3.1.0** | 2026-03-25 | Turkish + Italian editions (9 languages total), logo hard-refresh (1250ms spinner + window.location.reload()), landing page full rewrite |
 | **3.0.0** | 2026-03-23 | 4 new native language editions (ES, PT, ZH, RU), select dropdown lang switcher, Unicode dedup, dark mode default, React Query refresh UX |
 | 2.0.2 | 2026-03-23 | Storage snake_case bug fix, DigestTab edition, typography calibration |
 | 2.0.1 | 2026-03-23 | Responsive typography fix: leading-[3.0] → 1.9/2.2/2.6 per breakpoint |
@@ -528,9 +545,9 @@ Full history with engineering narrative: **[CHANGELOG.md](./CHANGELOG.md)**
 
 ## 🗺️ Roadmap
 
-**v3.0.0 shipped.** 7 native language editions (EN/FR/DE/ES/PT/ZH/RU), Unicode deduplication, dark mode default, React Query refresh UX, select dropdown language switcher on landing page.
+**v3.1.0 shipped.** 9 native language editions (EN/FR/DE/ES/PT/ZH/RU/TR/IT), logo hard-refresh UX, complete landing page rewrite removing all legacy edition references.
 
-### v3.1 — Delivery & Channels
+### v3.2 — Delivery & Channels
 - 📧 Email delivery (Postmark / Resend) — digest in your inbox at 6 AM
 - 📱 Telegram bot — `/add <url>` and `/digest` commands
 - 🔔 Push notifications via Capacitor — native 6 AM alert

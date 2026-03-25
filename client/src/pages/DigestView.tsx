@@ -1,7 +1,7 @@
 /**
  * @file client/src/pages/DigestView.tsx
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.0.0
+ * @version 3.1.0
  *
  * Cup of News — Public Digest Reader
  *
@@ -98,6 +98,23 @@ export default function DigestView() {
   const [cardIndex, setCardIndex] = useState(0);
   const [showGrid, setShowGrid] = useState(false);
   const { edition, setEdition } = useEdition();
+
+  // ── Logo hard-refresh state (v3.1.0) ───────────────────────────────────────
+  // When the user clicks the C logo:
+  //   1. The icon switches from "C" to a spinning RefreshCw for exactly 1250ms.
+  //   2. After 1250ms we call window.location.reload() — a hard page reload.
+  //      Hard reload (not refetch()) is intentional: it forces the browser to
+  //      re-download the JS bundle, catching any new deployment that a React
+  //      Query refetch() would miss.
+  const [logoSpinning, setLogoSpinning] = useState(false);
+
+  const handleLogoClick = () => {
+    if (logoSpinning) return; // prevent double-click during animation
+    setLogoSpinning(true);
+    setTimeout(() => {
+      window.location.reload();
+    }, 1250);
+  };
 
   // When the edition changes, reset to first card
   const handleEditionChange = (e: typeof edition) => {
@@ -199,16 +216,33 @@ export default function DigestView() {
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="flex-shrink-0 border-b border-border bg-background z-10">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-3">
-          {/* Logo — hover shows refresh icon, click refreshes digest */}
+          {/* Logo (v3.1.0 refresh behaviour)
+               Normal state : shows "C" in red square.
+               Hover state  : "C" is replaced by a RefreshCw icon (CSS group-hover).
+               Click        : logoSpinning = true → RefreshCw spins for 1250ms
+                              then window.location.reload() fires a hard page reload.
+               Hard reload vs React Query refetch():
+                 refetch() only re-requests /api/digest/latest — it won’t pick up
+                 a new JS bundle deployment. window.location.reload() guarantees
+                 the user always runs the latest version after a click. */}
           <button
-            onClick={() => { setCardIndex(0); setShowGrid(false); refetch(); }}
+            onClick={handleLogoClick}
             className="group flex items-center gap-2 flex-shrink-0 transition-opacity"
-            aria-label="Refresh digest"
-            title="Refresh digest"
+            aria-label="Refresh page"
+            title="Refresh page"
+            disabled={logoSpinning}
           >
             <div className="w-8 h-8 bg-[#E3120B] flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110">
-              <span className="block group-hover:hidden text-white font-black text-sm font-display tracking-tight">C</span>
-              <RefreshCw size={14} className="hidden group-hover:block text-white" />
+              {logoSpinning ? (
+                /* Spinning state: CSS animation via inline style + Tailwind animate-spin */
+                <RefreshCw size={14} className="text-white animate-spin" />
+              ) : (
+                <>
+                  {/* Default: show "C"; on hover: show static RefreshCw */}
+                  <span className="block group-hover:hidden text-white font-black text-sm font-display tracking-tight">C</span>
+                  <RefreshCw size={14} className="hidden group-hover:block text-white" />
+                </>
+              )}
             </div>
           </button>
 

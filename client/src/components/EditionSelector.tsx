@@ -1,21 +1,21 @@
 /**
  * @file client/src/components/EditionSelector.tsx
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.0.0
+ * @version 3.1.0
  *
  * Cup of News — Edition Selector Dropdown
  *
  * Displays the current edition as a flag in the header.
- * Clicking opens a dropdown listing all 7 language editions.
- * Selection is persisted in localStorage under key "cup_edition".
+ * Clicking opens a dropdown listing all 9 language editions.
+ * Selection is persisted in localStorage under key "cup_edition_v3".
+ *
+ * v3.1.0: Turkish (🇹🇷) and Italian (🇮🇹) editions added — 9 total.
  *
  * Design decisions:
- *   - The dropdown opens upward on mobile (where the header is near the bottom
- *     of the nav bar) and downward on desktop — handled via CSS positioning.
+ *   - The dropdown opens downward, right-aligned to the trigger button.
  *   - Clicking outside closes the dropdown (useEffect + mousedown listener).
  *   - The flag emoji is universally supported on modern iOS/Android/desktop.
- *   - Language grouping (English / Français / Deutsch) makes the picker
- *     scannable at a glance without requiring the user to read all 8 names.
+ *   - Flat list (no grouping) — 9 editions remain scannable in a single column.
  */
 
 import { useState, useRef, useEffect } from "react";
@@ -28,7 +28,7 @@ interface Props {
   onChange: (edition: Edition) => void;
 }
 
-// 7 editions — flat list (no grouping needed)
+// 9 editions — flat list (no grouping needed)
 
 export function EditionSelector({ current, onChange }: Props) {
   const [open, setOpen] = useState(false);
@@ -82,7 +82,7 @@ export function EditionSelector({ current, onChange }: Props) {
             </p>
           </div>
 
-          {/* 7 editions — flat list */}
+          {/* 9 editions — flat list */}
           {EDITIONS.map(edition => (
             <button
               key={edition.id}
@@ -113,7 +113,7 @@ export function EditionSelector({ current, onChange }: Props) {
           {/* Footer */}
           <div className="px-4 py-2 border-t border-border bg-muted/20">
             <p className="text-[9px] text-muted-foreground font-ui">
-              7 languages · each edition generates independently
+              9 languages · each edition generates independently
             </p>
           </div>
         </div>
@@ -124,7 +124,7 @@ export function EditionSelector({ current, onChange }: Props) {
 
 // ─── Hook: persist edition in localStorage ────────────────────────────────────
 
-const STORAGE_KEY = "cup_edition_v3"; // v3.0.0: reset key (7 editions: en/fr/de/es/pt/zh/ru)
+const STORAGE_KEY = "cup_edition_v3"; // v3.0.0+: supports 9 editions (en/fr/de/es/pt/zh/ru/tr/it)
 
 export function useEdition() {
   const getSaved = (): Edition => {

@@ -1,3 +1,111 @@
+## [3.1.0] — 2026-03-25
+
+**9 languages. Turkish & Italian editions. Logo hard-refresh. Landing page rewrite.**
+
+### New language editions
+Two new editions added to Cup of News: Turkish (tr 🇹🇷) and Italian (it 🇮🇹).
+The platform now covers 9 native-language editions. Each new edition ships with:
+  - Its own curated RSS source pool (12-14 native-language sources each)
+  - AI generation instructions reinforced in both English and the target language
+  - Fully localised UI strings (readSources, closingThought, prevStory, etc.)
+  - Cultural/editorial focus instructions (sport slots, regional priorities)
+  - Category name palette in the target language for AI JSON output
+
+#### Turkish (tr 🇹🇷)
+  - Sources: BBC Türkçe, DW Türkçe, TRT Haber, Cumhuriyet, Bianet, NTV, Hürriyet,
+    Sözcü, Sabah (tech), Dünya Gazetesi — 12 Turkish + 2 English wire
+  - Regional focus: Turkish domestic politics (TBMM, parties), economy (TCMB, lira,
+    inflation), regional geopolitics (Middle East, Caucasus, Balkans, NATO),
+    Turkey-EU relations, Turkish tech/startup ecosystem
+  - Sport slot: Süper Lig, Milli Takım, UEFA Champions League, BSL basketball, F1
+
+#### Italian (it 🇮🇹)
+  - Sources: ANSA (3 feeds: top news, economy, technology), Corriere della Sera,
+    La Repubblica, Il Sole 24 Ore (2 feeds), RAI News, La Stampa, TGCom24,
+    Gazzetta dello Sport, DW Italiano — 12 Italian + 2 English wire
+  - Regional focus: Italian politics (Parlamento, Governo, Quirinale), economy
+    (FTSE MIB, PMI, turismo), EU from Italian perspective (4th largest EU economy),
+    Italian culture (cinema, letteratura, gastronomia, moda, design), science/startups
+  - Sport slot: Serie A, Formula 1 (Ferrari), tennis, Giro d'Italia, sci alpino
+
+### Logo hard-refresh (v3.1.0 UX fix)
+Previous behaviour: clicking the red "C" logo called React Query's `refetch()`,
+which re-fetched `/api/digest/latest` but did NOT reload the JS bundle.
+If a new version was deployed, users were still running stale JS until a manual
+browser reload — a silent versioning trap.
+
+New behaviour (3 states):
+  1. **Normal**: shows "C" in red square.
+  2. **Hover**: "C" switches to RefreshCw icon (CSS `group-hover`).
+  3. **Click**: `logoSpinning = true` → RefreshCw gains `animate-spin` for exactly
+     1250ms → `window.location.reload()` forces a full hard reload, re-downloading
+     the JS bundle, ensuring the user runs the latest deployed version.
+
+The 1250ms duration was chosen as the shortest interval that feels intentional
+rather than a glitch, while still being short enough not to frustrate the user.
+`disabled={logoSpinning}` prevents double-click race conditions during the animation.
+
+### Landing page (cupof.news) — complete rewrite
+The landing page was rebuilt from scratch to reflect the real v3.1.0 product.
+Every section was rewritten with accurate information:
+
+**Removed (wrong):**
+  - "3 World Editions" section header
+  - "Available in 3 editions — English, Français, Deutsch" body copy
+  - The stat counter showing "8" (was a leftover from the 8-edition era of v2.0.0)
+  - Any copy mentioning "8 editions"
+
+**Added/updated:**
+  - Stat counter: 9 (language editions)
+  - All 9 editions shown in the editions grid with flag, name, native description
+  - Turkish and Italian cards in the editions grid, marked "NEW v3.1.0"
+  - Language <select> dropdown now includes 🇹🇷 TR and 🇮🇹 IT
+  - Full native-quality translations for Turkish and Italian across all page keys
+  - sources_note: "✦ 9 native languages since v3.1.0"
+  - Version badge: v3.1.0
+
+### GitHub repo description updated
+New: "☕ AI morning briefing: 20 stories, 6 AM daily. 9 languages. Self-hosted.
+One API key. Gemini 2.5 Pro · React · Express · SQLite · Fly.io"
+
+---
+
+### Challenges & how they were fixed
+
+**Challenge 1: Turkish RSS landscape**
+Turkish media presents a fragmented RSS landscape. Post-2016, several independent
+outlets (140journos, Gazete Duvar) have inconsistent or paywalled RSS. Large conglomerates
+(Hürriyet, Sabah) publish RSS but freshness and CORS vary by endpoint. The strategy:
+anchor on international public broadcasters (BBC Türkçe, DW Türkçe) as the reliable
+spine, then add domestic outlets (Cumhuriyet, NTV, TRT Haber) for local coverage.
+Bianet is included as the primary independent investigative voice.
+Total source count: 14 (12 Turkish + 2 English wire fallback).
+
+**Challenge 2: Italian RSS — ANSA feed selection**
+ANSA publishes many RSS endpoints but naming is inconsistent. Their main feed
+`/sito/notizie/topnews/topnews_rss.xml` carries top-10 rotating headlines,
+not a full stream. We combine 3 ANSA feeds (top news + economia + tecnologia)
+to get broader coverage. Corriere della Sera uses `xml2.corrieredellasera.it`
+(not the main domain) which requires the `atomStyle: false` default (plain RSS,
+not Atom). The Gazzetta dello Sport feed covers the mandatory calcio slot which
+is culturally non-negotiable for Italian readers.
+
+**Challenge 3: The "8 editions" ghost**
+The stat counter on cupof.news had been showing "8" since v2.0.0. In v3.0.0 it
+was updated to "7" in the stat number but the section heading still said
+"3 World Editions" — a copy/paste error from the initial v3.0.0 landing rewrite
+where the features section body copy referenced the old 3-edition world.
+v3.1.0 audit caught every instance: grep confirmed zero occurrences of
+"8 editions", "3 languages", "3 editions", "3 world editions" in the new file.
+
+**Challenge 4: Hard reload vs React Query refetch()**
+The original logo-click called `refetch()` then `setCardIndex(0)`. During a
+deployment window (Fly.io zero-downtime deploys take ~30s), a user who had the
+app open would click the logo, see "New digest loaded", but still be running the
+old JS bundle. `window.location.reload()` is the only reliable way to guarantee
+the user gets the latest bundle. The 1250ms spinner makes the reload feel
+intentional — not an accidental page refresh.
+
 ## [3.0.0] — 2026-03-23
 
 **7 languages. Dark mode default. Refresh UX. Repo overhaul.**
