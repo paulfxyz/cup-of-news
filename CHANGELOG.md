@@ -1,3 +1,58 @@
+## [3.2.2] — 2026-03-25
+
+**Modal click-outside close. Card slide animations. Triple-click logo generates new digest.**
+
+### 1. Sources modal — click outside to close
+
+The sources modal now closes when the user taps the dark backdrop, consistent
+with every other modal pattern on mobile. Implementation:
+- Outer backdrop div gets `onClick={() => setOpen(false)}`
+- Inner modal card gets `onClick={e => e.stopPropagation()}` to prevent the
+  close from firing when interacting with the card content
+- No library required — 2 lines of JSX
+
+### 2. Card slide animation
+
+Every card transition now plays a 280ms directional slide:
+- Next (→): incoming card slides in from the right (`translateX(48px → 0)`)
+- Prev (←): incoming card slides in from the left (`translateX(-48px → 0)`)
+- Easing: `cubic-bezier(0.25, 0.46, 0.45, 0.94)` — iOS-style ease-out
+- Triggered by: keyboard arrows, swipe, prev/next buttons, progress dots, grid select
+
+Implementation: `slideDir` state + `slideKey` counter. Bumping `slideKey` causes
+React to re-mount the wrapper div, which restarts the CSS animation. This is
+simpler and more reliable than using `animation-play-state` or removing/re-adding
+classes. CSS keyframes are injected inline so there's no build-step dependency.
+
+Why 48px and not 100%: at 100% viewport width the slide is too dramatic on
+large screens — the story headline visually "flies" across. 48px is enough to
+communicate direction without being distracting.
+
+### 3. Triple-click logo → generate new digest
+
+Single click: unchanged — 1250ms spin → `window.location.reload()`
+
+Triple click (3 clicks within 500ms window):
+1. Reads admin key from localStorage (`adminKey` — same key as AdminPage)
+2. If no key found: redirects to `/#/admin` so user can authenticate first
+3. Shows Loader2 spinner on the logo + elapsed-seconds counter (`3s`, `4s`…)
+   so the user knows a ~30-90s operation is running
+4. `POST /api/digest/generate` with `{ edition: edition.id }` + `x-admin-key`
+5. On 200 or 409 (already exists): 400ms pause → `window.location.reload()`
+6. On error: amber flash with X icon for 3s, then resets to normal
+
+Why 500ms window for triple-click detection:
+- Below 300ms: double-taps on mobile trigger it accidentally
+- Above 700ms: the user has to slow down too much to feel intentional
+- 500ms is the standard browser double-click threshold
+
+Why 409 is treated as success:
+- If a digest already exists for today, the user still gets a hard reload
+  which picks up the latest bundle and refreshes the UI
+- No error message needed — "digest exists" is not a failure state
+
+---
+
 ## [3.2.1] — 2026-03-25
 
 **Twice-daily digest generation. Fly.io redeploy. Siteground landing page deployed via FTP.**

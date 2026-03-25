@@ -1,7 +1,7 @@
 /**
  * @file client/src/pages/DigestView.tsx
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.2.1
+ * @version 3.2.2
  *
  * Cup of News — Public Digest Reader
  *
@@ -65,7 +65,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
-  Sun, Moon, ArrowUpRight, ChevronLeft, ChevronRight, LayoutGrid, X, Rss, RefreshCw
+  Sun, Moon, ArrowUpRight, ChevronLeft, ChevronRight, LayoutGrid, X, Rss, RefreshCw, Loader2
 } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import { EditionSelector, useEdition } from "@/components/EditionSelector";
@@ -99,22 +99,131 @@ export default function DigestView() {
   const [showGrid, setShowGrid] = useState(false);
   const { edition, setEdition } = useEdition();
 
-  // ── Logo hard-refresh state (v3.1.0) ───────────────────────────────────────
-  // When the user clicks the C logo:
-  //   1. The icon switches from "C" to a spinning RefreshCw for exactly 1250ms.
-  //   2. After 1250ms we call window.location.reload() — a hard page reload.
-  //      Hard reload (not refetch()) is intentional: it forces the browser to
-  //      re-download the JS bundle, catching any new deployment that a React
-  //      Query refetch() would miss.
-  const [logoSpinning, setLogoSpinning] = useState(false);
+  // ── Card slide animation (v3.2.2) ─────────────────────────────────────────
+  // On every card navigation (next/prev/keyboard/swipe/dot/grid), we:
+  //   1. Set slideDir to "left" or "right" (determines animation direction)
+  //   2. Bump a slideKey so React re-mounts the animated wrapper → triggers CSS
+  //   3. The CSS keyframe runs once (animation-fill-mode: both, iteration: 1)
+  // We do NOT use React transition libraries — inline keyframes keep the bundle
+  // small and avoid SSR/hydration complications.
+  const [slideDir, setSlideDir] = useState<"left" | "right" | null>(null);
+  const [slideKey, setSlideKey] = useState(0);
 
-  const handleLogoClick = () => {
-    if (logoSpinning) return; // prevent double-click during animation
-    setLogoSpinning(true);
-    setTimeout(() => {
-      window.location.reload();
-    }, 1250);
-  };
+  const triggerSlide = useCallback((dir: "left" | "right") => {
+    setSlideDir(dir);
+    setSlideKey(k => k + 1);
+  }, []);
+
+  // ── Logo click state (v3.2.2) ─────────────────────────────────────────────
+  //
+  // Single click : standard hard reload (1250ms spin → window.location.reload())
+  // Triple click  : generate a new digest for the current edition, then reload.
+  //
+  // Triple-click detection:
+  //   We track consecutive clicks within a 500ms window. On the 3rd click the
+  //   logo enters "generating" mode: shows a Loader2 spinner and calls
+  //   POST /api/digest/generate for the current edition. The admin key is read
+  //   from localStorage (same key AdminPage uses). While generating, a countdown
+  //   timer shows elapsed seconds so the user knows it's working (~30-90s).
+  //   On success we hard-reload. On error we show a brief error state then reset.
+  //
+  // Why read adminKey from localStorage:
+  //   DigestView is a public reader — it has no auth gate. But the generate
+  //   endpoint requires x-admin-key. We read from localStorage('adminKey') where
+  //   AdminPage stores it. If not present, we degrade gracefully: alert the user
+  //   and redirect to /#/admin so they can authenticate first.
+  //
+  // Why hard reload after generate (not refetch()):
+  //   Same reason as before — ensures the latest JS bundle is loaded, not just
+  //   the latest data. See v3.1.0 notes above for full rationale.
+
+  const [logoSpinning,   setLogoSpinning]   = useState(false);
+  const [logoGenerating, setLogoGenerating] = useState(false);
+  const [logoError,      setLogoError]      = useState(false);
+  const [generateSecs,   setGenerateSecs]   = useState(0);
+  const logoClickCount   = useRef(0);
+  const logoClickTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const generateInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const handleLogoClick = useCallback(() => {
+    // Block all clicks while an operation is already running
+    if (logoSpinning || logoGenerating) return;
+
+    logoClickCount.current += 1;
+
+    // Clear any existing reset timer
+    if (logoClickTimer.current) clearTimeout(logoClickTimer.current);
+
+    if (logoClickCount.current >= 3) {
+      // ── Triple click: generate a new digest ────────────────────────────────
+      logoClickCount.current = 0;
+
+      const adminKey = localStorage.getItem('adminKey') || localStorage.getItem('cup_admin_key') || '';
+      if (!adminKey) {
+        // No key stored — send to admin to authenticate first
+        window.location.href = '/#/admin';
+        return;
+      }
+
+      setLogoGenerating(true);
+      setGenerateSecs(0);
+      setLogoError(false);
+
+      // Live elapsed-second counter — reassures the user during 30-90s generation
+      let secs = 0;
+      generateInterval.current = setInterval(() => {
+        secs += 1;
+        setGenerateSecs(secs);
+      }, 1000);
+
+      fetch('/api/digest/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': adminKey,
+        },
+        body: JSON.stringify({ edition: edition.id }),
+      })
+        .then(async (res) => {
+          if (generateInterval.current) clearInterval(generateInterval.current);
+          if (res.ok || res.status === 409) {
+            // 200 = new digest generated; 409 = already exists for today (still ok)
+            // Either way, reload to pick up the freshest content + latest bundle
+            setTimeout(() => window.location.reload(), 400);
+          } else {
+            // API returned an unexpected error — show error state briefly then reset
+            setLogoError(true);
+            setLogoGenerating(false);
+            setTimeout(() => setLogoError(false), 3000);
+          }
+        })
+        .catch(() => {
+          if (generateInterval.current) clearInterval(generateInterval.current);
+          setLogoError(true);
+          setLogoGenerating(false);
+          setTimeout(() => setLogoError(false), 3000);
+        });
+
+    } else {
+      // ── Single / double click: schedule a hard reload after 500ms window ──
+      // If a 3rd click doesn't arrive within 500ms, treat as single-click reload
+      logoClickTimer.current = setTimeout(() => {
+        if (logoClickCount.current < 3) {
+          logoClickCount.current = 0;
+          setLogoSpinning(true);
+          setTimeout(() => window.location.reload(), 1250);
+        }
+      }, 500);
+    }
+  }, [logoSpinning, logoGenerating, edition.id]);
+
+  // Clean up timers on unmount
+  useEffect(() => {
+    return () => {
+      if (logoClickTimer.current)   clearTimeout(logoClickTimer.current);
+      if (generateInterval.current) clearInterval(generateInterval.current);
+    };
+  }, []);
 
   // When the edition changes, reset to first card
   const handleEditionChange = (e: typeof edition) => {
@@ -138,12 +247,20 @@ export default function DigestView() {
   const isQuoteCard = digest ? cardIndex === digest.stories.length : false;
 
   const goNext = useCallback(() => {
-    setCardIndex(i => Math.min(i + 1, totalCards - 1));
-  }, [totalCards]);
+    setCardIndex(i => {
+      if (i >= totalCards - 1) return i;
+      triggerSlide("left");
+      return i + 1;
+    });
+  }, [totalCards, triggerSlide]);
 
   const goPrev = useCallback(() => {
-    setCardIndex(i => Math.max(i - 1, 0));
-  }, []);
+    setCardIndex(i => {
+      if (i <= 0) return i;
+      triggerSlide("right");
+      return i - 1;
+    });
+  }, [triggerSlide]);
 
   // ── Keyboard navigation ────────────────────────────────────────────────────
   useEffect(() => {
@@ -225,25 +342,46 @@ export default function DigestView() {
                  refetch() only re-requests /api/digest/latest — it won’t pick up
                  a new JS bundle deployment. window.location.reload() guarantees
                  the user always runs the latest version after a click. */}
+          {/* Logo (v3.2.2 triple-click generate)
+               1 click  : 500ms window, then 1250ms spin → hard reload
+               3 clicks : generate new digest for current edition → reload
+               Generating state shows Loader2 spinner + elapsed seconds tooltip
+               Error state flashes red briefly then resets */}
           <button
             onClick={handleLogoClick}
             className="group flex items-center gap-2 flex-shrink-0 transition-opacity"
-            aria-label="Refresh page"
-            title="Refresh page"
-            disabled={logoSpinning}
+            aria-label={logoGenerating ? "Generating digest…" : logoError ? "Error — try again" : "Click to refresh · Triple-click to generate new digest"}
+            title={logoGenerating ? `Generating ${edition.name} digest… ${generateSecs}s` : logoError ? "Generation failed — check admin key" : "Click to refresh · Triple-click to generate new digest"}
+            disabled={logoSpinning || logoGenerating}
           >
-            <div className="w-8 h-8 bg-[#E3120B] flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110">
-              {logoSpinning ? (
-                /* Spinning state: CSS animation via inline style + Tailwind animate-spin */
+            <div className={`w-8 h-8 flex items-center justify-center flex-shrink-0 transition-all ${
+              logoError      ? "bg-amber-500"  :
+              logoGenerating ? "bg-[#E3120B]"  :
+              "bg-[#E3120B] group-hover:scale-110"
+            }`}>
+              {logoGenerating ? (
+                /* Generating: Loader2 spins while fetch is in-flight */
+                <Loader2 size={14} className="text-white animate-spin" />
+              ) : logoSpinning ? (
+                /* Single-click reload: RefreshCw spins for 1250ms */
                 <RefreshCw size={14} className="text-white animate-spin" />
+              ) : logoError ? (
+                /* Error flash: show X briefly */
+                <X size={14} className="text-white" />
               ) : (
                 <>
-                  {/* Default: show "C"; on hover: show static RefreshCw */}
+                  {/* Default: "C"; hover: static RefreshCw */}
                   <span className="block group-hover:hidden text-white font-black text-sm font-display tracking-tight">C</span>
                   <RefreshCw size={14} className="hidden group-hover:block text-white" />
                 </>
               )}
             </div>
+            {/* Elapsed seconds badge — only visible during generation */}
+            {logoGenerating && generateSecs > 0 && (
+              <span className="text-[10px] font-black font-ui text-[#E3120B] tabular-nums">
+                {generateSecs}s
+              </span>
+            )}
           </button>
 
           {/* Progress dots — centred, fills remaining space */}
@@ -251,7 +389,7 @@ export default function DigestView() {
             {digest.stories.map((_, i) => (
               <button
                 key={i}
-                onClick={() => setCardIndex(i)}
+                onClick={() => { triggerSlide(i > cardIndex ? 'left' : 'right'); setCardIndex(i); }}
                 aria-label={`Story ${i + 1}`}
                 className={`rounded-full transition-all duration-200 flex-shrink-0 ${
                   i === cardIndex
@@ -264,7 +402,7 @@ export default function DigestView() {
             ))}
             {/* Quote dot */}
             <button
-              onClick={() => setCardIndex(digest.stories.length)}
+              onClick={() => { triggerSlide('left'); setCardIndex(digest.stories.length); }}
               aria-label="Closing quote"
               className={`rounded-full transition-all duration-200 flex-shrink-0 ${
                 isQuoteCard ? "w-5 h-1.5 bg-[#E3120B]" : "w-1.5 h-1.5 bg-border"
@@ -301,20 +439,43 @@ export default function DigestView() {
         <GridOverlay
           digest={digest}
           activeIndex={cardIndex}
-          onSelect={i => { setCardIndex(i); setShowGrid(false); }}
+          onSelect={i => { triggerSlide(i > cardIndex ? 'left' : 'right'); setCardIndex(i); setShowGrid(false); }}
           onClose={() => setShowGrid(false)}
           edition={edition}
         />
       )}
 
       {/* ── Card area ───────────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto">
-        {isQuoteCard
-          ? <QuoteCard quote={digest.closingQuote} author={digest.closingQuoteAuthor} date={digest.date} label={edition.ui.closingThought} refreshLabel={edition.ui.refreshDigest} morningComplete={edition.ui.morningComplete} onRefresh={() => { refetch(); setCardIndex(0); }} />
-          : story
-          ? <StoryCard story={story} index={cardIndex} total={digest.stories.length} edition={edition} />
-          : null
+      {/* Slide animation (v3.2.2):
+           On every navigation we bump slideKey which re-mounts this div,
+           restarting the CSS animation. slideDir controls which direction
+           the incoming card slides in from (left=next, right=prev).
+           duration: 280ms — snappy but not jarring on mobile.
+           easing: cubic-bezier(0.25, 0.46, 0.45, 0.94) — iOS-style ease-out */}
+      <style>{`
+        @keyframes slide-in-left {
+          from { opacity: 0; transform: translateX(48px);  }
+          to   { opacity: 1; transform: translateX(0); }
         }
+        @keyframes slide-in-right {
+          from { opacity: 0; transform: translateX(-48px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        .card-slide-left  { animation: slide-in-left  280ms cubic-bezier(0.25,0.46,0.45,0.94) both; }
+        .card-slide-right { animation: slide-in-right 280ms cubic-bezier(0.25,0.46,0.45,0.94) both; }
+      `}</style>
+      <div className="flex-1 overflow-y-auto">
+        <div
+          key={slideKey}
+          className={slideDir === "left" ? "card-slide-left" : slideDir === "right" ? "card-slide-right" : undefined}
+        >
+          {isQuoteCard
+            ? <QuoteCard quote={digest.closingQuote} author={digest.closingQuoteAuthor} date={digest.date} label={edition.ui.closingThought} refreshLabel={edition.ui.refreshDigest} morningComplete={edition.ui.morningComplete} onRefresh={() => { triggerSlide("left"); refetch(); setCardIndex(0); }} />
+            : story
+            ? <StoryCard story={story} index={cardIndex} total={digest.stories.length} edition={edition} />
+            : null
+          }
+        </div>
       </div>
 
       {/* ── Navigation bar ──────────────────────────────────────────────────── */}
@@ -381,9 +542,19 @@ function SourcesStoryModal({ story, readSourcesLabel = "Read sources" }: { story
         )}
       </button>
 
+      {/* Modal (v3.2.2): clicking the dark backdrop (outside the card) closes it.
+           stopPropagation on the inner div prevents the close from firing when
+           the user clicks inside the card itself. */}
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm px-0 sm:px-6">
-          <div className="bg-card w-full sm:max-w-lg border border-border sm:rounded-none shadow-2xl">
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm px-0 sm:px-6"
+          onClick={() => setOpen(false)}
+          aria-label="Close modal"
+        >
+          <div
+            className="bg-card w-full sm:max-w-lg border border-border sm:rounded-none shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
             {/* Header */}
             <div className="border-b-2 border-[#E3120B] px-6 py-4 flex items-start justify-between gap-4">
               <div>
