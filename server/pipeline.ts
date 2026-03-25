@@ -1,7 +1,7 @@
 /**
  * @file server/pipeline.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.4.7
+ * @version 3.4.8
  *
  * Cup of News — Daily Digest Generation Pipeline
  *
@@ -380,12 +380,15 @@ function generateCategoryImage(title: string, category: string): string {
  *   5 queries cover: person name, action, location, topic, visual concept.
  *   First hit wins — no AI ranking of results needed.
  *
- * FULL FALLBACK CHAIN (v3.4.0):
+ * FULL FALLBACK CHAIN (v3.4.8):
  *   1. Jina Reader og:image (already run during extraction)
  *   2. Direct HTML Range fetch (already run)
- *   3. [NEW] AI 5-query → Wikimedia Commons best landscape photo
+ *   3. AI 5-query → Wikimedia Commons, vision-checked (score ≥ 7)
  *   4. Unsplash (if UNSPLASH_ACCESS_KEY set)
- *   5. picsum.photos deterministic seed (always works, not semantically wrong)
+ *   5. null → caller uses generateCategoryImage SVG (correct, on-brand, zero cost)
+ *
+ * picsum.photos removed: random photos are worse than the SVG fallback.
+ * A wolf photo is not better than a branded Technology SVG for a tech story.
  */
 async function fetchEditorialImage(
   title: string,
@@ -407,9 +410,10 @@ async function fetchEditorialImage(
     if (unsplashResult) return unsplashResult;
   }
 
-  // ── Tier 5: picsum.photos deterministic seed ─────────────────────────────
-  const seed = sha256(title).slice(0, 8);
-  return `https://picsum.photos/seed/${seed}/800/450`;
+  // ── Tier 5: null → caller generates category SVG ─────────────────────────
+  // picsum.photos removed: a random photo is worse than the branded SVG fallback.
+  // The SVG always contains the correct category colour and the story headline.
+  return null;
 }
 
 /**
@@ -562,9 +566,9 @@ Summary: "${summary.slice(0, 300)}"`;
  *   7-9 = clearly relevant editorial photo
  *   10  = perfect (shows the exact event, person, or place in the headline)
  *
- * Accept threshold: score >= 5 (tangentially related real photo is OK).
- * Fail-open: if the API errors or returns unparseable JSON, return 7 (accept).
- *   A slightly wrong image is better than a picsum placeholder.
+ * Accept threshold: score >= 7 (clearly relevant images only).
+ * Fail-open: if the API errors or returns unparseable JSON, return 4 (skip).
+ *   An SVG category placeholder is better than a wolf photo for a military story.
  *
  * @param imageUrl  - Wikimedia 1280px thumb URL
  * @param storyTitle - The story headline (used to judge relevance)
@@ -576,27 +580,30 @@ async function checkImageRelevanceWithVision(
   storyTitle: string,
   apiKey: string
 ): Promise<number> {
-  const VISION_PROMPT = `You are a photo editor at a news organisation. Evaluate this image for use as a news photo.
+  const VISION_PROMPT = `You are a strict photo editor at a major news publication. Your job is to REJECT images that would embarrass the publication.
 
 Story headline: "${storyTitle.slice(0, 100)}"
 
-GATE 1 — Is this a real editorial photograph?
-Score 0 immediately and reject if ANY of these:
-- Video game screenshot or CGI render
-- Museum exhibit, educational wall poster, or anatomical diagram
+GATE 1 — HARD REJECT (score 0) if ANY of these:
+- Video game screenshot, CGI, or 3D render
+- Museum exhibit, educational diagram, or anatomical chart
 - Infographic, data chart, map, or illustration
-- Historical painting or drawing
+- Historical painting, drawing, or artistic work
 - Logo, icon, or graphic design
+- Wildlife / nature photo (animals, plants, forests, landscapes) UNLESS the headline is directly about wildlife or nature
+- Generic stock-looking photo (bokeh backgrounds, autumn leaves, abstract textures)
+- Unrelated person, building, or scene with no connection to the headline
 
-GATE 2 — Is it relevant to the headline? (only if Gate 1 passed)
-Score 7-10: clearly shows the event, people, place, or objects in the headline
-Score 5-6: tangentially related — same country, same general topic, real photo
-Score 0-4: misleading or unrelated even if it's a real photo
+GATE 2 — Score ONLY if Gate 1 passed:
+Score 8-10: directly shows the specific event, person, place, or object in the headline
+Score 7: clearly related — right country, right organization, right topic
+Score 4-6: vaguely related — same broad theme but could illustrate any story
+Score 0-3: misleading or wrong even if it is a real photo
 
-Be strict. When in doubt, score low.
+Threshold: only scores 7+ are accepted. Be harsh. If unsure, score 4.
 
 Return ONLY valid JSON, no markdown:
-{"is_photo": true/false, "score": 0-10, "verdict": "accept" or "reject"}`;
+{"is_photo": true/false, "score": 0-10, "reason": "one line"}`;
 
   try {
     const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -608,7 +615,7 @@ Return ONLY valid JSON, no markdown:
         "X-Title": "Cup of News",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.0-flash-lite-001",
+        model: "google/gemini-2.0-flash-001",  // flash (not lite) — better relevance judgment
         messages: [{
           role: "user",
           content: [
@@ -622,7 +629,7 @@ Return ONLY valid JSON, no markdown:
             { type: "text", text: VISION_PROMPT },
           ],
         }],
-        max_tokens: 60,
+        max_tokens: 80,
         temperature: 0,  // deterministic — same image always gets same score
       }),
       signal: AbortSignal.timeout(8_000),  // 8s max — vision is fast
@@ -635,9 +642,9 @@ Return ONLY valid JSON, no markdown:
         console.warn(`  ⚠️  Vision check: image URL rejected by API (${res.status}) — skipping`);
         return 0;
       }
-      // Other API errors (429, 500, etc.) — fail open
-      console.warn(`  ⚠️  Vision check API error ${res.status} — accepting image (fail open)`);
-      return 7;
+      // Other API errors (429, 500, etc.) — fail closed (skip) to avoid bad images
+      console.warn(`  ⚠️  Vision check API error ${res.status} — skipping image (fail closed)`);
+      return 4;
     }
 
     const data = await res.json() as { choices: Array<{ message: { content: string } }> };
@@ -654,7 +661,7 @@ Return ONLY valid JSON, no markdown:
           score?: number;
           verdict?: string;
         };
-        const score = typeof result.score === "number" ? result.score : 7;
+        const score = typeof result.score === "number" ? result.score : 4;  // unknown = skip
         const isPhoto = result.is_photo !== false;
         if (!isPhoto) return 0;
         return score;
@@ -686,14 +693,14 @@ Return ONLY valid JSON, no markdown:
       return 1;
     }
 
-    // No clear signal — moderate acceptance (not confident)
-    console.warn(`  ⚠️  Vision check prose → accept cautiously (${acceptCount} accept signals)`);
-    return 6;
+    // No clear signal — skip (better to use SVG fallback than a wrong photo)
+    console.warn(`  ⚠️  Vision check prose → skip (${acceptCount} accept / ${rejectCount} reject signals)`);
+    return 4;
 
   } catch (err) {
-    // Network error, timeout — fail open
-    console.warn(`  ⚠️  Vision check exception — accepting image: ${err}`);
-    return 7;
+    // Network error, timeout — fail closed (skip this image)
+    console.warn(`  ⚠️  Vision check exception — skipping image: ${err}`);
+    return 4;
   }
 }
 
@@ -761,14 +768,14 @@ async function runQueriesWithVisionCheck(
     const img = await wikimediaBestPhoto(query);
     if (!img) continue;
     const visionScore = await checkImageRelevanceWithVision(img, title, apiKey);
-    if (visionScore >= 5) {
+    if (visionScore >= 7) {
       console.log(`  ✅ Vision check passed (score ${visionScore}/10) for: "${query}"`);
       return img;
     } else {
       console.log(`  🚫 Vision check failed (score ${visionScore}/10) — skipping: "${query}"`);
     }
   }
-  console.log(`  ⚠️  All queries failed vision check for: "${title.slice(0, 50)}"`);
+  console.log(`  ⚠️  All queries failed vision check for: "${title.slice(0, 50)}" — will use category SVG`);
   return null;
 }
 

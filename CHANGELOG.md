@@ -1,3 +1,43 @@
+## [3.4.8] — 2026-03-25
+
+**Stricter vision check. No more wolves for military stories. SVG replaces picsum.**
+
+### Problem: irrelevant images passing the vision check
+
+Wolf photo on a Zimbabwe/Russia military story. Autumn bokeh leaves for a Meta courtroom trial.
+The vision check was far too permissive:
+- Model: `gemini-2.0-flash-lite` (weak at fine-grained relevance)
+- Threshold: `score >= 5` ("tangentially related" — same country/general topic)
+- Fail-open: API errors returned score 7 (accepted)
+- Prompt: no rule against wildlife/nature photos for unrelated stories
+
+### Fixes (v3.4.8)
+
+**1. Stricter vision model: `google/gemini-2.0-flash-001`**
+Upgraded from `gemini-2.0-flash-lite` — better at contextual relevance judgment.
+
+**2. Threshold raised: `>= 5` → `>= 7`**
+Only "clearly related" images pass. "Tangentially related" images (same general topic)
+are now correctly rejected and force a fallback.
+
+**3. Fail-closed: API errors now return score 4 (skip)**
+Previously, any API error (429, timeout, network) returned score 7 = accepted.
+Now API errors return 4 = skip. Broken or unreachable image URLs no longer sneak through.
+
+**4. Tighter vision prompt**
+Added explicit Gate 1 rejection rules:
+- Wildlife/nature photos UNLESS the story is directly about wildlife
+- Generic bokeh/abstract/stock-looking photos
+- Unrelated persons/buildings with no connection to the headline
+"When in doubt, score 4" instead of "accept cautiously".
+
+**5. picsum.photos removed from fallback chain**
+Random seeded photos (picsum) are worse than the branded SVG.
+A wolf or autumn photo serves no reader. The category SVG always contains
+the correct category colour and the story headline — zero cost, always relevant.
+
+---
+
 ## [3.4.3] — 2026-03-25
 
 **Full-bleed images. Better photo selection. Wikimedia thumb API. Gemini 2.5 Flash queries.**
