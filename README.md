@@ -551,7 +551,7 @@ Full history with engineering narrative: **[CHANGELOG.md](./CHANGELOG.md)**
 
 ## 🗺️ Roadmap
 
-**v3.2.7 shipped.** 9 native language editions (EN/FR/DE/ES/PT/ZH/RU/TR/IT), logo hard-refresh UX, complete landing page rewrite removing all legacy edition references.
+**v3.2.7 shipped.** PIN keypad for digest generation (triple-tap logo), click-outside for All Stories grid, admin PIN settings, 222 RSS sources, Read Again button, QuoteCard theme-aware design, persistent admin login, landing→app language handoff, 502 timeout fix.
 
 ### v3.2 — Delivery & Channels
 - 📧 Email delivery (Postmark / Resend) — digest in your inbox at 6 AM
