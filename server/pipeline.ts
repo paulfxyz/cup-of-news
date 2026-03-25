@@ -1,7 +1,7 @@
 /**
  * @file server/pipeline.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.4.4
+ * @version 3.4.5
  *
  * Cup of News — Daily Digest Generation Pipeline
  *
@@ -391,11 +391,12 @@ async function fetchEditorialImage(
   title: string,
   category: string,
   summary: string,
-  apiKey?: string
+  apiKey?: string,
+  sourceTitleHint?: string  // Original source title (often English) — helps query generation for non-EN editions
 ): Promise<string | null> {
   // ── Tier 3: AI multi-query → Wikimedia ────────────────────────────────────
   if (apiKey) {
-    const wikiPhoto = await fetchFromWikimediaMultiQuery(title, summary, apiKey);
+    const wikiPhoto = await fetchFromWikimediaMultiQuery(title, summary, apiKey, sourceTitleHint);
     if (wikiPhoto) return wikiPhoto;
   }
 
@@ -427,7 +428,8 @@ async function fetchEditorialImage(
 async function fetchFromWikimediaMultiQuery(
   title: string,
   summary: string,
-  apiKey: string
+  apiKey: string,
+  sourceTitleHint?: string  // Optional English source title — used when story title is non-English
 ): Promise<string | null> {
   try {
     // ── Step 1: Generate 5 diverse Wikimedia search queries ────────────────
@@ -435,7 +437,7 @@ async function fetchFromWikimediaMultiQuery(
     // Model: gemini-2.5-flash-preview (better contextual understanding than 2.0-flash)
     // Temperature: 0.1 (near-deterministic, consistent queries)
     //
-    // Prompt design principles (v3.4.4):
+    // Prompt design principles (v3.4.5):
     // - Prioritise CURRENT EVENT visuals (diplomatic meetings, protests, scenes)
     //   over ARCHIVAL/CEREMONIAL photos (award ceremonies, stock portraits)
     // - Named people must be paired with an action or context
@@ -448,11 +450,12 @@ async function fetchFromWikimediaMultiQuery(
     const prompt = `You are an editorial photo researcher. Given a news story, suggest 5 Wikimedia Commons search queries that will find a relevant, current-looking editorial photograph.
 
 CRITICAL RULES:
-1. Each query must be 2-5 words, specific and visual
-2. Prioritise scenes and events over portraits and ceremonies
-3. NEVER: country names alone ("Iran", "France"), abstract nouns ("diplomacy", "economy", "technology"), organisation names alone ("NATO", "UN", "EU")
-4. Pair people with their CURRENT role or CURRENT action, not past events
-5. Think: what would the front page of a newspaper show for this story?
+1. ⚠️ ALWAYS write ALL 5 queries in ENGLISH — even if the story title is in French, German, Spanish, Chinese, Russian, or any other language. Wikimedia Commons is indexed in English. Non-English queries return zero results.
+2. Each query must be 2-5 words, specific and visual
+3. Prioritise scenes and events over portraits and ceremonies
+4. NEVER: country names alone ("Iran", "France"), abstract nouns ("diplomacy", "economy", "technology"), organisation names alone ("NATO", "UN", "EU")
+5. Pair people with their CURRENT role or CURRENT action, not past events
+6. Think: what would the front page of a newspaper show for this story?
 
 Query strategy (generate one per type):
 - Q1: The central scene or event in the story (what is actually happening?)
@@ -462,15 +465,21 @@ Query strategy (generate one per type):
 - Q5: A broader visual that represents the theme without being abstract
 
 EXAMPLES:
-Story: "Iran signals openness to nuclear talks"
+Story: "Iran signals openness to nuclear talks" (English)
 Good: ["Iran nuclear negotiations table", "Iranian foreign minister diplomacy", "Tehran government building", "nuclear agreement signing ceremony", "Middle East peace talks"]
 
-Story: "Mohamed Salah to leave Liverpool"
-Good: ["Mohamed Salah Liverpool FC 2024", "Liverpool Anfield stadium", "Premier League footballer celebration", "Mohamed Salah goal", "English Premier League match"]
+Story: "Salahs Abschied von Liverpool" (German — but queries MUST be in English)
+Good: ["Mohamed Salah Liverpool FC", "Anfield stadium crowd", "Premier League footballer", "Salah goal celebration", "Liverpool FC match"]
 
-Return ONLY a valid JSON array of exactly 5 query strings. No explanations.
+Story: "Горные гориллы-близнецы родились в Конго" (Russian — queries in English)
+Good: ["mountain gorilla baby Virunga", "gorilla family forest", "Democratic Republic Congo wildlife", "endangered gorilla juvenile", "African rainforest primate"]
 
-Title: "${title.slice(0, 120)}"
+Story: "Le compositeur du Roi Lion poursuit un comédien" (French — queries in English)
+Good: ["Lebo M Lion King composer", "copyright lawsuit music court", "Hans Zimmer Lion King concert", "South African musician stage", "Broadway musical performance"]
+
+Return ONLY a valid JSON array of exactly 5 query strings. All in English. No explanations.
+
+Title: "${title.slice(0, 120)}"${sourceTitleHint ? `\nEnglish source title (use this to understand the topic in English): "${sourceTitleHint.slice(0, 120)}"` : ""}
 Summary: "${summary.slice(0, 300)}"`;
 
     const aiRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -523,10 +532,48 @@ Summary: "${summary.slice(0, 300)}"`;
     console.log(`  🔍 Wikimedia queries for "${title.slice(0, 50)}": ${queries.join(" | ")}`);
 
     // ── Step 2: Try each query against Wikimedia Commons ───────────────────
+    // For each candidate, do a fast filename sanity check before accepting.
+    // The Wikimedia filename is a strong signal — it was set by the uploader
+    // and usually describes what is in the photo.
+    for (const query of queries) {
+      const img = await wikimediaBestPhoto(query);
+      if (!img) continue;
+
+      // Extract Wikimedia filename and do a quick relevance check
+      const filename = decodeURIComponent(img.split("/").pop() ?? "")
+        .replace(/^\d+px-/, "")
+        .replace(/[_-]/g, " ")
+        .toLowerCase();
+
+      // Build a simple query-to-filename relevance check:
+      // At least 1 meaningful word from the query must appear in the filename.
+      // This catches cases where Wikimedia returns a completely unrelated image
+      // that happens to score well on size/ratio (e.g. military photo for music story).
+      const queryWords = query.toLowerCase()
+        .split(/\s+/)
+        .filter(w => w.length > 3); // skip short stop words
+
+      const filenameMatchScore = queryWords.filter(w => filename.includes(w)).length;
+      const filenameMatchRatio = queryWords.length > 0 ? filenameMatchScore / queryWords.length : 0;
+
+      // Accept if: any meaningful word from query appears in filename (ratio ≥ 0.2)
+      // OR filename is very short (< 20 chars, uploaded files often have clean names)
+      if (filenameMatchRatio >= 0.2 || filename.length < 20) {
+        console.log(`  ✅ Found image (score ${filenameMatchRatio.toFixed(2)}) for query: "${query}"`);
+        console.log(`     filename: ${filename.slice(0, 80)}`);
+        return img;
+      } else {
+        console.log(`  ⚠️  Skipping (score ${filenameMatchRatio.toFixed(2)}, no match): "${query}" vs "${filename.slice(0, 60)}"`);
+        // Don't return — try next query
+      }
+    }
+
+    // If no query passed the filename check, return the best candidate anyway
+    // (better than picsum fallback). This prevents over-rejection.
     for (const query of queries) {
       const img = await wikimediaBestPhoto(query);
       if (img) {
-        console.log(`  ✅ Found image for query: "${query}"`);
+        console.log(`  ✅ Found image (fallback, no filename match): "${query}"`);
         return img;
       }
     }
@@ -594,7 +641,7 @@ Context: "${summary.slice(0, 150)}"`;
 /**
  * wikimediaBestPhoto — search Wikimedia Commons, return best landscape photo.
  *
- * v3.4.4 improvements:
+ * v3.4.5 improvements:
  * - Extended BAD filter: rejects award ceremonies, official portraits, stamps,
  *   coat-of-arms, historical/archival patterns by filename
  * - Uses Wikimedia thumb API to return a 1280px-wide resized URL instead of
@@ -1356,8 +1403,27 @@ YOU MUST write EVERY output field in ${edition.languageName}:
 ✅ This is the ${edition.name} edition. Readers expect ${edition.languageName}.
 ` : "";
 
+  // Edition independence block — critical for non-English editions.
+  // Without this, the AI treats all editions as "world news in X language"
+  // and selects the same Reuters/BBC/NYT wire stories as the English edition,
+  // just translated. The goal is DIFFERENT stories, not translations.
+  const editionIndependenceBlock = isNonEnglish ? `
+🚨 EDITION INDEPENDENCE — THIS IS NOT THE ENGLISH EDITION:
+This is the ${edition.name} edition for ${edition.languageName}-speaking readers.
+Your stories MUST be DIFFERENT from what the English World edition would show.
+
+MANDATORY RULES FOR THIS EDITION:
+• PREFER stories from ${edition.languageName}-language sources (native journalism, not wire services)
+• PRIORITISE stories that ${edition.languageName}-speaking readers care about most — regional politics, their sports leagues, their cultural events
+• AVOID selecting the exact same major wire stories (Reuters, AP, AFP, BBC, NYT) that would dominate the English edition
+• AT LEAST 8 of your 20 stories must be on topics NOT primarily driven by Anglophone media
+• The ${edition.name} edition should feel like reading a DIFFERENT newspaper, not a translation of the English one
+
+NATIVE PERSPECTIVE: Frame stories through the lens of ${edition.languageName}-speaking society. What does this event mean for readers in ${edition.name.split(' ')[0]} or nearby regions?` : "";
+
   const regionalBlock = `🌍 EDITION: ${edition.flag} ${edition.name} (${editionId})
-REGIONAL FOCUS: ${edition.aiRegionalFocus}`;
+REGIONAL FOCUS: ${edition.aiRegionalFocus}
+${editionIndependenceBlock}`;
 
     // v2.2.0: use the edition's own aiSportSlot
   const sportSlot = edition.aiSportSlot;
@@ -1571,11 +1637,19 @@ IMPORTANT: For additionalIdxs — if multiple articles in the list cover the SAM
       const title = parts.slice(0, -1).join(":");
       const summary = story.summary?.slice(0, 200) || "";
 
+      // sourceTitle is the original RSS/source article title — often in English even for non-EN editions
+      // (e.g. BBC, Reuters, NYT articles used by the German edition have English titles).
+      // Passing it to the image pipeline helps the query generator understand
+      // the story in English and generate better Wikimedia queries.
+      const sourceTitleHint = story.sourceTitle && story.sourceTitle !== title
+        ? story.sourceTitle
+        : "";
+
       // Tier 3: AI 5-query → Wikimedia best landscape photo
       // Tier 4: Unsplash (if UNSPLASH_ACCESS_KEY set)
       // Tier 5: picsum.photos deterministic seed
       // Tier 6: category SVG — guaranteed fallback
-      const editorialUrl = await fetchEditorialImage(title, category, summary, apiKey);
+      const editorialUrl = await fetchEditorialImage(title, category, summary, apiKey, sourceTitleHint);
       if (editorialUrl) {
         story.imageUrl = editorialUrl;
         console.log(`  ✅ Image found: "${title.slice(0, 40)}…"`);

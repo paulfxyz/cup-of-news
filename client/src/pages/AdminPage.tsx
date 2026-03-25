@@ -1,7 +1,7 @@
 /**
  * @file client/src/pages/AdminPage.tsx
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.4.4
+ * @version 3.4.5
  *
  * Cup of News — Admin Panel
  *
