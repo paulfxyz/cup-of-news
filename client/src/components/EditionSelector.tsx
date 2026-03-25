@@ -1,7 +1,7 @@
 /**
  * @file client/src/components/EditionSelector.tsx
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.2.4
+ * @version 3.2.5
  *
  * Cup of News — Edition Selector Dropdown
  *
@@ -127,8 +127,32 @@ export function EditionSelector({ current, onChange }: Props) {
 const STORAGE_KEY = "cup_edition_v3"; // v3.0.0+: supports 9 editions (en/fr/de/es/pt/zh/ru/tr/it)
 
 export function useEdition() {
+  // ── Language handoff from landing page (v3.2.5) ──────────────────────────
+  // The cupof.news landing page appends ?lang=fr (etc.) when navigating here.
+  // On first mount we read that param, write it to localStorage, then clean
+  // the URL so it doesn't persist across refreshes or get bookmarked.
+  //
+  // Priority order:
+  //   1. ?lang= URL param (from landing page navigation) — highest priority
+  //   2. localStorage cup_edition_v3 (user's previous app session)
+  //   3. Default: English
   const getSaved = (): Edition => {
     try {
+      // Check ?lang= param first (landing → app handoff)
+      const urlParams = new URLSearchParams(window.location.search);
+      const langParam = urlParams.get("lang");
+      if (langParam) {
+        const found = EDITIONS.find(e => e.id === langParam);
+        if (found) {
+          // Persist it and clean the URL param
+          try { localStorage.setItem(STORAGE_KEY, found.id); } catch {}
+          // Remove ?lang= from URL without triggering a reload
+          const cleanUrl = window.location.pathname + window.location.hash;
+          window.history.replaceState(null, "", cleanUrl);
+          return found;
+        }
+      }
+      // Fall back to persisted edition
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const found = EDITIONS.find(e => e.id === saved);

@@ -1,7 +1,7 @@
 /**
  * @file server/routes.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.2.4
+ * @version 3.2.5
  *
  * Cup of News — REST API Routes
  *
@@ -100,7 +100,7 @@ export function registerRoutes(httpServer: Server, app: Express) {
    * Public. Used by uptime monitors, Docker HEALTHCHECK, GitHub Actions.
    */
   app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok", version: "3.2.4" });
+    res.json({ status: "ok", version: "3.2.5" });
   });
 
   // ── Setup ──────────────────────────────────────────────────────────────────
@@ -301,12 +301,38 @@ export function registerRoutes(httpServer: Server, app: Express) {
 
     const edition = (req.body?.edition as string) || "en";
 
+    // ── Request-level timeout guard (v3.2.5) ──────────────────────────────
+    // The pipeline can take 30-90s. Without an explicit socket timeout,
+    // Fly.io's proxy drops the connection at 75s and the client sees a 502.
+    //
+    // We set the socket timeout to 170s for this specific request only —
+    // long enough for any pipeline run, short enough to surface real hangs.
+    // On timeout we send a 504 Gateway Timeout so the client gets a meaningful
+    // error instead of a bare connection reset.
+    //
+    // Note: req.socket.setTimeout() only affects THIS request's socket idle
+    // timeout, not the global server keepAliveTimeout. Both are needed:
+    //   - keepAliveTimeout: keeps the persistent connection alive between reqs
+    //   - socket.setTimeout here: guards the long-poll for generate specifically
+    req.socket?.setTimeout(170_000);
+    res.setTimeout(170_000, () => {
+      if (!res.headersSent) {
+        res.status(504).json({
+          error: "Digest generation timed out (170s). The server is still running — try again in a moment.",
+        });
+      }
+    });
+
     try {
       const result = await runDailyPipeline(apiKey, edition);
-      res.json({ success: true, ...result });
+      if (!res.headersSent) {
+        res.json({ success: true, ...result });
+      }
     } catch (e: any) {
-      const statusCode = e.message?.includes("already exists") ? 409 : 500;
-      res.status(statusCode).json({ error: e.message });
+      if (!res.headersSent) {
+        const statusCode = e.message?.includes("already exists") ? 409 : 500;
+        res.status(statusCode).json({ error: e.message });
+      }
     }
   });
 

@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-3.2.4-red?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-3.2.5-red?style=for-the-badge)
 ![Status](https://img.shields.io/badge/status-stable-brightgreen?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
 ![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
@@ -200,7 +200,7 @@ One real deployment frustration: Fly auto-generates a random app name during set
 
 ## 🌍 Language Editions
 
-As of v3.2.4, Cup of News generates natively in **9 languages**. Each edition has its own RSS source set, its own system prompt language, and its own editorial identity. The principle: 1 edition = 1 language.
+As of v3.2.5, Cup of News generates natively in **9 languages**. Each edition has its own RSS source set, its own system prompt language, and its own editorial identity. The principle: 1 edition = 1 language.
 
 | Edition | Language | Flag | Key Sources | Notes |
 |---------|----------|------|-------------|-------|
@@ -523,6 +523,7 @@ Full history with engineering narrative: **[CHANGELOG.md](./CHANGELOG.md)**
 
 | Version | Date | Summary |
 |---------|------|---------|
+| **3.2.5** | 2026-03-25 | Fix 502 on digest generate (server timeout), persistent admin login, landing→app language handoff |
 | **3.2.4** | 2026-03-25 | Cost corrected (~$0.07/digest, real Gemini 2.5 Pro rate), tagline updated, all 9 language translations proofread |
 | **3.2.3** | 2026-03-25 | Russian flag fix (🌍 → 🇷🇺), landing page custom language dropdown matching app design |
 | **3.2.2** | 2026-03-25 | Modal click-outside close, card slide animation, triple-click generate. Twice-daily cron (6 AM + 4 PM GMT). FTP + Fly.io deploy automation |
@@ -548,7 +549,7 @@ Full history with engineering narrative: **[CHANGELOG.md](./CHANGELOG.md)**
 
 ## 🗺️ Roadmap
 
-**v3.2.4 shipped.** 9 native language editions (EN/FR/DE/ES/PT/ZH/RU/TR/IT), logo hard-refresh UX, complete landing page rewrite removing all legacy edition references.
+**v3.2.5 shipped.** 9 native language editions (EN/FR/DE/ES/PT/ZH/RU/TR/IT), logo hard-refresh UX, complete landing page rewrite removing all legacy edition references.
 
 ### v3.2 — Delivery & Channels
 - 📧 Email delivery (Postmark / Resend) — digest in your inbox at 6 AM

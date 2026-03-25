@@ -1,3 +1,81 @@
+## [3.2.5] — 2026-03-25
+
+**Fix 502 on digest generation. Persistent admin login. Landing→app language handoff.**
+
+### Bug fix: 502 on POST /api/digest/generate
+
+**Root cause:** Fly.io's HTTP proxy has a 75-second idle timeout. The digest
+pipeline (Jina rate-limited → RSS fallback → OpenRouter ~30-90s) was exceeding
+this limit. Fly drops the connection → client sees 502 Bad Gateway. The pipeline
+was still running successfully on the server — the response just never arrived.
+
+**Two-layer fix:**
+
+1. `server/index.ts` — Node.js server-level timeouts:
+   ```
+   httpServer.keepAliveTimeout = 120_000   // above Fly's 75s idle timeout
+   httpServer.headersTimeout   = 125_000   // must be > keepAliveTimeout
+   ```
+   These keep persistent connections alive between requests and through the
+   proxy's idle window.
+
+2. `server/routes.ts` — per-request timeout on the generate endpoint:
+   ```
+   req.socket?.setTimeout(170_000)
+   res.setTimeout(170_000, () => res.status(504).json({ error: "..." }))
+   ```
+   If the pipeline genuinely hangs (model outage, network partition), the
+   client now receives a proper 504 with a descriptive message instead of
+   a bare connection reset.
+
+Why Jina 429s don't cause the 502:
+  The 429s are handled gracefully — Jina failures fall back to RSS headline
+  text. The 502 was purely the response timeout, not the Jina errors.
+
+### Bug fix: persistent admin login
+
+**Root cause:** `adminKey` lived in React state only — cleared on every
+page refresh or navigation away from `/#/admin`.
+
+**Fix in `AdminAuth.tsx`:**
+- `localStorage.setItem("adminKey", key)` on successful login
+- On mount: read saved key, validate silently with `GET /api/links`
+  - Valid → auto-authenticate (no login screen shown)
+  - Stale/wrong → clear localStorage, show login screen
+  - Network error → show login screen (conservative)
+- `localStorage.removeItem("adminKey")` on explicit logout
+- Brief spinner shown while silent validation runs (~100ms)
+
+The `"adminKey"` localStorage key is the same key read by DigestView's
+triple-click generate (v3.2.2) — consistent across the codebase.
+
+### Feature: landing → app language handoff
+
+**Problem:** Clicking "Open App" from the French landing page opened the app
+in English — the app had no way to know which language the user was on.
+
+**Solution (two parts):**
+
+`landing/index.html` — `openApp()` function:
+- All "Open App" links now call `openApp(e)` instead of navigating directly
+- Reads current lang from `localStorage.cup_landing_lang`
+- Navigates to `https://app.cupof.news/?lang=fr#/` (etc.)
+
+`client/src/components/EditionSelector.tsx` — `useEdition` hook:
+- On mount, reads `?lang=` URL param before checking `cup_edition_v3`
+- If valid edition ID found: persists to `cup_edition_v3`, removes param
+  from URL via `history.replaceState` (no reload, no bookmark pollution)
+- Priority: URL param > localStorage > default English
+
+Why URL param instead of postMessage or localStorage write:
+  The landing (cupof.news) and app (app.cupof.news) are different origins.
+  localStorage is origin-scoped — we cannot write to the app's storage
+  from the landing page. A URL query param is the correct cross-origin
+  state handoff mechanism. `history.replaceState` removes it immediately
+  after reading so it doesn't persist in browser history.
+
+---
+
 ## [3.2.4] — 2026-03-25
 
 **Digest cost corrected. All 9 language translations proofread and updated.**

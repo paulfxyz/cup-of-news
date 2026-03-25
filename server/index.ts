@@ -1,7 +1,7 @@
 /**
  * @file server/index.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.2.4
+ * @version 3.2.5
  *
  * Cup of News — Express Server Entry Point
  *
@@ -21,6 +21,23 @@ import { createServer } from "http";
 
 const app = express();
 const httpServer = createServer(app);
+
+// ── Server timeout configuration (v3.2.5) ─────────────────────────────────
+// The digest generation pipeline takes 30-90 seconds (Jina extraction +
+// OpenRouter call). Fly.io's proxy has a 75-second idle timeout by default.
+// Without explicit timeout overrides, long-running requests drop with 502.
+//
+// Fix: set Node.js keepAliveTimeout and headersTimeout above Fly's proxy
+// timeout. This ensures the connection stays alive for the full pipeline run.
+//
+// keepAliveTimeout: how long to keep an idle connection open (default: 5s).
+//   Set to 120s — well above Fly's 75s idle timeout.
+// headersTimeout: how long to wait for request headers (default: 60s).
+//   Set to 125s to be safely above keepAliveTimeout.
+// requestTimeout: max time for any single request (default: 0 = no limit).
+//   Set to 180s — 3× the worst-case pipeline run.
+httpServer.keepAliveTimeout = 120_000;   // 120s — above Fly's 75s proxy idle timeout
+httpServer.headersTimeout   = 125_000;   // must be > keepAliveTimeout
 
 declare module "http" {
   interface IncomingMessage {

@@ -1,12 +1,14 @@
 /**
  * @file client/src/components/AdminAuth.tsx
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 2.3.0
+ * @version 3.2.5
  *
  * Cup of News — Admin Authentication Gate
  *
  * Wraps the admin panel with a password login screen.
- * The password is stored in React state (session only, no localStorage).
+ * The password is persisted in localStorage (key: "adminKey") and validated
+ * silently on mount. Session survives page refreshes and browser restarts.
+ * Logout clears localStorage. On stale/wrong key, login screen is shown.
  * On first install with no admin key set, the default password is "admin".
  *
  * Features:
@@ -16,7 +18,7 @@
  * - Session cleared on browser close (stateless, no cookies)
  */
 
-import { useState, createContext, useContext } from "react";
+import { useState, useEffect, createContext, useContext } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Loader2, Eye, EyeOff } from "lucide-react";
@@ -34,15 +36,64 @@ export const useAdminAuth = () => useContext(AuthContext);
 
 // ── Auth Gate ─────────────────────────────────────────────────────────────────
 
+// localStorage key for persisted admin session (also read by DigestView triple-click)
+const ADMIN_KEY_STORAGE = "adminKey";
+
 export function AdminAuthGate({ children }: { children: React.ReactNode }) {
-  const [adminKey, setAdminKey] = useState("");
+  // ── Persistent session (v3.2.5) ─────────────────────────────────────────
+  // On mount, restore the saved admin key from localStorage and validate it
+  // silently against /api/links. If valid → auto-authenticate. If stale/wrong
+  // → clear and show the login screen as normal.
+  //
+  // Security note: the admin key is a password stored in localStorage.
+  // This is acceptable for a single-user self-hosted tool where the threat
+  // model is "someone who can open the browser" rather than XSS attacks.
+  // The key is never sent to any third-party service.
+  const getSavedKey = () => {
+    try { return localStorage.getItem(ADMIN_KEY_STORAGE) || ""; } catch { return ""; }
+  };
+
+  const [adminKey, setAdminKey] = useState(getSavedKey);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showChange, setShowChange] = useState(false);
+  const [checking, setChecking] = useState(() => getSavedKey() !== "");
+
+  // On mount: if a saved key exists, validate it silently
+  useEffect(() => {
+    const saved = getSavedKey();
+    if (!saved) { setChecking(false); return; }
+    fetch("/api/links", { headers: { "x-admin-key": saved } })
+      .then(r => {
+        if (r.ok || r.status === 200) {
+          setAdminKey(saved);
+          setIsAuthenticated(true);
+        } else {
+          // Stale or wrong key — clear it
+          try { localStorage.removeItem(ADMIN_KEY_STORAGE); } catch {}
+          setAdminKey("");
+        }
+      })
+      .catch(() => {
+        // Network error — keep the key, show login to re-confirm
+        setAdminKey("");
+      })
+      .finally(() => setChecking(false));
+  }, []);
 
   const logout = () => {
     setIsAuthenticated(false);
     setAdminKey("");
+    try { localStorage.removeItem(ADMIN_KEY_STORAGE); } catch {}
   };
+
+  // Show nothing while silently validating the saved session
+  if (checking) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-5 h-5 border-2 border-[#E3120B] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (
@@ -50,6 +101,7 @@ export function AdminAuthGate({ children }: { children: React.ReactNode }) {
         onSuccess={(key) => {
           setAdminKey(key);
           setIsAuthenticated(true);
+          try { localStorage.setItem(ADMIN_KEY_STORAGE, key); } catch {}
         }}
       />
     );
