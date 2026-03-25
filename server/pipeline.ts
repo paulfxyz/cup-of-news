@@ -640,6 +640,11 @@ async function wikimediaBestPhoto(query: string): Promise<string | null> {
       // Historical/archival (year patterns in filename = old photo)
       // Note: we don't block all years — just obvious archive collections
       "Library_of_Congress","Bundesarchiv","vintage_","Victorian_",
+      // Military/defense photo agencies — DVIDS = Defense Visual Info Distribution Service
+      // These are US military stock photos, almost never relevant to civilian news
+      "DVIDS","_DVIDS",
+      // Data visualisations and statistics (usually PNG diagrams)
+      "Datenvisualisierung","data_visualization","infographic","_graph","transported_per",
     ];
 
     // Filename patterns in the URL that suggest this is a better contemporary photo
@@ -653,6 +658,7 @@ async function wikimediaBestPhoto(query: string): Promise<string | null> {
       const info = page.imageinfo?.[0];
       if (!info) continue;
       if (!["image/jpeg","image/png","image/webp"].includes(info.mime)) continue;
+      const isPng = info.mime === "image/png"; // PNG = often diagrams/charts, penalised in score
 
       const w = info.width ?? 0, h = info.height ?? 0;
       if (w < 800 || h < 400) continue; // min 800px wide for editorial quality
@@ -677,7 +683,9 @@ async function wikimediaBestPhoto(query: string): Promise<string | null> {
       const indexRank = page.index ?? 99;
       const indexBonus = Math.max(0, (12 - indexRank) / 12) * 0.15;
 
-      const score = ratioScore * 0.45 + sizeScore * 0.25 + sizeBonus * 0.15 + indexBonus * 0.15;
+      // PNG penalty: data charts, stats diagrams are usually PNG; real editorial photos are JPEG/WebP
+      const pngPenalty = isPng ? 0.25 : 0;
+      const score = (ratioScore * 0.45 + sizeScore * 0.25 + sizeBonus * 0.15 + indexBonus * 0.15) - pngPenalty;
       candidates.push({ score, url: info.url, index: indexRank });
     }
 
