@@ -1,3 +1,70 @@
+## [3.2.6] — 2026-03-25
+
+**"Read again" button (native in 9 languages). Quote card matches app design. 222 RSS sources.**
+
+### "Read again" — all 9 editions
+
+The end-of-digest button was labelled "New digest" (EN) or "Nouveau digest" (FR).
+This was confusing — it doesn't generate a new digest, it goes back to story 1.
+Replaced with "Read again" in all 9 languages with native-speaker register:
+
+  EN → "Read again"      (clear, imperative)
+  FR → "Relire"          ("re-read" — the idiomatic French term for rereading)
+  DE → "Nochmal lesen"   ("read again" — natural German, used in book contexts)
+  ES → "Leer de nuevo"   (standard, clear Spanish)
+  PT → "Ler novamente"   (European Portuguese register)
+  ZH → "再读一遍"          ("read one more time" — natural Mandarin)
+  RU → "Читать снова"    ("read again" — natural Russian)
+  TR → "Tekrar oku"      ("read again" — Turkish imperative, common UI pattern)
+  IT → "Leggi di nuovo"  ("read again" — standard Italian)
+
+### Quote card — matches app design
+
+The closing quote card previously forced background: #000000 (pure black) with
+hardcoded white text. This created a jarring visual break from the rest of the
+reader (bg-background, text-foreground). Fixed:
+
+- Wrapper: bg-background (respects dark/light theme)
+- Quote text: text-foreground (was: text-white)
+- Author: text-muted-foreground (was: text-white/35)
+- Badge: border-border (was: border-white/15)
+- Date: text-muted-foreground/50 (was: text-white/25)
+- Nudge: text-muted-foreground/30 (was: text-white/15)
+- Button: border-border, hover:bg-accent (was: border-white/20, hover:bg-white/5)
+
+The red accent line and shimmer animations are preserved — they work against
+both light and dark backgrounds.
+
+### RSS sources — 222 total across 9 editions
+
+Previous total: ~163 sources. New total: 222 sources.
+
+Per-edition breakdown:
+  EN: 32 → 53  (+21) Added: The Telegraph, The Independent, TechCrunch, Science AAAS,
+                             NEJM, Bloomberg Tech, WSJ Business, Middle East Eye,
+                             AllAfrica, Nikkei Asia, Pitchfork, Arts & Letters Daily,
+                             The Athletic, Carbon Brief, Guardian Environment, DW EN,
+                             France 24 EN, BBC UK, Guardian UK, NYT US, Al Jazeera Economy
+  FR: 15 → 23  (+8)  Added: Le Monde International, Le Monde Sciences, Le Figaro Économie,
+                             Libération, Le Revenu, Jeune Afrique, RFI Afrique, RTBF (BE),
+                             Le Temps (CH), Euronews FR
+  DE: 14 → 22  (+8)  Added: ARD Tagesschau, ZDF heute, Die Welt, Taz, Stern,
+                             Wirtschaftswoche, ORF (AT), NZZ (CH)
+  ES: 18 → 26  (+8)  Added: El Universal (MX), El Espectador (CO), La Tercera (CL),
+                             El Comercio (PE), El Economista, 20 Minutos, Tendencias21, RT ES
+  PT: 16 → 23  (+7)  Added: Observador, Correio da Manhã, SIC Notícias, Carta Capital,
+                             Record, Canaltech BR, Ciência Hoje
+  ZH: 11 → 16  (+5)  Added: CNA (Central News Agency Taiwan), Taiwan News,
+                             Initium Media (端传媒), Nikkei Asia, SCMP EN
+  RU: 12 → 18  (+6)  Added: iStories, The Insider, The Bell (бизнес), Novaya Gazeta Europa,
+                             Медиазона, Фонтанка, Настоящее Время (Current Time TV)
+  TR: 14 → 20  (+6)  Added: France 24 TR, Euronews TR, Anadolu Ajansı, Milliyet,
+                             T24, Gazete Duvar, Fanatik Spor
+  IT: 14 → 21  (+7)  Added: AGI (wire), Corriere Innovazione, Il Fatto Quotidiano,
+                             Il Post, ANSA Cultura, Corriere dello Sport, Wired Italia
+
+---
+
 ## [3.2.5] — 2026-03-25
 
 **Fix 502 on digest generation. Persistent admin login. Landing→app language handoff.**

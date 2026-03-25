@@ -1,7 +1,7 @@
 /**
  * @file client/src/components/EditionSelector.tsx
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.2.5
+ * @version 3.2.6
  *
  * Cup of News — Edition Selector Dropdown
  *

@@ -1,7 +1,7 @@
 /**
  * @file client/src/pages/DigestView.tsx
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.2.5
+ * @version 3.2.6
  *
  * Cup of News — Public Digest Reader
  *
@@ -702,7 +702,7 @@ function StoryCard({ story, index, total, edition }: { story: DigestStory; index
 //
 // layout: completion badge → date → red line → quote → author → end nudge
 
-function QuoteCard({ quote, author, date, label = "Today's Thought", refreshLabel = "New digest", morningComplete = "You\u2019ve read today\u2019s digest", onRefresh }: {
+function QuoteCard({ quote, author, date, label = "Today's Thought", refreshLabel = "Read again", morningComplete = "You\u2019ve read today\u2019s digest", onRefresh }: {
   quote: string;
   author: string;
   date: string;
@@ -712,10 +712,7 @@ function QuoteCard({ quote, author, date, label = "Today's Thought", refreshLabe
   onRefresh?: () => void;
 }) {
   return (
-    <div
-      className="min-h-full flex items-center justify-center px-6 py-16"
-      style={{ background: "#000000" }}
-    >
+    <div className="min-h-full flex items-center justify-center px-6 py-16 bg-background">
       {/* CSS keyframes injected inline — no build step, no flash */}
       <style>{`
         @keyframes cup-fade-up {
@@ -749,7 +746,7 @@ function QuoteCard({ quote, author, date, label = "Today's Thought", refreshLabe
 
         {/* Completion badge */}
         <div className="cup-badge flex items-center justify-center mb-10">
-          <span className="inline-flex items-center gap-2.5 border border-white/15 px-5 py-2 text-[11px] font-black uppercase tracking-[0.22em] text-white/50 font-ui">
+          <span className="inline-flex items-center gap-2.5 border border-border px-5 py-2 text-[11px] font-black uppercase tracking-[0.22em] text-muted-foreground font-ui">
             <span className="cup-dot text-[#E3120B]">✦</span>
             {label}
             <span className="cup-dot text-[#E3120B]">✦</span>
@@ -757,7 +754,7 @@ function QuoteCard({ quote, author, date, label = "Today's Thought", refreshLabe
         </div>
 
         {/* Date */}
-        <p className="cup-date text-[10px] uppercase tracking-[0.25em] text-white/25 font-ui mb-8">
+        <p className="cup-date text-[10px] uppercase tracking-[0.25em] text-muted-foreground/50 font-ui mb-8">
           {formatDate(date)}
         </p>
 
@@ -765,19 +762,19 @@ function QuoteCard({ quote, author, date, label = "Today's Thought", refreshLabe
         <div className="cup-line h-px bg-[#E3120B] mx-auto mb-10" />
 
         {/* The quote — the real payoff */}
-        <blockquote className="cup-quote text-[1.6rem] sm:text-[2rem] lg:text-[2.4rem] font-editorial italic leading-[1.6] font-medium text-white">
+        <blockquote className="cup-quote text-[1.6rem] sm:text-[2rem] lg:text-[2.4rem] font-editorial italic leading-[1.6] font-medium text-foreground">
           &ldquo;{quote}&rdquo;
         </blockquote>
 
         {/* Author */}
         {author && (
-          <p className="cup-author text-sm sm:text-base text-white/35 font-ui mt-8 tracking-wide">
+          <p className="cup-author text-sm sm:text-base text-muted-foreground font-ui mt-8 tracking-wide">
             — {author}
           </p>
         )}
 
         {/* End-of-digest nudge */}
-        <p className="cup-nudge text-[10px] text-white/15 font-ui mt-14 uppercase tracking-[0.22em]">
+        <p className="cup-nudge text-[10px] text-muted-foreground/30 font-ui mt-14 uppercase tracking-[0.22em]">
           {morningComplete}
         </p>
 
@@ -786,7 +783,7 @@ function QuoteCard({ quote, author, date, label = "Today's Thought", refreshLabe
           <div className="cup-refresh mt-10">
             <button
               onClick={onRefresh}
-              className="inline-flex items-center gap-3 px-8 py-4 border border-white/20 text-white/60 hover:text-white hover:border-white/50 text-sm font-bold font-ui uppercase tracking-[0.18em] transition-all duration-200 hover:bg-white/5 active:scale-95"
+              className="inline-flex items-center gap-3 px-8 py-4 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/40 text-sm font-bold font-ui uppercase tracking-[0.18em] transition-all duration-200 hover:bg-accent active:scale-95"
             >
               <RefreshCw size={14} className="flex-shrink-0" />
               {refreshLabel}

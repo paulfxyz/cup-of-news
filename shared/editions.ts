@@ -1,7 +1,7 @@
 /**
  * @file shared/editions.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.2.5
+ * @version 3.2.6
  *
  * Cup of News — Edition Registry
  *
@@ -146,7 +146,7 @@ export const EDITIONS: Edition[] = [
       nextStory: "Next",
       allStories: "All Stories",
       of: "of",
-      refreshDigest: "New digest",
+      refreshDigest: "Read again",
       morningComplete: "You've read today's digest",
     },
   },
@@ -188,7 +188,7 @@ export const EDITIONS: Edition[] = [
       nextStory: "Suiv.",
       allStories: "Toutes les actualités",
       of: "sur",
-      refreshDigest: "Nouveau digest",
+      refreshDigest: "Relire",
       morningComplete: "Vous avez lu le digest du jour",
     },
   },
@@ -230,7 +230,7 @@ export const EDITIONS: Edition[] = [
       nextStory: "Näch.",
       allStories: "Alle Nachrichten",
       of: "von",
-      refreshDigest: "Neuer Digest",
+      refreshDigest: "Nochmal lesen",
       morningComplete: "Sie haben den heutigen Digest gelesen",
     },
   },
@@ -272,7 +272,7 @@ export const EDITIONS: Edition[] = [
       nextStory: "Sig.",
       allStories: "Todas las noticias",
       of: "de",
-      refreshDigest: "Nuevo digest",
+      refreshDigest: "Leer de nuevo",
       morningComplete: "Has leído el digest de hoy",
     },
   },
@@ -314,7 +314,7 @@ export const EDITIONS: Edition[] = [
       nextStory: "Próx.",
       allStories: "Todas as notícias",
       of: "de",
-      refreshDigest: "Novo digest",
+      refreshDigest: "Ler novamente",
       morningComplete: "Você leu o digest de hoje",
     },
   },
@@ -356,7 +356,7 @@ export const EDITIONS: Edition[] = [
       nextStory: "下一条",
       allStories: "所有报道",
       of: "/",
-      refreshDigest: "新摘要",
+      refreshDigest: "再读一遍",
       morningComplete: "您已阅读完今日摘要",
     },
   },
@@ -400,7 +400,7 @@ export const EDITIONS: Edition[] = [
       nextStory: "Вперёд",
       allStories: "Все новости",
       of: "из",
-      refreshDigest: "Новый дайджест",
+      refreshDigest: "Читать снова",
       morningComplete: "Вы прочитали дайджест на сегодня",
     },
   },
@@ -444,7 +444,7 @@ export const EDITIONS: Edition[] = [
       nextStory: "Sonraki",
       allStories: "Tüm haberler",
       of: "/",
-      refreshDigest: "Yeni özet",
+      refreshDigest: "Tekrar oku",
       morningComplete: "Bugünkü özeti okudunuz",
     },
   },
@@ -488,7 +488,7 @@ export const EDITIONS: Edition[] = [
       nextStory: "Succ.",
       allStories: "Tutte le notizie",
       of: "di",
-      refreshDigest: "Nuova rassegna",
+      refreshDigest: "Leggi di nuovo",
       morningComplete: "Hai letto la rassegna di oggi",
     },
   },
