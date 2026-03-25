@@ -1,3 +1,89 @@
+## [3.2.0] — 2026-03-25
+
+**Landing page complete rewrite. Logo refresh on landing page. All legacy references removed. Version bump.**
+
+### Landing page — full rewrite from scratch
+
+The cupof.news landing page had accumulated contradictory, outdated, and partially-translated
+copy across 15+ development sessions. Rather than patching individual strings, the entire file
+was discarded and rewritten from scratch in v3.2.0.
+
+**Problems in v3.1.0 landing page (now fixed):**
+  - `<meta name="description">` still read "8 world editions in English, French, and German" — unchanged since v2.0.0
+  - OG description said "8 editions. 6 AM. Every day."
+  - Stats bar showed "8" for the edition count (was `<div class="stat-num">8</div>`)
+  - Section heading read "8 World Editions" in the EN string and "3 World Editions" in the DE/FR strings
+  - Footer copyright showed "v3.0.0" not "v3.1.0"
+  - Eyebrow badge showed "v3.0.0"
+  - Hero badge said "8 editions" in some translated variants
+  - Turkish and Italian editions were absent from the editions grid entirely
+  - The `<select>` language switcher had 7 options (no 🇹🇷 TR, no 🇮🇹 IT)
+  - Step 6 copy referenced "8 editions — World, US, UK, Canada (EN), France..."
+  - `sources_note` still read "7 languages since v3.0.0" in FR/DE/ES/PT translations
+  - Logo mark on landing page had no hover→refresh, no click→reload behaviour
+
+**Root cause:** The landing page is a standalone static HTML file hosted on Siteground,
+separate from the React app on Fly.io. It had been updated incrementally across each sprint
+but v3.1.0's Turkish/Italian additions were applied to the app (editions.ts, trends.ts,
+EditionSelector.tsx, DigestView.tsx) without a corresponding update to the static landing.
+The result: the landing page described v2.0.0 in some places, v3.0.0 in others, and
+v3.1.0 nowhere.
+
+**Solution — complete rewrite:**
+  - Every string audited. Zero occurrences of "8 editions", "3 languages", "7 languages",
+    "3 world editions", "8 world editions" in the output.
+  - Stats bar: 9 (language editions), 20 (stories), 34+ (RSS sources), ~$0.15 (cost)
+  - Language select: all 9 options including 🇹🇷 TR and 🇮🇹 IT
+  - Editions grid: all 9 cards, TR and IT with red left border to signal newness
+  - Meta description: "9 languages. One API key." — reflects v3.2.0 reality
+  - OG description: "9 languages. 6 AM. Every day."
+  - Version badge and footer copyright: v3.2.0
+  - "How it works" step 5 updated: "9 languages generate simultaneously"
+  - All 9 translated variants (EN/FR/DE/ES/PT/ZH/RU/TR/IT) verified for consistency
+  - TR and IT translations written as native-speaker copy, proofread for register
+
+### Logo refresh — now implemented on landing page
+
+The logo refresh behaviour from DigestView.tsx v3.1.0 is now mirrored on the landing page:
+  - Hover the red "C" square → "C" glyph is replaced by a refresh SVG icon (CSS :hover)
+  - Click → adds class `spinning` → CSS `@keyframes logo-spin` rotates the icon
+  - After exactly 1250ms → `window.location.reload()` fires a hard page reload
+  - The `spinning` class guard (`if el.classList.contains('spinning') return`) prevents
+    double-click race conditions — identical logic to `if (logoSpinning) return` in the app
+  - The refresh SVG is inline (no external dependency, no extra network request)
+
+**Why the same delay?** The 1250ms isn't arbitrary — it's the minimum duration that makes
+a click feel deliberate rather than accidental. Below ~800ms, users can't distinguish
+a click from a tap hover. Above ~1500ms, it starts to feel broken. 1250ms is the sweet
+spot that communicates "acknowledged, reloading" without frustration.
+
+### Engineering notes — lessons from this sprint
+
+**The two-site problem:** `cupof.news` (Siteground static) and `app.cupof.news` (Fly.io Node)
+are different deployments. Changes to the app's edition registry don't automatically
+propagate to the landing page. This is an inherent maintenance burden of the two-site
+architecture. Future mitigation options:
+  1. Serve the landing page from Express as a route (`GET /`), eliminating the separate host.
+  2. Automate a post-deploy webhook that regenerates the static landing from a template.
+  3. The current approach: always include the landing page in the sprint checklist.
+
+Option 1 is the cleanest solution and is a candidate for v3.3.0.
+
+**Translation completeness vs. machine translation:** All 9 translated variants were
+written with native-speaker register in mind, not machine-translated. Key decisions:
+  - French: "revue de presse" rather than "résumé de nouvelles" — the former is the
+    idiomatic term French editors actually use for a morning briefing.
+  - German: "Weltausgaben" dropped in favour of plain "Ausgaben" — the former felt
+    corporate. "Ausgabe" is what German newspaper stands use.
+  - Italian: "rassegna" considered for digest but "digest" is universally understood
+    in Italian tech contexts. "Sintesi" used for summary (more precise than "riassunto").
+  - Turkish: "özet" (summary/digest) is the correct journalistic term. "Bülten"
+    (bulletin) was considered but implies radio/TV broadcast, not editorial.
+  - Chinese: "摘要" (abstract/summary) for digest. "资讯" (information/news) for news
+    rather than "新闻" which has a broadcast-TV connotation in simplified Chinese.
+
+---
+
 ## [3.1.0] — 2026-03-25
 
 **9 languages. Turkish & Italian editions. Logo hard-refresh. Landing page rewrite.**

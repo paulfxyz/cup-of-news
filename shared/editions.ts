@@ -1,7 +1,7 @@
 /**
  * @file shared/editions.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.1.0
+ * @version 3.2.0
  *
  * Cup of News — Edition Registry
  *
@@ -10,7 +10,7 @@
  *   The original 8 editions (en-WORLD, en-US, en-CA, en-GB, fr-FR, fr-CA, de-DE, en-AU)
  *   were collapsed to 3 in v2.2.0. In v3.0.0, we expanded to 7 languages:
  *   English, French, German, Spanish, Portuguese, Chinese, Russian.
- *   In v3.1.0 we expand further to 9 languages, adding Turkish and Italian.
+ *   In v3.2.0 we expand further to 9 languages, adding Turkish and Italian.
  *
  *   Each edition is genuinely different — different RSS sources, different topics,
  *   different cultural framing. Chinese readers care about different stories than

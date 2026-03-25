@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-3.1.0-red?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-3.2.0-red?style=for-the-badge)
 ![Status](https://img.shields.io/badge/status-stable-brightgreen?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
 ![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
@@ -39,8 +39,8 @@ This project was designed and built entirely in collaboration with **[Perplexity
 |---------|---------|
 | **20 curated stories** | AI selects the 20 most important, distinct stories |
 | **Editorial prompt** | Tell the AI who you are — shapes every digest to your interests |
-| **8 World Editions** | en-WORLD, en-US, en-CA, en-GB, fr-FR, fr-CA, de-DE, en-AU — each generates independently |
-| **34+ RSS sources per edition** | Reuters, BBC, FT, Economist, NYT, Guardian, Wired, Nature, ESPN, Japan Times, RFI, DW, Le Monde, Der Spiegel + more |
+| **9 Language Editions** | en, fr, de, es, pt, zh, ru, tr, it — each generates independently in its native language |
+| **34+ RSS sources per edition** | Reuters, BBC, FT, Economist, NYT, Guardian, Wired, Nature, ESPN, Japan Times, RFI, DW, Le Monde, Der Spiegel, ANSA, BBC Türkçe + more |
 | **Mandatory diversity** | Always includes Sport, Culture, Science/Health; covers Africa, Asia, Americas, Europe |
 | **Per-story source modal** | "Read sources" on each card shows original article + direct link |
 | **Smart OG images** | 2-pass extraction (Jina → direct HTML fetch); editorial SVG fallback per category |
@@ -107,8 +107,8 @@ You submit links all week (API, admin panel, Safari Share Sheet)
 
 ```
 Edition Registry (shared/editions.ts)
-  └── 7 language editions, each with:
-      ├── BCP 47 locale ID (en-WORLD, fr-FR, de-DE, es-ES, pt-PT, zh-CN, ru-RU)
+  └── 9 language editions, each with:
+      ├── BCP 47 locale ID (en-WORLD, fr-FR, de-DE, es-ES, pt-PT, zh-CN, ru-RU, tr-TR, it-IT)
       ├── RSS source set (34+ feeds curated per language/region)
       ├── Native language system prompt
       └── Editorial instructions
@@ -200,7 +200,7 @@ One real deployment frustration: Fly auto-generates a random app name during set
 
 ## 🌍 Language Editions
 
-As of v3.1.0, Cup of News generates natively in **9 languages**. Each edition has its own RSS source set, its own system prompt language, and its own editorial identity. The principle: 1 edition = 1 language.
+As of v3.2.0, Cup of News generates natively in **9 languages**. Each edition has its own RSS source set, its own system prompt language, and its own editorial identity. The principle: 1 edition = 1 language.
 
 | Edition | Language | Flag | Key Sources | Notes |
 |---------|----------|------|-------------|-------|
@@ -211,18 +211,18 @@ As of v3.1.0, Cup of News generates natively in **9 languages**. Each edition ha
 | **pt** | Português | 🇧🇷 | Folha, G1, Público, JN, Agencia Brasil | Brazil + Portugal blend |
 | **zh** | 中文 | 🇨🇳 | BBC中文, DW中文, RFI中文, 自由亚洲 | Independent outlets only |
 | **ru** | Русский | 🌍 | BBCРусская, DWРусская, Meduza, Радио Свобода | Independent outlets only |
-| **tr** | Türkçe | 🇹🇷 | BBC Türkçe, DW Türkçe, Bianet, Cumhuriyet, TRT Haber | **NEW v3.1.0** |
-| **it** | Italiano | 🇮🇹 | ANSA, Corriere della Sera, La Repubblica, Il Sole 24 Ore | **NEW v3.1.0** |
+| **tr** | Türkçe | 🇹🇷 | BBC Türkçe, DW Türkçe, Bianet, Cumhuriyet, TRT Haber | **NEW v3.2.0** |
+| **it** | Italiano | 🇮🇹 | ANSA, Corriere della Sera, La Repubblica, Il Sole 24 Ore | **NEW v3.2.0** |
 
 ---
 
 ## 🔧 Development Challenges
 
-This section documents the real engineering problems encountered building v3.0.0. If you're forking this project or building something similar, these took hours to solve.
+This section documents the real engineering problems encountered across all versions of Cup of News. If you're forking this project or building something similar, these took hours to solve.
 
 ### Unicode Deduplication in Multi-Language RSS Normalization
 
-Deduplication by URL prefix is trivial. Deduplication by title — across 7 languages — is not.
+Deduplication by URL prefix is trivial. Deduplication by title — across 9 languages — is not.
 
 The 72-hour deduplication system originally used a normalized title hash: lowercase, strip punctuation, compare. This works for English. It breaks for Chinese (no word boundaries), Russian (Cyrillic normalization), and Arabic-alphabet languages where the same word has multiple Unicode representations.
 
@@ -273,7 +273,7 @@ We chose one canonical edition per new language. Reasons:
 - Users can add their own regional RSS sources via the link submission API, making the canonical edition flexible.
 - The admin generation UI becomes unwieldy above ~10 editions.
 
-The 8 existing English/French/German regional editions remain. The 4 new languages get one canonical edition each. Total: 12 edition IDs, 7 distinct language experiences.
+The English/French/German regional editions were consolidated. ES, PT, ZH, RU, TR, and IT each get one canonical edition. Total: 9 distinct language editions.
 
 ### Dark Mode Default vs. System Preference
 
@@ -285,19 +285,19 @@ The practical effect: on most modern devices, the first visit matches system pre
 
 The CSS is implemented with `data-theme` attribute on `<html>`, not with `prefers-color-scheme` alone. This allows instant toggle without a CSS transition flash — the attribute change is synchronous with the JS, so no white flash on load.
 
-### v3.1.0: Turkish and Italian RSS Landscape
+### v3.2.0: Turkish and Italian RSS Landscape
 
 Adding Turkish required navigating a politically complex media landscape. Post-2016, many independent Turkish outlets moved to online-only distribution with no stable RSS. TRT Haber (state broadcaster) publishes reliable RSS but offers a single editorial voice. The solution: anchor on international public broadcasters (BBC Türkçe, DW Türkçe) as the independent spine, then layer domestic outlets (Cumhuriyet, Bianet, NTV) for local texture. Bianet is the de-facto standard for independent Turkish investigative journalism.
 
 For Italian, the main challenge was ANSA feed selection. ANSA publishes 15+ endpoint URLs but the top-news endpoint rotates only 10 headlines — too thin for 20 stories. The solution: combine 3 ANSA feeds (top news + economia + tecnologia) to build a richer pool. Gazzetta dello Sport covers the non-negotiable calcio sport slot — omitting it would make the Italian edition feel culturally wrong to Italian readers.
 
-### v3.1.0: Hard Reload vs. React Query refetch()
+### v3.2.0: Hard Reload vs. React Query refetch()
 
 The original logo-click called React Query's `refetch()`. This re-fetched `/api/digest/latest` but didn't reload the JavaScript bundle. During the ~30-second window of a Fly.io zero-downtime deployment, a user who clicked the logo would see "digest refreshed" but still run old code. `window.location.reload()` is the only reliable guarantee the user gets the latest bundle.
 
 The 1250ms spinner before the reload serves two purposes: (1) it makes the click feel intentional rather than accidental, and (2) it gives the `logoSpinning` state time to render the animation before React unmounts. A `disabled={logoSpinning}` guard prevents double-click race conditions.
 
-### v3.1.0: Landing Page Copy Archaeology
+### v3.2.0: Landing Page Copy Archaeology
 
 The cupof.news landing page had accumulated contradictory version references across 15+ development sessions. The stat counter showed "8" (from v2.0.0's 8-edition era). The editions section heading said "3 World Editions" (from when there were only EN/FR/DE). Body copy in three different sections still referenced the old model. Rather than patching, the entire page was rewritten from scratch with a fresh `grep` audit at the end: zero occurrences of "8 editions", "3 languages", "3 world editions".
 
@@ -474,13 +474,13 @@ cup-of-news/
 │   ├── index.ts          # Express entry point
 │   ├── routes.ts         # All API endpoints — edition query/body param on generate + latest
 │   ├── pipeline.ts       # Daily digest generation engine — edition param, native language prompts
-│   ├── trends.ts         # 34+ RSS sources per edition — 8 edition-specific source sets
+│   ├── trends.ts         # 34+ RSS sources per edition — 9 edition-specific source sets
 │   └── storage.ts        # SQLite via Drizzle ORM (IStorage interface) — edition-aware queries
 ├── client/src/
 │   ├── App.tsx            # Router + providers
 │   ├── pages/
 │   │   ├── DigestView.tsx     # Public reader — edition-aware API calls, flag selector
-│   │   ├── AdminPage.tsx      # Admin panel — 8-edition flag selector for digest generation
+│   │   ├── AdminPage.tsx      # Admin panel — 9-edition flag selector for digest generation
 │   │   └── SetupPage.tsx      # First-run configuration wizard
 │   ├── components/
 │   │   ├── AdminAuth.tsx       # Login gate + change password modal
@@ -523,7 +523,7 @@ Full history with engineering narrative: **[CHANGELOG.md](./CHANGELOG.md)**
 
 | Version | Date | Summary |
 |---------|------|---------|
-| **3.1.0** | 2026-03-25 | Turkish + Italian editions (9 languages total), logo hard-refresh (1250ms spinner + window.location.reload()), landing page full rewrite |
+| **3.2.0** | 2026-03-25 | Turkish + Italian editions (9 languages total), logo hard-refresh (1250ms spinner + window.location.reload()), landing page full rewrite |
 | **3.0.0** | 2026-03-23 | 4 new native language editions (ES, PT, ZH, RU), select dropdown lang switcher, Unicode dedup, dark mode default, React Query refresh UX |
 | 2.0.2 | 2026-03-23 | Storage snake_case bug fix, DigestTab edition, typography calibration |
 | 2.0.1 | 2026-03-23 | Responsive typography fix: leading-[3.0] → 1.9/2.2/2.6 per breakpoint |
@@ -545,7 +545,7 @@ Full history with engineering narrative: **[CHANGELOG.md](./CHANGELOG.md)**
 
 ## 🗺️ Roadmap
 
-**v3.1.0 shipped.** 9 native language editions (EN/FR/DE/ES/PT/ZH/RU/TR/IT), logo hard-refresh UX, complete landing page rewrite removing all legacy edition references.
+**v3.2.0 shipped.** 9 native language editions (EN/FR/DE/ES/PT/ZH/RU/TR/IT), logo hard-refresh UX, complete landing page rewrite removing all legacy edition references.
 
 ### v3.2 — Delivery & Channels
 - 📧 Email delivery (Postmark / Resend) — digest in your inbox at 6 AM
