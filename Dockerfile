@@ -1,33 +1,33 @@
 FROM node:20-alpine AS builder
 
-# sharp requires vips at build time for native bindings
-RUN apk add --no-cache vips-dev python3 make g++
+# Build tools for any native modules (sharp, better-sqlite3, etc.)
+RUN apk add --no-cache python3 make g++ vips-dev
 
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+# Ensure node-gyp is available for native builds
+RUN npm install -g node-gyp && npm ci
 COPY . .
 RUN npm run build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
 
-# sharp requires vips + build tools to compile from source during npm ci
-RUN apk add --no-cache vips vips-dev python3 make g++
+# Runtime: vips for sharp, build tools for native compile during npm ci
+RUN apk add --no-cache python3 make g++ vips-dev
 
-# Install production deps only
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm install -g node-gyp && npm ci --omit=dev
 
-# Remove build tools to keep the final image small
-RUN apk del vips-dev python3 make g++
+# Strip build deps, keep only vips runtime
+RUN apk del python3 make g++ vips-dev && apk add --no-cache vips
 
 # Copy built output
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/shared ./shared
 
-# Create data directory for SQLite
-RUN mkdir -p /data
+# Create data directory for SQLite + images
+RUN mkdir -p /data/images
 
 ENV NODE_ENV=production
 ENV DB_PATH=/data/espresso.db
