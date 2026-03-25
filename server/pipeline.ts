@@ -657,8 +657,10 @@ async function wikimediaBestPhoto(query: string): Promise<string | null> {
     for (const page of Object.values(pages)) {
       const info = page.imageinfo?.[0];
       if (!info) continue;
-      if (!["image/jpeg","image/png","image/webp"].includes(info.mime)) continue;
-      const isPng = info.mime === "image/png"; // PNG = often diagrams/charts, penalised in score
+      // Only JPEG and WebP — real editorial photographs are never PNG
+      // PNG = data charts, maps, diagrams, infographics. Hard reject.
+      if (!["image/jpeg","image/webp"].includes(info.mime)) continue;
+      const isPng = false; // always false now — PNG rejected above
 
       const w = info.width ?? 0, h = info.height ?? 0;
       if (w < 800 || h < 400) continue; // min 800px wide for editorial quality
