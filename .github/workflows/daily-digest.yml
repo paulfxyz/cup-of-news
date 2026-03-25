@@ -1,29 +1,32 @@
 ##
 ## .github/workflows/daily-digest.yml
 ## @author Paul Fleury <hello@paulfleury.com>
-## @version 2.0.3
+## @version 3.1.0
 ##
-## Cup of News — Daily Digest Generation for ALL 8 Editions
+## Cup of News — Daily Digest Generation for ALL 9 Language Editions
 ##
 ## WHAT THIS DOES:
 ##   Runs at 6:00 AM GMT every day.
-##   Generates and auto-publishes one digest per edition (8 total).
-##   Each edition uses its own regional RSS sources and writes in its native language.
+##   Generates and auto-publishes one digest per language edition (9 total).
+##   Each edition uses its own native-language RSS source pool and writes in
+##   the target language via Gemini 2.5 Pro.
 ##
-## WHY ALL 8 EDITIONS:
-##   Previously this workflow generated only the global en-WORLD edition.
-##   v2.0.0 added 8 language/regional editions — each needs its own daily digest
-##   so users switching to fr-FR, de-DE etc. always have fresh content.
+## WHY 9 EDITIONS (v3.1.0):
+##   v3.0.0 shipped 7 editions (en, fr, de, es, pt, zh, ru).
+##   v3.1.0 adds Turkish (tr) and Italian (it) for a total of 9.
+##   Legacy 8-edition aliases (en-WORLD, en-US, etc.) are removed.
+##   The principle: 1 edition = 1 language.
 ##
 ## EDITIONS:
-##   en-WORLD — Global English (flagship)
-##   en-US    — United States
-##   en-CA    — Canada (English)
-##   en-GB    — United Kingdom
-##   fr-FR    — France (Français)
-##   fr-CA    — Canada (Français)
-##   de-DE    — Deutschland (Deutsch)
-##   en-AU    — Australia
+##   en  — English (global)         🌐
+##   fr  — Français                 🇫🇷
+##   de  — Deutsch                  🇩🇪
+##   es  — Español                  🇪🇸
+##   pt  — Português                🇧🇷
+##   zh  — 中文 (Chinese)            🇨🇳
+##   ru  — Русский (Russian)        🌍
+##   tr  — Türkçe (Turkish) [NEW]   🇹🇷
+##   it  — Italiano (Italian) [NEW] 🇮🇹
 ##
 ## REQUIRED SECRETS (Settings → Secrets → Actions):
 ##   ESPRESSO_URL       — https://app.cupof.news
@@ -34,11 +37,11 @@
 ##
 ## TIMING NOTE:
 ##   Gemini 2.5 Pro takes ~30-90s per edition.
-##   8 editions run sequentially = ~5-8 minutes total.
-##   The 10-minute job timeout is set accordingly.
+##   9 editions run sequentially = ~5-10 minutes total.
+##   The 15-minute job timeout is set accordingly.
 ##
 
-name: Daily Morning Digest — All Editions
+name: Daily Morning Digest — All 9 Language Editions
 
 on:
   schedule:
@@ -47,7 +50,7 @@ on:
   workflow_dispatch:
     inputs:
       edition:
-        description: 'Generate specific edition only (leave empty for all)'
+        description: 'Generate specific edition only (leave empty for all 9)'
         required: false
         default: ''
       force:
@@ -62,18 +65,19 @@ jobs:
 
     strategy:
       # Run editions sequentially to avoid overwhelming the server
-      # and to respect OpenRouter rate limits
+      # and to respect OpenRouter rate limits (Gemini 2.5 Pro)
       max-parallel: 1
       matrix:
         edition:
-          - en-WORLD
-          - en-US
-          - en-CA
-          - en-GB
-          - fr-FR
-          - fr-CA
-          - de-DE
-          - en-AU
+          - en
+          - fr
+          - de
+          - es
+          - pt
+          - zh
+          - ru
+          - tr
+          - it
 
     steps:
       - name: Skip if specific edition requested and this is not it
