@@ -1,3 +1,53 @@
+## [3.4.0] — 2026-03-25
+
+**AI 5-query image pipeline. Semantically accurate photos for every story.**
+
+### The problem with v3.3.7
+
+v3.3.7 asked AI to extract a single Wikipedia article title from a story headline.
+This failed in two ways:
+1. AI returned country names ("Indonesia", "India", "Congo") → Wikipedia returned flags/maps
+2. AI returned organisation names ("Hamas", "Samsung") → Wikipedia returned logos/buildings
+3. AI returned "NONE" for abstract stories → fell through to random picsum
+
+The Lebo M case: AI extracted "Lebo M" correctly, Wikipedia returned his portrait,
+but the portrait was cropped/low-res. And the pipeline had no fallback.
+
+### The fix: 5-query AI + Wikimedia Commons with scoring
+
+1. Ask gemini-2.0-flash-001 (temperature=0.1) to generate 5 DIVERSE queries:
+   - Query 1: Named person full name
+   - Query 2: Specific action or event
+   - Query 3: Location or building
+   - Query 4: Specific subject/object
+   - Query 5: Visual concept
+
+2. For each query, search Wikimedia Commons with gsrsort=relevance
+
+3. Filter candidates: landscape only (ratio 1.2–3.5), min 640×360,
+   no flags/maps/logos/SVG/diagrams
+
+4. Score: 40% aspect ratio proximity to 16:9, 60% image size
+
+5. Return first query that yields a qualifying image
+
+### Why this works
+
+For "Lebo M sues comedian":
+  Old: AI → "Lebo M" → Wikipedia portrait (bad crop)
+  New: AI → ["Lebo M composer", "courtroom lawsuit South Africa",
+              "South African courtroom", "film score copyright", ...) 
+       → "Lebo M composer" → finds concert photo with Hans Zimmer ✅
+
+For "Indonesia scraps school lunch":
+  Old: AI → "Indonesia" → flag ❌
+  New: AI → ["Prabowo Subianto inauguration", "school cafeteria food", ...]
+       → "Prabowo Subianto inauguration" → president's actual photo ✅
+
+Summary is now passed to the AI as context, improving query relevance.
+
+---
+
 ## [3.3.4] — 2026-03-25
 
 **Critical: pipeline hung forever. Added AbortController timeouts to every async call.**

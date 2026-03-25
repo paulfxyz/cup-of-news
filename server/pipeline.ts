@@ -1,7 +1,7 @@
 /**
  * @file server/pipeline.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.3.7
+ * @version 3.4.0
  *
  * Cup of News — Daily Digest Generation Pipeline
  *
@@ -304,95 +304,85 @@ function generateCategoryImage(title: string, category: string): string {
 }
 
 /**
- * fetchEditorialImage — AI-powered image selection (v3.3.7)
+ * fetchEditorialImage — multi-query AI image selection (v3.4.0)
  *
  * STRATEGY:
- *   Previous approach (Wikimedia Commons keyword search) returned semantically
- *   wrong images — searching "Danish election government" returns diagrams and
- *   maps, not photos of politicians. The fix: use AI to extract the main subject
- *   (person, country, organisation) then look up their Wikipedia article photo.
+ *   Ask gemini-2.0-flash-001 to generate 5 diverse Wikimedia Commons search
+ *   queries at temperature=0.1. For each query, search Wikimedia and take the
+ *   first qualifying landscape photo. Stop at the first hit.
  *
- * FULL FALLBACK CHAIN (v3.3.7):
- *   1. Jina Reader og:image (from article HTML) — already run in extraction
- *   2. Direct HTML Range fetch (og:image meta tag) — already run
- *   3. [NEW] AI subject extraction → Wikipedia article photo (free, no key)
- *      Uses gemini-2.0-flash-001 to extract the main subject, then fetches
- *      the Wikipedia article's lead photograph via the MediaWiki API.
- *      This gives real portraits of politicians, action photos of athletes,
- *      and accurate images of places/organisations.
- *   4. Wikimedia Commons keyword search (fallback if Wikipedia has no image)
- *   5. Unsplash (if UNSPLASH_ACCESS_KEY is set)
- *   6. picsum.photos seeded by title hash (deterministic, always works)
+ *   Why 5 queries: a single query often returns nothing or the wrong thing.
+ *   5 queries cover: person name, action, location, topic, visual concept.
+ *   First hit wins — no AI ranking of results needed.
  *
- * Cost: gemini-2.0-flash-001 is ~$0.0001/call. For 20 stories × 9 editions
- * = 180 calls = ~$0.018/day. Negligible against the $0.07 pipeline cost.
- * We only call it for stories that didn't get an OG image (typically 5-12/20).
+ * FULL FALLBACK CHAIN (v3.4.0):
+ *   1. Jina Reader og:image (already run during extraction)
+ *   2. Direct HTML Range fetch (already run)
+ *   3. [NEW] AI 5-query → Wikimedia Commons best landscape photo
+ *   4. Unsplash (if UNSPLASH_ACCESS_KEY set)
+ *   5. picsum.photos deterministic seed (always works, not semantically wrong)
  */
 async function fetchEditorialImage(
   title: string,
   category: string,
+  summary: string,
   apiKey?: string
 ): Promise<string | null> {
-  // ── Tier 3: AI subject → Wikipedia article photo ─────────────────────────
+  // ── Tier 3: AI multi-query → Wikimedia ────────────────────────────────────
   if (apiKey) {
-    const wikiPhoto = await fetchFromWikipediaViaAI(title, category, apiKey);
+    const wikiPhoto = await fetchFromWikimediaMultiQuery(title, summary, apiKey);
     if (wikiPhoto) return wikiPhoto;
   }
 
-  // ── Tier 4: Wikimedia Commons keyword search ──────────────────────────────
-  const wikiResult = await fetchFromWikimedia(title, category);
-  if (wikiResult) return wikiResult;
-
-  // ── Tier 5: Unsplash (optional, requires API key) ─────────────────────────
+  // ── Tier 4: Unsplash (optional) ───────────────────────────────────────────
   const unsplashKey = process.env.UNSPLASH_ACCESS_KEY;
   if (unsplashKey) {
     const unsplashResult = await fetchFromUnsplash(title, unsplashKey, category);
     if (unsplashResult) return unsplashResult;
   }
 
-  // ── Tier 6: picsum.photos with deterministic seed ─────────────────────────
+  // ── Tier 5: picsum.photos deterministic seed ─────────────────────────────
   const seed = sha256(title).slice(0, 8);
   return `https://picsum.photos/seed/${seed}/800/450`;
 }
 
 /**
- * fetchFromWikipediaViaAI — use AI to extract the main subject of a story,
- * then fetch that subject's Wikipedia article lead photo.
+ * fetchFromWikimediaMultiQuery — AI-guided multi-query Wikimedia search.
  *
- * This solves the "wrong image" problem: Wikimedia Commons keyword search
- * returns whatever matches the keywords, which for political or sports stories
- * is often a diagram, chart, or map. Wikipedia article lead photos are
- * specifically chosen by editors to represent the article subject — they're
- * almost always portraits of people, photos of buildings, or action shots.
+ * 1. Ask Gemini Flash to generate 5 diverse search queries (temperature=0.1)
+ * 2. For each query, search Wikimedia Commons for landscape photos
+ * 3. Filter out flags, maps, SVG icons, logos, diagrams
+ * 4. Return the first qualifying image (largest × best aspect ratio)
  *
- * Example:
- *   Title: "Denmark PM resigns after historic election defeat"
- *   AI extracts: "Mette Frederiksen"
- *   Wikipedia: portrait photo of Mette Frederiksen ✅
- *
- *   Title: "Mohamed Salah Liverpool exit confirmed"
- *   AI extracts: "Mohamed Salah"
- *   Wikipedia: action photo of Salah in red jersey ✅
- *
- *   Title: "Pakistan offers to mediate US-Iran peace talks"
- *   AI extracts: "Pakistan"
- *   Wikipedia: Flag or map of Pakistan — not ideal, skip it
- *   → falls through to Wikimedia search
+ * The 5-query approach solves the single-query failure modes:
+ * - "Lebo M" → no results → try "Lebo M composer" → find Lion King concert photo
+ * - "Indonesia" → flag → try "Prabowo Subianto" → find inauguration photo
+ * - "cadmium food" → nothing → try "French food safety" → relevant image
  */
-async function fetchFromWikipediaViaAI(
+async function fetchFromWikimediaMultiQuery(
   title: string,
-  category: string,
+  summary: string,
   apiKey: string
 ): Promise<string | null> {
   try {
-    // Step 1: Ask AI to extract the most photo-searchable subject
-    const prompt = `You are extracting the single most visually identifiable subject from a news headline.
-Return ONLY a Wikipedia article title (person name, place, or organisation) that would have a portrait or action photo.
-Prefer person names > specific places > organisations > abstract topics.
-If the headline is about a generic concept with no specific person/place, return "NONE".
-Return only the Wikipedia article title, nothing else.
+    // Step 1: Generate 5 diverse search queries
+    const prompt = `For this news story, generate 5 different Wikimedia Commons search queries to find a relevant editorial photograph.
 
-Headline: "${title.slice(0, 120)}"`;
+Rules:
+- Query 1: Named person full name (if present)
+- Query 2: Specific action or event  
+- Query 3: Location, building, or institution
+- Query 4: Specific subject or object (product, animal, etc.)
+- Query 5: Visual concept representing the story
+
+NEVER use: country names alone, abstract words, organisation names alone.
+BAD: "India", "technology", "politics", "Germany"
+GOOD: "Mohamed Salah football", "gorilla jungle Virunga", "Berlin courthouse trial"
+
+Return ONLY a JSON array of exactly 5 strings.
+
+Title: "${title.slice(0, 120)}"
+Context: "${summary.slice(0, 150)}"`;
 
     const aiRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
@@ -405,51 +395,102 @@ Headline: "${title.slice(0, 120)}"`;
       body: JSON.stringify({
         model: "google/gemini-2.0-flash-001",
         messages: [{ role: "user", content: prompt }],
-        max_tokens: 40,
-        temperature: 0,
+        max_tokens: 150,
+        temperature: 0.1,
+        response_format: { type: "json_object" },
       }),
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(10_000),
     });
 
     if (!aiRes.ok) return null;
     const aiData = await aiRes.json() as { choices: Array<{ message: { content: string } }> };
-    const subject = aiData.choices?.[0]?.message?.content?.trim();
-    if (!subject || subject === "NONE" || subject.length < 2) return null;
+    const raw = aiData.choices?.[0]?.message?.content;
+    if (!raw) return null;
 
-    // Step 2: Fetch the Wikipedia article's lead photo
-    const encoded = encodeURIComponent(subject);
-    const wikiRes = await fetch(
-      `https://en.wikipedia.org/w/api.php?action=query&titles=${encoded}&prop=pageimages&pithumbsize=1200&format=json&origin=*&pilicense=any`,
-      { signal: AbortSignal.timeout(6000) }
-    );
-    if (!wikiRes.ok) return null;
+    // Parse queries — handle both ["q1","q2",...] and {"queries":["q1",...]}
+    let queries: string[] = [];
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) queries = parsed;
+      else for (const v of Object.values(parsed)) {
+        if (Array.isArray(v)) { queries = v as string[]; break; }
+      }
+    } catch { return null; }
 
-    const wikiData = await wikiRes.json() as {
-      query?: { pages?: Record<string, { thumbnail?: { source: string } }> }
-    };
-    const pages = Object.values(wikiData.query?.pages ?? {});
-    const imgUrl = pages[0]?.thumbnail?.source;
+    queries = queries.slice(0, 5).filter(q => typeof q === "string" && q.length > 2);
+    if (!queries.length) return null;
 
-    if (!imgUrl) return null;
-
-    // Filter out flags, maps, and SVG icons — these are not editorial photos
-    if (imgUrl.includes(".svg") || imgUrl.includes("Flag_of") ||
-        imgUrl.includes("flag_of") || imgUrl.includes("Locator") ||
-        imgUrl.includes("_map") || imgUrl.includes("Map_of") ||
-        imgUrl.includes("coat_of_arms") || imgUrl.includes("Coat_of_arms") ||
-        imgUrl.includes("logo") || imgUrl.includes("Logo")) {
-      return null;
-    }
-
-    // Prefer JPG/PNG portraits — skip low-res thumbnails
-    if (isValidOgImage(imgUrl)) {
-      return imgUrl;
+    // Step 2: Try each query against Wikimedia Commons
+    for (const query of queries) {
+      const img = await wikimediaBestPhoto(query);
+      if (img) return img;
     }
     return null;
+
   } catch {
     return null;
   }
 }
+
+/**
+ * wikimediaBestPhoto — search Wikimedia Commons, return best landscape photo.
+ * Filters out non-photo content (flags, maps, diagrams, logos, SVG).
+ * Scores by size × aspect-ratio proximity to 16:9.
+ */
+async function wikimediaBestPhoto(query: string): Promise<string | null> {
+  try {
+    const apiUrl = `https://commons.wikimedia.org/w/api.php?` +
+      `action=query&format=json&origin=*` +
+      `&generator=search&gsrsearch=${encodeURIComponent(query)}` +
+      `&gsrnamespace=6&gsrlimit=10&gsrsort=relevance` +
+      `&prop=imageinfo&iiprop=url|size|mime`;
+
+    const res = await fetch(apiUrl, {
+      headers: { "User-Agent": "CupOfNews/3.4 (https://cupof.news; editorial digest)" },
+      signal: AbortSignal.timeout(6_000),
+    });
+    if (!res.ok) return null;
+
+    const data = await res.json() as {
+      query?: { pages?: Record<string, {
+        imageinfo?: Array<{ url: string; width: number; height: number; mime: string }>
+      }> }
+    };
+
+    const BAD = [
+      "flag_","Flag_","emblem","Emblem","_logo","Logo_","_map","Map_",
+      "Map_of","_Map","coat_of","Coat_of","diagram","Diagram","chart",
+      "icon_","Icon_","symbol_","Symbol_","stamp","currency","seal_",
+      "blank_","Blank_","outline","silhouette","pictogram",
+    ];
+
+    const candidates: Array<{ score: number; url: string }> = [];
+
+    for (const page of Object.values(data.query?.pages ?? {})) {
+      const info = page.imageinfo?.[0];
+      if (!info) continue;
+      if (!["image/jpeg","image/png","image/webp"].includes(info.mime)) continue;
+      const w = info.width ?? 0, h = info.height ?? 0;
+      if (w < 640 || h < 360) continue;
+      const ratio = w / Math.max(h, 1);
+      if (ratio < 1.2 || ratio > 3.5) continue; // landscape only
+      if (info.url.includes(".svg")) continue;
+      if (BAD.some(b => info.url.includes(b))) continue;
+      if (!isValidOgImage(info.url)) continue;
+
+      // Score: prefer 16:9 and larger images
+      const ratioScore = 1 - Math.abs(ratio - 1.778) / 2;
+      const sizeScore = Math.min(w * h, 4_000_000) / 4_000_000;
+      candidates.push({ score: ratioScore * 0.4 + sizeScore * 0.6, url: info.url });
+    }
+
+    if (!candidates.length) return null;
+    return candidates.sort((a, b) => b.score - a.score)[0].url;
+  } catch {
+    return null;
+  }
+}
+
 
 /** Unsplash search — requires UNSPLASH_ACCESS_KEY */
 async function fetchFromUnsplash(title: string, accessKey: string, category = "World"): Promise<string | null> {
@@ -1266,13 +1307,13 @@ IMPORTANT: For additionalIdxs — if multiple articles in the list cover the SAM
       const parts = story.imageUrl.replace("__GENERATE__:", "").split(":");
       const category = parts[parts.length - 1];
       const title = parts.slice(0, -1).join(":");
+      const summary = story.summary?.slice(0, 200) || "";
 
-      // Tier 3: AI subject → Wikipedia photo (free, semantically accurate)
-      // Tier 4: Wikimedia Commons keyword fallback
-      // Tier 5: Unsplash (if key set)
-      // Tier 6: picsum.photos deterministic seed
-      // Tier 7: category SVG — guaranteed fallback
-      const editorialUrl = await fetchEditorialImage(title, category, apiKey);
+      // Tier 3: AI 5-query → Wikimedia best landscape photo
+      // Tier 4: Unsplash (if UNSPLASH_ACCESS_KEY set)
+      // Tier 5: picsum.photos deterministic seed
+      // Tier 6: category SVG — guaranteed fallback
+      const editorialUrl = await fetchEditorialImage(title, category, summary, apiKey);
       if (editorialUrl) {
         story.imageUrl = editorialUrl;
         console.log(`  ✅ Image found: "${title.slice(0, 40)}…"`);
