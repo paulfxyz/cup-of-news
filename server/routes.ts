@@ -1,7 +1,7 @@
 /**
  * @file server/routes.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.3.1
+ * @version 3.3.2
  *
  * Cup of News — REST API Routes
  *
@@ -100,7 +100,7 @@ export function registerRoutes(httpServer: Server, app: Express) {
    * Public. Used by uptime monitors, Docker HEALTHCHECK, GitHub Actions.
    */
   app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok", version: "3.3.1" });
+    res.json({ status: "ok", version: "3.3.2" });
   });
 
   // ── Setup ──────────────────────────────────────────────────────────────────
@@ -366,24 +366,23 @@ export function registerRoutes(httpServer: Server, app: Express) {
    *   4. Browser closes EventSource on done|error
    */
 
-  // In-memory job store (single machine, single user — adequate for self-hosted)
+  // In-memory job store
   const jobs = new Map<string, {
     status: "pending"|"running"|"done"|"error";
     edition: string;
-    logs: string[];
+    events: object[];          // full event objects — replayed to late subscribers
     result?: { digestId: number; storiesCount: number; elapsed: number };
     error?: string;
-    listeners: Array<(event: string) => void>;
+    listeners: Array<(line: string) => void>;
   }>();
 
   const emitJob = (jobId: string, event: object) => {
     const job = jobs.get(jobId);
     if (!job) return;
+    // Store FULL event so late subscribers get the correct type + all fields
+    job.events.push(event);
     const line = `data: ${JSON.stringify(event)}\n\n`;
     job.listeners.forEach(fn => fn(line));
-    // Also store in logs for the textarea
-    const msg = (event as any).message || (event as any).type;
-    if (msg && msg !== "heartbeat") job.logs.push(msg);
   };
 
   /**
@@ -404,7 +403,7 @@ export function registerRoutes(httpServer: Server, app: Express) {
 
     // Create job
     const jobId = `job_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-    jobs.set(jobId, { status: "pending", edition: editionId, logs: [], listeners: [] });
+    jobs.set(jobId, { status: "pending", edition: editionId, events: [], listeners: [] });
 
     // Return jobId immediately
     res.json({ jobId, edition: editionId });
@@ -484,8 +483,9 @@ export function registerRoutes(httpServer: Server, app: Express) {
 
     const write = (line: string) => { try { res.write(line); } catch {} };
 
-    // Replay history so late subscribers catch up
-    job.logs.forEach(log => write(`data: ${JSON.stringify({ type: "log", message: log })}\n\n`));
+    // Replay ALL stored events so late subscribers catch up with full fidelity
+    // This ensures step/total/done fields arrive even if EventSource connects late
+    job.events.forEach(evt => write(`data: ${JSON.stringify(evt)}\n\n`));
 
     // If already done/error, send terminal event and close
     if (job.status === "done" && job.result) {

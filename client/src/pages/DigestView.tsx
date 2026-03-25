@@ -1,7 +1,7 @@
 /**
  * @file client/src/pages/DigestView.tsx
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.3.1
+ * @version 3.3.2
  *
  * Cup of News — Public Digest Reader
  *
@@ -896,8 +896,8 @@ function PinKeypad({ edition, onClose }: { edition: any; onClose: () => void }) 
             addLog(msg.message);
             break;
           case "heartbeat":
-            // keep-alive ping — no UI change, but log it subtly
-            addLog("⏳ Pipeline running…");
+            // keep-alive ping every 10s — only log first one to show we're alive
+            if (logs.length < 5) addLog("⏳ Pipeline running… (this takes 1-3 min)");
             break;
           case "done":
             stopTimer();
