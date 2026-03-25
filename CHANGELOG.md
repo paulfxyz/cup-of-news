@@ -1,3 +1,32 @@
+## [3.2.1] — 2026-03-25
+
+**Twice-daily digest generation. Fly.io redeploy. Siteground landing page deployed via FTP.**
+
+### Digest schedule — now twice per day
+- GitHub Actions cron updated from `0 6 * * *` (once) to two schedules:
+  `0 6 * * *` (6:00 AM GMT) and `0 16 * * *` (4:00 PM GMT)
+- Morning edition: overnight + early news cycle
+- Afternoon edition: midday developments, market closes, press conferences
+- 409 idempotency guard already in place — double-fire is a no-op
+- Timeout bumped from 15 → 20 minutes to give sequential 9-edition runs headroom
+- Workflow renamed: "Digest Generation — All 9 Editions (6 AM + 4 PM GMT)"
+
+### Deployment fixes
+- Fly.io app redeployed — `app.cupof.news/api/health` now returns `3.2.0`
+  (was stuck on `3.0.0` since the last deploy was Mar 23)
+- Siteground landing page deployed via FTP (was never pushed live despite being
+  built in v3.2.0 — the two-site problem strikes again)
+  `cupof.news` now shows v3.2.0, 9 editions, TR + IT, correct meta tags
+
+### Root cause — version mismatch
+The app reported `3.0.0` on `/api/health` because `fly deploy` had not been run
+since v3.0.0. The version number lives in `package.json` and is read at runtime —
+it doesn't update itself on Fly just because the git repo changed. Fly.io requires
+an explicit `fly deploy` to ship new code. Going forward: deploy is part of the
+sprint checklist, not an afterthought.
+
+---
+
 ## [3.2.0] — 2026-03-25
 
 **Landing page complete rewrite. Logo refresh on landing page. All legacy references removed. Version bump.**
