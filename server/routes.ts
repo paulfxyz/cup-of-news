@@ -1,7 +1,7 @@
 /**
  * @file server/routes.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.3.5
+ * @version 3.3.6
  *
  * Cup of News — REST API Routes
  *
@@ -100,7 +100,7 @@ export function registerRoutes(httpServer: Server, app: Express) {
    * Public. Used by uptime monitors, Docker HEALTHCHECK, GitHub Actions.
    */
   app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok", version: "3.3.5" });
+    res.json({ status: "ok", version: "3.3.6" });
   });
 
   // ── Setup ──────────────────────────────────────────────────────────────────
@@ -432,16 +432,16 @@ export function registerRoutes(httpServer: Server, app: Express) {
 
       emitJob(jobId, { type: "progress", step: 3, total: 5, message: "Running Gemini 2.5 Pro — selecting 20 stories…", elapsed: elapsed() });
 
-      // 3-minute overall timeout on the pipeline — prevents infinite hangs
-      // (e.g. OpenRouter slow response, Jina rate-limit storm)
-      const PIPELINE_TIMEOUT_MS = 3 * 60 * 1000;
-      const pipelineResult = await Promise.race([
-        runDailyPipeline(apiKey, editionId),
+      // 5-minute overall timeout — prevents truly infinite hangs while giving
+      // Gemini 2.5 Pro enough time even under load (observed: up to 4 min for FR)
+      const PIPELINE_TIMEOUT_MS = 5 * 60 * 1000;
+      let pipelinePromise = runDailyPipeline(apiKey, editionId);
+      const result = await Promise.race([
+        pipelinePromise,
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("Pipeline timeout after 3 minutes. Please try again.")), PIPELINE_TIMEOUT_MS)
+          setTimeout(() => reject(new Error("TIMEOUT")), PIPELINE_TIMEOUT_MS)
         ),
-      ]);
-      const result = pipelineResult as Awaited<ReturnType<typeof runDailyPipeline>>;
+      ]) as Awaited<ReturnType<typeof runDailyPipeline>>;
       clearInterval(hb);
 
       emitJob(jobId, { type: "progress", step: 4, total: 5, message: `AI selected ${result.storiesCount} stories. Publishing…`, elapsed: elapsed() });
@@ -461,13 +461,44 @@ export function registerRoutes(httpServer: Server, app: Express) {
 
     } catch (err: any) {
       const msg = err?.message || "Unknown error";
-      job.status = "error";
-      job.error = msg;
-      emitJob(jobId, { type: "error", message: msg, elapsed: elapsed() });
-      console.error(`[job ${jobId}] ${editionId} failed:`, msg);
+
+      if (msg === "TIMEOUT") {
+        // Timed out — but pipeline may still complete in background.
+        // Wait 45s then check the DB for a newly created digest.
+        emitJob(jobId, { type: "progress", step: 4, total: 5,
+          message: "Taking longer than expected — checking result…", elapsed: elapsed() });
+        await new Promise(r => setTimeout(r, 45_000));
+
+        const today2 = new Date().toISOString().slice(0, 10);
+        const created = storage.getDigestByDate(today2, editionId);
+        if (created) {
+          if (created.status !== "published") {
+            storage.updateDigest(created.id, {
+              status: "published", publishedAt: new Date().toISOString()
+            });
+          }
+          const elapsedFinal2 = elapsed();
+          const storiesCount = JSON.parse(created.storiesJson || "[]").length;
+          job.status = "done";
+          job.result = { digestId: created.id, storiesCount, elapsed: elapsedFinal2 };
+          emitJob(jobId, { type: "progress", step: 5, total: 5, message: "Published!", elapsed: elapsedFinal2 });
+          emitJob(jobId, { type: "done", digestId: created.id, storiesCount, elapsed: elapsedFinal2 });
+          console.log(`[job ${jobId}] ${editionId} recovered after timeout — digest #${created.id}, ${storiesCount} stories`);
+        } else {
+          job.status = "error";
+          job.error = "Timed out after 5 min. Try refreshing — generation may have completed.";
+          emitJob(jobId, { type: "error", message: job.error, elapsed: elapsed() });
+          console.error(`[job ${jobId}] ${editionId} timed out with no digest in DB`);
+        }
+      } else {
+        job.status = "error";
+        job.error = msg;
+        emitJob(jobId, { type: "error", message: msg, elapsed: elapsed() });
+        console.error(`[job ${jobId}] ${editionId} failed:`, msg);
+      }
     } finally {
-      // Clean up job after 5 minutes
-      setTimeout(() => jobs.delete(jobId), 300_000);
+      // Clean up job after 10 minutes (longer to allow timeout recovery)
+      setTimeout(() => jobs.delete(jobId), 600_000);
     }
   });
 

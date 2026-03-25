@@ -1,7 +1,7 @@
 /**
  * @file server/pipeline.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.3.5
+ * @version 3.3.6
  *
  * Cup of News — Daily Digest Generation Pipeline
  *
@@ -570,7 +570,7 @@ async function callOpenRouter(
   // Attempt 1 — 150s timeout (Gemini 2.5 Pro can take 60-120s for large prompts)
   const makeRequest = async () => {
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 150_000);
+    const t = setTimeout(() => ctrl.abort(), 240_000);  // 4 min — Gemini 2.5 Pro can take 3-4 min under load
     try {
       return await fetch(OPENROUTER_API_URL, { method: "POST", headers, body, signal: ctrl.signal });
     } finally {
