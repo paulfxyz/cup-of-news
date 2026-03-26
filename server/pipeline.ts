@@ -1,7 +1,7 @@
 /**
  * @file server/pipeline.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.5.5
+ * @version 3.5.6
  *
  * Cup of News — Daily Digest Generation Pipeline
  *
@@ -48,7 +48,7 @@ import type { DigestStory, Link } from "@shared/schema";
 import { createHash, randomUUID } from "crypto";
 import { fetchTrendingStories } from "./trends";
 import { getEdition, DEFAULT_EDITION } from "@shared/editions";
-import { rehostImage, ensureImagesDir, getStoredImageQuality, deleteStoredImage } from "./images";
+import { rehostImage, ensureImagesDir, getStoredImageQuality, deleteStoredImage, generateAiImage } from "./images";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -470,6 +470,16 @@ async function fetchEditorialImage(
       const hosted = await rehostImage(unsplashResult);
       if (hosted) return hosted;
       // If rehostImage fails for Unsplash, fall through to SVG
+    }
+  }
+
+  // ── Tier 4.5: AI-generated image via OpenRouter ──────────────────────────
+  // Last resort before SVG. Generate a photorealistic editorial photo.
+  if (apiKey) {
+    const aiImage = await generateAiImage(title, category, summary, apiKey);
+    if (aiImage) {
+      console.log(`  🎨 AI-generated image: "${title.slice(0, 40)}"`);
+      return aiImage;
     }
   }
 

@@ -1,3 +1,15 @@
+## [3.5.6] - 2026-03-26
+
+### Added
+- **AI-generated images**: When the full editorial pipeline fails (no OG, no Wikimedia, no Unsplash),
+  generate a photorealistic news photo via OpenRouter (`openai/gpt-5-image-mini`) instead of
+  falling back to SVG text placeholders. Stored as self-hosted WebP. Low temperature, strict
+  no-text/no-logo/no-UI prompt.
+
+### Changed
+- SVG placeholder is now truly a last resort (Tier 5), only used if AI generation also fails
+- Version strings bumped to 3.5.6
+
 ## [3.5.5] - 2026-03-26
 
 ### Fixed

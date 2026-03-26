@@ -1,7 +1,7 @@
 /**
  * @file server/images.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.5.5
+ * @version 3.5.6
  *
  * Cup of News — Self-hosted image pipeline
  *
@@ -223,4 +223,124 @@ export function deleteStoredImage(hash: string): boolean {
     return true;
   }
   return false;
+}
+
+/**
+ * generateAiImage — generate a photorealistic news photo via OpenRouter.
+ *
+ * Uses openai/gpt-5-image-mini with a strict editorial prompt.
+ * Returns a hosted /images/{hash}.webp path, or null if generation fails.
+ *
+ * @param title    Story headline
+ * @param category Story category (World, Business, etc.)
+ * @param summary  Short summary (first 150 chars)
+ * @param openrouterKey OpenRouter API key
+ */
+export async function generateAiImage(
+  title: string,
+  category: string,
+  summary: string,
+  openrouterKey: string
+): Promise<string | null> {
+  const prompt = `Photorealistic editorial news photograph for a news story.
+Story: "${title}". Category: ${category}.
+Context: ${summary.slice(0, 150)}
+
+Requirements:
+- Real documentary/photojournalism style
+- No text, no logos, no watermarks, no overlays
+- No cartoon, no illustration, no infographic
+- No website screenshots, no app UI
+- Neutral, factual visual representation of the story topic
+- High resolution, sharp focus
+- If the story is about a person, show a relevant setting or scene, not a portrait`;
+
+  try {
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${openrouterKey}`,
+        "HTTP-Referer": "https://cupof.news",
+        "X-Title": "Cup of News",
+      },
+      body: JSON.stringify({
+        model: "openai/gpt-5-image-mini",
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 2000,
+      }),
+      signal: AbortSignal.timeout(60_000),  // 60s — image generation can be slow
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.warn(`  ⚠️  generateAiImage: API error ${res.status} — ${errText.slice(0, 200)}`);
+      return null;
+    }
+
+    const data = await res.json() as {
+      choices: Array<{ message: { content: string | Array<{ type: string; image_url?: { url: string }; text?: string }> } }>;
+    };
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) {
+      console.warn("  ⚠️  generateAiImage: empty response from API");
+      return null;
+    }
+
+    // Extract base64 data URL — content may be a string or array of content parts
+    let dataUrl: string | null = null;
+    if (typeof content === "string") {
+      // String format: may contain "data:image/...;base64,..."
+      const match = content.match(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/);
+      if (match) dataUrl = match[0];
+    } else if (Array.isArray(content)) {
+      // Array format: look for image_url content parts
+      for (const part of content) {
+        if (part.type === "image_url" && part.image_url?.url) {
+          dataUrl = part.image_url.url;
+          break;
+        }
+      }
+    }
+
+    if (!dataUrl) {
+      console.warn("  ⚠️  generateAiImage: no image data in response");
+      return null;
+    }
+
+    // Convert base64 data URL → Buffer
+    const base64Data = dataUrl.replace(/^data:image\/[^;]+;base64,/, "");
+    const imageBuffer = Buffer.from(base64Data, "base64");
+
+    // Convert to WebP: resize to 1200×525, entropy crop, quality 82
+    const webpBuffer = await sharp(imageBuffer)
+      .resize(TARGET_WIDTH, TARGET_HEIGHT, {
+        fit: "cover",
+        position: "entropy",
+      })
+      .webp({ quality: 82 })
+      .toBuffer();
+
+    // Quality gate: same bpp check as rehostImage
+    const postBpp = webpBuffer.length / (TARGET_WIDTH * TARGET_HEIGHT);
+    if (postBpp < 0.04 && webpBuffer.length < 40_960) {
+      console.warn(`  ⚠️  generateAiImage: low quality output (${webpBuffer.length} bytes, ${postBpp.toFixed(4)} bpp) — rejecting`);
+      return null;
+    }
+
+    // Hash based on the prompt (not a URL) — stable for same inputs
+    const hash = createHash("md5").update(prompt).digest("hex").slice(0, 16);
+
+    ensureImagesDir();
+    const filePath = imageFilePath(hash);
+    const urlPath = imageUrlPath(hash);
+
+    fs.writeFileSync(filePath, webpBuffer);
+    console.log(`  🎨 AI image generated: ${urlPath} (${Math.round(webpBuffer.length / 1024)}KB)`);
+    return urlPath;
+
+  } catch (err) {
+    console.warn(`  ⚠️  generateAiImage failed: ${err}`);
+    return null;
+  }
 }
