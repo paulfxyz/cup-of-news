@@ -1,7 +1,7 @@
 /**
  * @file server/pipeline.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.5.3
+ * @version 3.5.4
  *
  * Cup of News — Daily Digest Generation Pipeline
  *
@@ -48,7 +48,7 @@ import type { DigestStory, Link } from "@shared/schema";
 import { createHash, randomUUID } from "crypto";
 import { fetchTrendingStories } from "./trends";
 import { getEdition, DEFAULT_EDITION } from "@shared/editions";
-import { rehostImage, ensureImagesDir } from "./images";
+import { rehostImage, ensureImagesDir, getStoredImageQuality, deleteStoredImage } from "./images";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -2053,10 +2053,24 @@ export async function reprocessDigestImages(
 ): Promise<string> {
   const { title, category, summary, sourceUrl } = story;
 
-  // Skip if already self-hosted (starts with /images/)
+  // Check quality of already self-hosted images — delete bad ones and re-run pipeline
   if (story.imageUrl.startsWith("/images/")) {
-    console.log(`  ⏭️  Already hosted: "${title.slice(0, 40)}"`);
-    return story.imageUrl;
+    const hash = story.imageUrl.replace("/images/", "").replace(".webp", "");
+    const quality = getStoredImageQuality(hash);
+
+    if (!quality) {
+      // File is missing — fall through to full pipeline
+      console.log(`  ⚠️  Stored image missing, re-fetching: "${title.slice(0, 40)}"`);
+    } else if (!quality.isVideoStill) {
+      // Image passes quality check — keep it
+      console.log(`  ⏭️  Already hosted & good quality: "${title.slice(0, 40)}"`);
+      return story.imageUrl;
+    } else {
+      // Image fails quality check — delete it and fall through to full pipeline
+      console.log(`  🗑️  Deleting bad cached image (${quality.fileSize}B, ${quality.bpp.toFixed(4)} bpp): "${title.slice(0, 40)}"`);
+      deleteStoredImage(hash);
+      // Fall through to full pipeline below
+    }
   }
 
   // Skip SVG data URIs — these are correct by design

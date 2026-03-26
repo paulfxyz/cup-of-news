@@ -1,7 +1,7 @@
 /**
  * @file server/images.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.5.3
+ * @version 3.5.4
  *
  * Cup of News — Self-hosted image pipeline
  *
@@ -152,6 +152,15 @@ export async function rehostImage(sourceUrl: string): Promise<string | null> {
       .webp({ quality: 82 })
       .toBuffer();
 
+    // Post-conversion quality gate: reject video stills after WebP conversion
+    // A real editorial photo at 1200×525 quality 82 is typically 40-120KB.
+    // Video frames compress to <25KB because they have very little detail.
+    const postBpp = webpBuffer.length / (TARGET_WIDTH * TARGET_HEIGHT);
+    if (postBpp < 0.04 && webpBuffer.length < 40_960) {
+      console.warn(`  ⚠️  rehostImage: post-conversion video still (${webpBuffer.length} bytes, ${postBpp.toFixed(4)} bpp) — rejecting`);
+      return null;
+    }
+
     fs.writeFileSync(filePath, webpBuffer);
     console.log(`  📸 Rehosted: ${sourceUrl.slice(0, 60)}… → ${urlPath} (${Math.round(webpBuffer.length / 1024)}KB)`);
     return urlPath;
@@ -183,4 +192,35 @@ export function listCachedImages(): string[] {
 export function deleteCachedImage(hash: string): void {
   const p = imageFilePath(hash);
   if (fs.existsSync(p)) fs.unlinkSync(p);
+}
+
+/**
+ * getStoredImageQuality — check quality of an already-stored WebP image.
+ * Returns null if the file doesn't exist.
+ */
+export function getStoredImageQuality(hash: string): {
+  filePath: string;
+  fileSize: number;
+  bpp: number;
+  isVideoStill: boolean;
+} | null {
+  const fp = imageFilePath(hash);
+  if (!fs.existsSync(fp)) return null;
+  const fileSize = fs.statSync(fp).size;
+  const bpp = fileSize / (1200 * 525);
+  const isVideoStill = bpp < 0.04 && fileSize < 40_960;
+  return { filePath: fp, fileSize, bpp, isVideoStill };
+}
+
+/**
+ * deleteStoredImage — delete a stored WebP image by hash.
+ * Returns true if the file was deleted, false if it didn't exist.
+ */
+export function deleteStoredImage(hash: string): boolean {
+  const fp = imageFilePath(hash);
+  if (fs.existsSync(fp)) {
+    fs.unlinkSync(fp);
+    return true;
+  }
+  return false;
 }

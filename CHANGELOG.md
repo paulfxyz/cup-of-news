@@ -1,3 +1,12 @@
+## [3.5.4] - 2026-03-26
+
+### Fixed
+- **Image quality gate**: `rehostImage` now rejects video stills after conversion
+  (bpp < 0.04 AND < 40KB) — bad images are never written to disk
+- **Force reprocess**: `reprocessDigestImages` now checks quality of already-stored
+  `/images/` files and deletes + replaces bad ones instead of blindly keeping them
+- All version strings bumped to 3.5.4
+
 ## [3.5.3] — 2026-03-26
 
 **Reject video frames, website screenshots, and low-res images. No more blurry broadcast stills.**
