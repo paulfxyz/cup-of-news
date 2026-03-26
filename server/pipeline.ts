@@ -1,7 +1,7 @@
 /**
  * @file server/pipeline.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.5.2
+ * @version 3.5.3
  *
  * Cup of News — Daily Digest Generation Pipeline
  *
@@ -159,6 +159,18 @@ function isValidOgImage(url: string | null): boolean {
     "watermark=",         // generic watermark param
   ];
   if (overlayParams.some(p => lower.includes(p))) return false;
+
+  // Reject known video thumbnail and broadcast screenshot CDN patterns
+  const videoThumbnailPatterns = [
+    "brightcove.com",          // Brightcove video platform thumbnails (France24, etc.)
+    "cf-images.us-east-1.prod.boltdns.net",  // Brightcove CDN
+    "players.brightcove.net",
+    "img.youtube.com",         // YouTube video thumbnails
+    "i.ytimg.com",             // YouTube image CDN
+    "static.sendtonews.com",   // Broadcast video thumbnail service
+    "thumbnails.cnn.video",    // CNN video thumbnails
+  ];
+  if (videoThumbnailPatterns.some(p => lower.includes(p))) return false;
 
   // Reject portrait-format URL patterns — these are explicitly cropped tall
   // e.g. NYT "verticalTwoByThree735", "portrait", "2by3", "tall", "9x16"
@@ -416,19 +428,25 @@ async function fetchEditorialImage(
   if (sourceUrl) {
     const freshOg = await fetchOgImageDirect(sourceUrl);
     if (freshOg && isValidOgImage(freshOg)) {
-      // Vision-check the OG image — rejects branded overlays, logos, watermarks
-      const ogScore = apiKey ? await checkImageRelevanceWithVision(freshOg, title, apiKey) : 7;
-      if (ogScore >= 7) {
-        const hostedOg = await rehostImage(freshOg);
-        if (hostedOg) {
-          console.log(`  📰 OG re-fetch: rehosted (vision ${ogScore}/10) from ${sourceUrl.slice(0, 60)}`);
-          return hostedOg;
-        }
-        // Could not rehost (sharp error, network) — serve the original OG URL directly
-        console.log(`  📰 OG re-fetch: using original URL (rehost failed)`);
-        return freshOg;
+      // Reject tiny images (video stills, icons) before spending API credits on vision check
+      const dims = await getImageDimensions(freshOg);
+      if (dims && (dims.w < 600 || dims.h < 300)) {
+        console.log(`  🚫 OG too small (${dims.w}×${dims.h}) — skipping to Wikimedia`);
       } else {
-        console.log(`  🚫 OG vision check failed (score ${ogScore}/10) — falling through to Wikimedia`);
+        // Vision-check the OG image — rejects branded overlays, logos, watermarks
+        const ogScore = apiKey ? await checkImageRelevanceWithVision(freshOg, title, apiKey) : 7;
+        if (ogScore >= 7) {
+          const hostedOg = await rehostImage(freshOg);
+          if (hostedOg) {
+            console.log(`  📰 OG re-fetch: rehosted (vision ${ogScore}/10) from ${sourceUrl.slice(0, 60)}`);
+            return hostedOg;
+          }
+          // Could not rehost (sharp error, network) — serve the original OG URL directly
+          console.log(`  📰 OG re-fetch: using original URL (rehost failed)`);
+          return freshOg;
+        } else {
+          console.log(`  🚫 OG vision check failed (score ${ogScore}/10) — falling through to Wikimedia`);
+        }
       }
     }
   }
@@ -628,6 +646,9 @@ Story headline: "${storyTitle.slice(0, 100)}"
 
 GATE 1 — HARD REJECT (score 0) if ANY of these:
 - Visible media outlet logo, watermark, chyron, or text overlay (BBC, Guardian, Reuters, AP, AFP, CNN, NYT, SCMP, Times, etc.) — even if the underlying photo is relevant
+- Screenshot of a website, app, or software UI (shows browser chrome, navigation bars, menus, buttons, form fields, sidebars, or any computer interface elements)
+- Video frame or broadcast TV screenshot (blurry, low-res still from a news broadcast or video, shows chyrons, lower-thirds, or has typical broadcast quality)
+- Product screenshot or app demo screenshot used as if it were a news photograph
 - Video game screenshot, CGI, or 3D render
 - Museum exhibit, educational diagram, or anatomical chart
 - Infographic, data chart, map, or illustration
@@ -1743,9 +1764,10 @@ IMPORTANT: For additionalIdxs — if multiple articles in the list cover the SAM
           const dims = await getImageDimensions(original.ogImage);
           if (dims) {
             const ratio = dims.w / dims.h;
-            // Reject if: portrait (ratio < 1.3) OR too small (w < 400px)
+            // Reject if: portrait (ratio < 1.3) OR too small (w < 600 or h < 300)
             // 1.3 minimum allows 4:3 (ratio 1.33) but blocks near-square and portrait
-            if (ratio < 1.3 || dims.w < 400) {
+            // 600×300 minimum matches the rehostImage gate — no point sending tiny images through
+            if (ratio < 1.3 || dims.w < 600 || dims.h < 300) {
               console.log(`  🚫 OG rejected by dims: ${dims.w}x${dims.h} (ratio ${ratio.toFixed(2)}) — ${original.ogImage?.substring(0, 80)}`);
               ogValid = false;
             }

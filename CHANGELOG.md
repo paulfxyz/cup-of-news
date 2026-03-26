@@ -1,3 +1,19 @@
+## [3.5.3] — 2026-03-26
+
+**Reject video frames, website screenshots, and low-res images. No more blurry broadcast stills.**
+
+### Problem
+Three categories of bad images were slipping through:
+1. **Video frame screenshots** — news sites (France24, broadcast outlets) serve blurry low-res video stills as their og:image. These are typically <30KB and come from video CDNs like Brightcove.
+2. **Website/app UI screenshots** — tech articles use product screenshots as og:images (e.g. a Mastodon article uses a screenshot of the Mastodon website showing browser UI, navigation, buttons).
+3. These bypassed the vision check because the vision check only ran after `isValidOgImage` — which only checked URLs, not actual image quality.
+
+### Fixes (v3.5.3)
+1. **Minimum resolution gate in `rehostImage`** — rejects source images smaller than 600×300px or suspiciously small file sizes (<40KB with <0.04 bytes/pixel ratio = video still)
+2. **Vision prompt: UI screenshot + video frame rejection** — new Gate 1 rules explicitly reject website/app screenshots and broadcast video frames
+3. **URL-pattern blocking for video CDNs** — `isValidOgImage` now blocks Brightcove, YouTube thumbnail CDNs, and other video platforms
+4. **Dimension pre-check before vision** — OG images are checked for minimum dimensions before spending API credits on vision check
+
 ## [3.5.2] — 2026-03-26
 
 **No more press outlet branding on images. Vision check now covers OG images too.**

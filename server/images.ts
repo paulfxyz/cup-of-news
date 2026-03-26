@@ -1,7 +1,7 @@
 /**
  * @file server/images.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.5.2
+ * @version 3.5.3
  *
  * Cup of News — Self-hosted image pipeline
  *
@@ -120,6 +120,26 @@ export async function rehostImage(sourceUrl: string): Promise<string | null> {
 
     const arrayBuffer = await res.arrayBuffer();
     const inputBuffer = Buffer.from(arrayBuffer);
+
+    // Gate: reject images that are too small to be editorial photos
+    // Video thumbnails from broadcast news, small icons, and placeholder images
+    // are typically < 400×300 px. We need at least 600×300 for a usable 1200×525 crop.
+    const metadata = await sharp(inputBuffer).metadata();
+    const srcW = metadata.width ?? 0;
+    const srcH = metadata.height ?? 0;
+    if (srcW < 600 || srcH < 300) {
+      console.warn(`  ⚠️  rehostImage: too small (${srcW}×${srcH}) — skipping`);
+      return null;
+    }
+
+    // Reject suspiciously small files for their claimed dimensions
+    // A 1200×675 video thumbnail might only be 15-25KB — real photos are 80KB+
+    // Formula: reject if bytes-per-pixel < 0.04 (extremely compressed = video still)
+    const bytesPP = inputBuffer.length / Math.max(1, srcW * srcH);
+    if (bytesPP < 0.04 && inputBuffer.length < 40_000) {
+      console.warn(`  ⚠️  rehostImage: likely video frame (${inputBuffer.length} bytes, ${srcW}×${srcH}, ${bytesPP.toFixed(4)} bpp) — skipping`);
+      return null;
+    }
 
     // Convert to WebP: resize to 1200×525, smart crop, quality 82
     // sharp 'entropy' strategy: maximises Shannon entropy of the crop region
