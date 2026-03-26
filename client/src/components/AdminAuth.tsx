@@ -1,7 +1,7 @@
 /**
  * @file client/src/components/AdminAuth.tsx
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.5.7
+ * @version 3.5.8
  *
  * Cup of News — Admin Authentication Gate
  *

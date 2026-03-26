@@ -1,3 +1,10 @@
+## [3.5.8] - 2026-03-26
+
+### Fixed
+- **AI image generation**: Fixed OpenRouter API call — added required `modalities: ["image", "text"]`
+  parameter and corrected response parsing to read from `message.images[].image_url.url`
+  instead of just `message.content`. Increased timeout to 120s.
+
 ## [3.5.7] - 2026-03-26
 
 ### Fixed

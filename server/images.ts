@@ -1,7 +1,7 @@
 /**
  * @file server/images.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.5.7
+ * @version 3.5.8
  *
  * Cup of News — Self-hosted image pipeline
  *
@@ -267,9 +267,10 @@ Requirements:
       body: JSON.stringify({
         model: "openai/gpt-5-image-mini",
         messages: [{ role: "user", content: prompt }],
-        max_tokens: 2000,
+        modalities: ["image", "text"],    // required for image generation
+        max_tokens: 4000,
       }),
-      signal: AbortSignal.timeout(60_000),  // 60s — image generation can be slow
+      signal: AbortSignal.timeout(120_000),  // 120s — image generation can be slow
     });
 
     if (!res.ok) {
@@ -279,32 +280,50 @@ Requirements:
     }
 
     const data = await res.json() as {
-      choices: Array<{ message: { content: string | Array<{ type: string; image_url?: { url: string }; text?: string }> } }>;
+      choices: Array<{
+        message: {
+          role: string;
+          content: string | Array<{ type: string; image_url?: { url: string }; text?: string }> | null;
+          images?: Array<{ type: string; image_url: { url: string } }>;
+        }
+      }>;
     };
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) {
-      console.warn("  ⚠️  generateAiImage: empty response from API");
+    const message = data.choices?.[0]?.message as any;
+    if (!message) {
+      console.warn("  ⚠️  generateAiImage: no message in response");
       return null;
     }
 
-    // Extract base64 data URL — content may be a string or array of content parts
+    // OpenRouter image generation: image is in message.images[].image_url.url
     let dataUrl: string | null = null;
-    if (typeof content === "string") {
-      // String format: may contain "data:image/...;base64,..."
-      const match = content.match(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/);
-      if (match) dataUrl = match[0];
-    } else if (Array.isArray(content)) {
-      // Array format: look for image_url content parts
-      for (const part of content) {
-        if (part.type === "image_url" && part.image_url?.url) {
-          dataUrl = part.image_url.url;
-          break;
+
+    // Primary: check message.images (OpenRouter image generation format)
+    if (message.images && Array.isArray(message.images) && message.images.length > 0) {
+      const imageUrl = message.images[0]?.image_url?.url;
+      if (imageUrl && imageUrl.startsWith("data:")) {
+        dataUrl = imageUrl;
+      }
+    }
+
+    // Fallback: check message.content (sometimes the data URL is embedded in content text)
+    if (!dataUrl) {
+      const content = message.content;
+      if (typeof content === "string") {
+        const match = content.match(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/);
+        if (match) dataUrl = match[0];
+      } else if (Array.isArray(content)) {
+        for (const part of content) {
+          if (part.type === "image_url" && part.image_url?.url?.startsWith("data:")) {
+            dataUrl = part.image_url.url;
+            break;
+          }
         }
       }
     }
 
     if (!dataUrl) {
-      console.warn("  ⚠️  generateAiImage: no image data in response");
+      // Log the full response structure for debugging
+      console.warn("  ⚠️  generateAiImage: no image data found. Message keys:", Object.keys(message));
       return null;
     }
 
