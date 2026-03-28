@@ -1,7 +1,7 @@
 /**
  * @file server/routes.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.5.9
+ * @version 3.5.10
  *
  * Cup of News — REST API Routes
  *
@@ -459,9 +459,9 @@ export function registerRoutes(httpServer: Server, app: Express) {
 
       emitJob(jobId, { type: "progress", step: 3, total: 5, message: "Running Gemini 2.5 Pro — selecting 20 stories…", elapsed: elapsed() });
 
-      // 5-minute overall timeout — prevents truly infinite hangs while giving
-      // Gemini 2.5 Pro enough time even under load (observed: up to 4 min for FR)
-      const PIPELINE_TIMEOUT_MS = 5 * 60 * 1000;
+      // 15-minute overall timeout — image pipeline (Jina + OpenRouter + rehosting)
+      // can take 8-12 min for non-EN editions. Quality over speed.
+      const PIPELINE_TIMEOUT_MS = 15 * 60 * 1000;
       let pipelinePromise = runDailyPipeline(apiKey, editionId);
       const result = await Promise.race([
         pipelinePromise,
@@ -494,7 +494,7 @@ export function registerRoutes(httpServer: Server, app: Express) {
         // Wait 45s then check the DB for a newly created digest.
         emitJob(jobId, { type: "progress", step: 4, total: 5,
           message: "Taking longer than expected — checking result…", elapsed: elapsed() });
-        await new Promise(r => setTimeout(r, 45_000));
+        await new Promise(r => setTimeout(r, 60_000));
 
         const today2 = new Date().toISOString().slice(0, 10);
         const created = storage.getDigestByDate(today2, editionId);
@@ -513,7 +513,7 @@ export function registerRoutes(httpServer: Server, app: Express) {
           console.log(`[job ${jobId}] ${editionId} recovered after timeout — digest #${created.id}, ${storiesCount} stories`);
         } else {
           job.status = "error";
-          job.error = "Timed out after 5 min. Try refreshing — generation may have completed.";
+          job.error = "Timed out after 15 min. Try refreshing — generation may have completed.";
           emitJob(jobId, { type: "error", message: job.error, elapsed: elapsed() });
           console.error(`[job ${jobId}] ${editionId} timed out with no digest in DB`);
         }
