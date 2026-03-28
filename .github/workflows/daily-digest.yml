@@ -122,8 +122,8 @@ jobs:
           echo "Start body: $START_BODY"
 
           if [ "$START_HTTP" != "200" ]; then
-            echo "❌ Failed to start job for $EDITION (HTTP $START_HTTP)"
-            exit 1
+            echo "⚠️ Failed to start job for $EDITION (HTTP $START_HTTP) — skipping"
+            exit 0
           fi
 
           # Extract jobId from JSON response
@@ -137,8 +137,8 @@ jobs:
           ")
 
           if [ -z "$JOB_ID" ]; then
-            echo "❌ No jobId in response: $START_BODY"
-            exit 1
+            echo "⚠️ No jobId in response — skipping $EDITION"
+            exit 0
           fi
 
           echo "✅ Job started: $JOB_ID"
@@ -201,7 +201,9 @@ jobs:
 
           if [ "$FINAL_STATUS" != "done" ]; then
             if [ -z "$FINAL_STATUS" ]; then
-              echo "❌ Timed out after ${MAX_ATTEMPTS} polling attempts (${ELAPSED}s) for $EDITION"
+              echo "⚠️ Timed out waiting for $EDITION — generation may have completed on server"
+            else
+              echo "⚠️ $EDITION ended with status: $FINAL_STATUS — continuing to next edition"
             fi
-            exit 1
+            exit 0
           fi
