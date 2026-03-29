@@ -1,7 +1,7 @@
 /**
  * @file server/images.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 4.0.0
+ * @version 4.1.0
  *
  * Cup of News — Self-hosted image pipeline
  *
@@ -258,25 +258,28 @@ export async function generateAiImage(
   const visualHint = categoryVisuals[category.toUpperCase()] ?? "professional editorial setting, wide shot";
   const summaryCrop = summary.slice(0, 200).replace(/["\n]/g, " ");
 
-  const prompt = `Create a photorealistic editorial news photograph for a major newspaper front page.
+  // NOTE: Always build prompt in English regardless of story language.
+  // French/non-English titles cause Gemini to add text overlays in that language.
+  // The visual content is language-neutral — only the English prompt matters.
+  const prompt = `A pure photograph only — absolutely zero text, zero letters, zero words anywhere in the image.
 
-Headline: "${title}"
+Subject: ${summaryCrop}
 Category: ${category}
-Context: ${summaryCrop}
+Visual style: ${visualHint}
 
-Composition: ${visualHint}
+CRITICAL — this is the most important rule: THE IMAGE MUST CONTAIN ZERO TEXT.
+- No headlines, no captions, no article titles, no banners, no labels
+- No signs with readable text, no screens showing text, no subtitles
+- No watermarks, no logos, no branding of any kind
+- Any image containing visible text characters will be REJECTED
 
-Strict requirements — read carefully:
-- Wide shot or medium shot — never extreme close-up. Show full scene and surroundings.
-- If people are shown: full upper bodies visible, faces NOT cropped at forehead or chin
-- Landscape orientation, 16:9 aspect ratio or wider
-- Photojournalism style: natural lighting, authentic setting, documentary feel
-- NO text, NO captions, NO logos, NO watermarks, NO news channel bugs or ticker bars
-- NO illustration, NO cartoon, NO infographic, NO diagram, NO map
-- NO website UI, NO smartphone screens, NO app interfaces
-- NO stock photo watermarks, NO Getty/AP/Reuters overlays
-- Neutral non-partisan framing — no propaganda, no sensationalism
-- High resolution, sharp focus throughout the frame`;
+Composition rules:
+- Pure photojournalism documentary style — looks like an actual photograph
+- Wide shot or medium shot — show the full scene and environment
+- If people are shown: full upper bodies visible, faces not cropped
+- Natural lighting, authentic setting, no studio look
+- Landscape orientation (wider than tall)
+- High resolution, sharp focus, professional quality`;
 
   try {
     const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
