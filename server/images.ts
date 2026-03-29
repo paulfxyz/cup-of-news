@@ -1,7 +1,7 @@
 /**
  * @file server/images.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 4.1.0
+ * @version 4.2.0
  *
  * Cup of News — Self-hosted image pipeline
  *
@@ -236,6 +236,44 @@ export function deleteStoredImage(hash: string): boolean {
  * @param summary  Short summary (first 150 chars)
  * @param openrouterKey OpenRouter API key
  */
+/**
+ * sanitizeForImagePrompt — reframe sensitive news topics for Gemini image generation.
+ *
+ * Gemini safety filters reject prompts containing words like "killed", "strike",
+ * "bomb", "war", "dead", etc. — even in clearly journalistic contexts.
+ * This function detects those topics and rewrites the subject as a scene description
+ * that conveys the same editorial context without triggering refusals.
+ *
+ * Strategy: describe the SETTING and PROFESSION, not the event itself.
+ */
+function sanitizeForImagePrompt(summary: string, category: string): string {
+  const lower = summary.toLowerCase();
+
+  // Conflict / military violence
+  if (/\b(killed?|strike|struck|bomb|missile|airstrike|air strike|shot|dead|death|casualt|murder|assassin|executed?|soldier|troops|military operation|attack|explosion|blast|combat|warfare|battle|frontline|front line)\b/.test(lower)) {
+    if (/\b(journalist|reporter|press|media|camera|broadcast|correspondent|photojournalist)\b/.test(lower)) {
+      return `Press journalists with camera equipment and tripods working in a conflict zone border area. White press vehicles marked with equipment. Rocky arid landscape with mountains. Documentary field reporting scene.`;
+    }
+    if (/\b(israel|lebanon|gaza|ukraine|syria|iran|iraq|afghanistan|yemen|russia|war zone)\b/.test(lower)) {
+      return `Aerial wide view of a middle eastern border landscape with rocky terrain, sparse vegetation, and distant mountains. A quiet road with occasional vehicles. Documentary landscape photography.`;
+    }
+    return `Wide landscape view of a conflict region. Distant terrain, overcast sky, documentary photography style. No people visible.`;
+  }
+
+  // Political protests / demonstrations
+  if (/\b(protest|demonstrat|rally|march|crowd|riot|unrest|uprising)\b/.test(lower)) {
+    return `A large public gathering in a city plaza or wide boulevard. People assembled in an open urban space, buildings in background, daytime scene with natural lighting.`;
+  }
+
+  // Disaster / accident / crisis
+  if (/\b(disaster|earthquake|flood|hurricane|wildfire|crash|collaps|evacuат|emergency|rescue)\b/.test(lower)) {
+    return `Emergency response professionals in high-visibility vests working at an outdoor scene. Vehicles and equipment visible in background. Documentary crisis response photography.`;
+  }
+
+  // Default: return the original summary (no sanitization needed)
+  return summary;
+}
+
 export async function generateAiImage(
   title: string,
   category: string,
@@ -261,9 +299,16 @@ export async function generateAiImage(
   // NOTE: Always build prompt in English regardless of story language.
   // French/non-English titles cause Gemini to add text overlays in that language.
   // The visual content is language-neutral — only the English prompt matters.
+
+  // ── Prompt sanitization ──────────────────────────────────────────────────
+  // Gemini refuses to generate images for stories about death, violence, strikes,
+  // or conflict. Instead of describing the event, describe the SCENE and CONTEXT.
+  // This produces better editorial images AND avoids safety filter rejections.
+  const sanitizedSubject = sanitizeForImagePrompt(summaryCrop, category);
+
   const prompt = `A pure photograph only. No text. No letters. No words. Anywhere.
 
-Subject: ${summaryCrop}
+Subject: ${sanitizedSubject}
 Category: ${category}
 Visual style: ${visualHint}
 
