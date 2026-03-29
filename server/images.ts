@@ -356,6 +356,50 @@ Composition rules:
       return null;
     }
 
+    // ── Post-generation text detection ───────────────────────────────────────
+    // Gemini sometimes adds text banners/headlines to the image despite being
+    // told not to. Detect and reject any image containing visible text using
+    // a quick vision check on the raw buffer (no URL needed — use data URI).
+    try {
+      const b64Check = webpBuffer.toString("base64");
+      const checkRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${openrouterKey}`,
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.0-flash-lite",
+          messages: [{
+            role: "user",
+            content: [
+              {
+                type: "image_url",
+                image_url: { url: `data:image/webp;base64,${b64Check}` }
+              },
+              {
+                type: "text",
+                text: "Does this image contain any visible text, words, letters, headlines, captions, banners, labels, or readable characters anywhere? Answer only YES or NO."
+              }
+            ]
+          }],
+          max_tokens: 5,
+        }),
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (checkRes.ok) {
+        const checkData = await checkRes.json() as any;
+        const answer = (checkData.choices?.[0]?.message?.content ?? "").trim().toUpperCase();
+        if (answer.startsWith("YES")) {
+          console.warn(`  ⚠️  generateAiImage: text detected in output — rejecting and retrying`);
+          return null;  // caller (fetchEditorialImage) will fall to OG fallback
+        }
+      }
+    } catch (textCheckErr) {
+      // Non-fatal — if check fails, proceed (better a maybe-text image than SVG)
+      console.warn(`  ⚠️  generateAiImage: text check failed (${textCheckErr}) — proceeding`);
+    }
+
     await ensureImagesDir();
     const hash = createHash("sha256").update(webpBuffer).digest("hex").slice(0, 16);
     const filePath = imageFilePath(hash);
