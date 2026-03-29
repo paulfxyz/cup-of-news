@@ -61,7 +61,7 @@ const config: CapacitorConfig = {
   android: {
     minSdkVersion: 24,  // Android 7.0+
     targetSdkVersion: 34,
-    buildToolsVersion: '34.0.0',
+    buildToolsVersion: '34.2.0',
     // Allow mixed content for development
     allowMixedContent: false,
   },
