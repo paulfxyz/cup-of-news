@@ -242,6 +242,134 @@ export async function generateAiImage(
   summary: string,
   openrouterKey: string
 ): Promise<string | null> {
+  const categoryVisuals: Record<string, string> = {
+    "WORLD": "wide establishing shot of an international location, diplomats or officials in action",
+    "POLITICS": "government building exterior, legislative chamber, or officials at podium",
+    "BUSINESS": "financial district skyline, professionals in modern office, stock exchange floor",
+    "TECHNOLOGY": "sleek modern tech environment, servers or devices, clean and precise setting",
+    "SCIENCE": "research laboratory, scientists at work with equipment, clean scientific setting",
+    "HEALTH": "hospital corridor, medical professionals, healthcare environment",
+    "ENVIRONMENT": "dramatic natural landscape, environmental impact scene",
+    "SPORTS": "packed sports stadium, athletes in competition, dynamic action",
+    "CULTURE": "museum gallery, concert hall, artistic or cultural venue",
+    "MILITARY": "military base or vehicles, uniformed personnel in strategic context",
+  };
+
+  const visualHint = categoryVisuals[category.toUpperCase()] ?? "professional editorial setting, wide shot";
+  const summaryCrop = summary.slice(0, 200).replace(/["\n]/g, " ");
+
+  const prompt = `Create a photorealistic editorial news photograph for a major newspaper front page.
+
+Headline: "${title}"
+Category: ${category}
+Context: ${summaryCrop}
+
+Composition: ${visualHint}
+
+Strict requirements — read carefully:
+- Wide shot or medium shot — never extreme close-up. Show full scene and surroundings.
+- If people are shown: full upper bodies visible, faces NOT cropped at forehead or chin
+- Landscape orientation, 16:9 aspect ratio or wider
+- Photojournalism style: natural lighting, authentic setting, documentary feel
+- NO text, NO captions, NO logos, NO watermarks, NO news channel bugs or ticker bars
+- NO illustration, NO cartoon, NO infographic, NO diagram, NO map
+- NO website UI, NO smartphone screens, NO app interfaces
+- NO stock photo watermarks, NO Getty/AP/Reuters overlays
+- Neutral non-partisan framing — no propaganda, no sensationalism
+- High resolution, sharp focus throughout the frame`;
+
+  try {
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${openrouterKey}`,
+        "HTTP-Referer": "https://cupof.news",
+        "X-Title": "Cup of News",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-image",
+        messages: [{ role: "user", content: prompt }],
+        modalities: ["image", "text"],
+      }),
+      signal: AbortSignal.timeout(120_000),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.warn(`  ⚠️  generateAiImage: API error ${res.status} — ${errText.slice(0, 200)}`);
+      return null;
+    }
+
+    const data = await res.json() as any;
+    const message = data.choices?.[0]?.message as any;
+    if (!message) {
+      console.warn("  ⚠️  generateAiImage: no message in response");
+      return null;
+    }
+
+    // Gemini via OpenRouter: image in message.images[0].image_url.url as data URI
+    let dataUrl: string | null = null;
+
+    if (message.images && Array.isArray(message.images) && message.images.length > 0) {
+      const imgEntry = message.images[0];
+      const url = imgEntry?.image_url?.url ?? imgEntry?.url;
+      if (url && url.startsWith("data:")) dataUrl = url;
+    }
+
+    if (!dataUrl) {
+      const msgContent = message.content;
+      if (typeof msgContent === "string") {
+        const match = msgContent.match(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/);
+        if (match) dataUrl = match[0];
+      } else if (Array.isArray(msgContent)) {
+        for (const part of msgContent) {
+          if (part.type === "image_url" && part.image_url?.url?.startsWith("data:")) {
+            dataUrl = part.image_url.url;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!dataUrl) {
+      console.warn("  ⚠️  generateAiImage: no image data found in Gemini response");
+      return null;
+    }
+
+    const base64Data = dataUrl.split(",")[1];
+    if (!base64Data) return null;
+
+    const imageBuffer = Buffer.from(base64Data, "base64");
+
+    const sharp = (await import("sharp")).default;
+    const webpBuffer = await sharp(imageBuffer)
+      .resize({ width: 1200, height: 630, fit: "cover", position: "center" })
+      .webp({ quality: 85 })
+      .toBuffer();
+
+    if (webpBuffer.length < 50_000) {
+      console.warn(`  ⚠️  generateAiImage: output too small (${webpBuffer.length} bytes) — rejecting`);
+      return null;
+    }
+
+    await ensureImagesDir();
+    const hash = createHash("sha256").update(webpBuffer).digest("hex").slice(0, 16);
+    const filePath = imageFilePath(hash);
+    writeFileSync(filePath, webpBuffer);
+
+    console.log(`  🎨 Gemini image generated: ${hash}.webp (${Math.round(webpBuffer.length / 1024)}KB)`);
+    return `/images/${hash}.webp`;
+
+  } catch (err) {
+    console.warn(`  ⚠️  generateAiImage failed: ${err}`);
+    return null;
+  }
+}
+  category: string,
+  summary: string,
+  openrouterKey: string
+): Promise<string | null> {
   const prompt = `Photorealistic editorial news photograph for a news story.
 Story: "${title}". Category: ${category}.
 Context: ${summary.slice(0, 150)}
