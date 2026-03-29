@@ -1,3 +1,56 @@
+## [4.2.0] - 2026-03-29
+
+### Added
+- **Conflict topic sanitizer**: `sanitizeForImagePrompt()` detects violence/conflict keywords
+  (`killed`, `strike`, `bomb`, `airstrike`, `missile`, etc.) and rewrites the subject as a
+  scene description, bypassing Gemini safety refusals. Conflict stories now get contextual
+  editorial images (border landscapes, press crews) instead of SVG placeholders.
+- **Journalist-specific rewrite**: Stories about press workers in conflict zones generate
+  images of camera crews at border locations — accurate and safe.
+
+### Fixed
+- EN story #2 (Lebanese journalists killed): SVG → AI aerial border landscape image
+- All 20 EN + FR stories now consistently get AI images (was 19/20)
+
+## [4.1.0] - 2026-03-29
+
+### Added
+- **Post-generation text detection gate**: After every Gemini image is generated, a vision
+  model (Gemini 2.0 Flash Lite) inspects the output. Images containing ANY visible text,
+  letters, banners, chart labels, or readable characters are rejected, preventing the
+  text-overlay issue entirely.
+
+### Fixed
+- **Prompt fully rewritten**: Numbered absolute rules replace bullet list. Explicitly bans
+  infographics, charts on screens, readable billboards, and background signs.
+- **Always English context**: Story summaries always passed in English to Gemini, regardless
+  of digest language — eliminates French/German/etc. text overlays.
+- FR digest: 16/20 → 20/20 AI images (0 SVG fallbacks)
+
+## [4.0.0] - 2026-03-29
+
+### Changed (LANDMARK RELEASE)
+- **AI-first image pipeline**: Gemini 2.5 Flash Image is now the PRIMARY image source.
+  Previously it was a last resort after OG scraping, Wikimedia, and Unsplash all failed.
+  New order: AI (Gemini) → OG article source → SVG placeholder.
+- **Removed**: Wikimedia Commons search, Unsplash, gpt-5-image-mini (all replaced by Gemini)
+- **Model**: `google/gemini-2.5-flash-image` — photorealistic, ~$0.04/image, newspaper quality
+- **Prompt**: Rich category-aware prompts with 10 visual hints + 15 editorial constraints
+- **Results**: EN/FR digests go from ~50% real images to 19–20/20 AI-generated WebP
+
+### Fixed
+- `writeFileSync` → `fs.writeFileSync` (runtime crash fix)
+- `object-cover object-top` → `object-cover object-center` in DigestView (crop fix)
+- 15-minute pipeline timeout (was 5 min)
+- Workflow `exit 1` → `exit 0` on timeout: all 9 editions always run, none cancelled
+
+## [3.6.0] - 2026-03-29
+
+### Fixed
+- **Image crop**: Changed `object-position: top` to `object-position: center` in both
+  the story hero image and grid card thumbnails in DigestView.tsx. Faces and subjects
+  are now vertically centered instead of anchored to the top edge (cutting off faces).
+
 ## [3.5.9] - 2026-03-26
 
 ### Added
