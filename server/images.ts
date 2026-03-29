@@ -228,7 +228,7 @@ export function deleteStoredImage(hash: string): boolean {
 /**
  * generateAiImage — generate a photorealistic news photo via OpenRouter.
  *
- * Uses openai/gpt-5-image-mini with a strict editorial prompt.
+ * Uses google/gemini-2.5-flash-image — photorealistic, $0.04/image, no branding.
  * Returns a hosted /images/{hash}.webp path, or null if generation fails.
  *
  * @param title    Story headline
