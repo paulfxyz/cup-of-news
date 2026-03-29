@@ -261,25 +261,27 @@ export async function generateAiImage(
   // NOTE: Always build prompt in English regardless of story language.
   // French/non-English titles cause Gemini to add text overlays in that language.
   // The visual content is language-neutral — only the English prompt matters.
-  const prompt = `A pure photograph only — absolutely zero text, zero letters, zero words anywhere in the image.
+  const prompt = `A pure photograph only. No text. No letters. No words. Anywhere.
 
 Subject: ${summaryCrop}
 Category: ${category}
 Visual style: ${visualHint}
 
-CRITICAL — this is the most important rule: THE IMAGE MUST CONTAIN ZERO TEXT.
-- No headlines, no captions, no article titles, no banners, no labels
-- No signs with readable text, no screens showing text, no subtitles
-- No watermarks, no logos, no branding of any kind
-- Any image containing visible text characters will be REJECTED
+ABSOLUTE RULES — any violation means the image is rejected:
+1. ZERO TEXT anywhere: no headlines, no captions, no banners, no labels, no subtitles
+2. No readable signs, no billboards with words, no readable street signs
+3. No screens or monitors displaying text, charts, graphs, or data
+4. No infographics, no diagrams, no data visualizations
+5. No watermarks, no logos, no brand names visible
+6. No news channel chyrons, no lower-thirds, no ticker bars
 
-Composition rules:
-- Pure photojournalism documentary style — looks like an actual photograph
-- Wide shot or medium shot — show the full scene and environment
-- If people are shown: full upper bodies visible, faces not cropped
-- Natural lighting, authentic setting, no studio look
-- Landscape orientation (wider than tall)
-- High resolution, sharp focus, professional quality`;
+Visual style:
+- Documentary photojournalism — real location, natural lighting, authentic scene
+- Wide establishing shot showing full environment and context
+- If people appear: medium shot or wider, full upper body visible, faces not cut off
+- Landscape orientation, 16:9 or wider
+- Sharp focus, professional quality throughout
+- Avoid futuristic/sci-fi aesthetics — realistic contemporary settings only`;
 
   try {
     const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -379,7 +381,7 @@ Composition rules:
               },
               {
                 type: "text",
-                text: "Does this image contain any visible text, words, letters, headlines, captions, banners, labels, or readable characters anywhere? Answer only YES or NO."
+                text: "Does this image contain any visible text, letters, words, readable signs, readable billboards, on-screen text, charts with labels, or readable characters anywhere in the image? Answer only YES or NO."
               }
             ]
           }],
