@@ -1,7 +1,7 @@
 /**
  * @file server/images.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.5.9
+ * @version 4.0.0
  *
  * Cup of News — Self-hosted image pipeline
  *
@@ -356,7 +356,7 @@ Strict requirements — read carefully:
     await ensureImagesDir();
     const hash = createHash("sha256").update(webpBuffer).digest("hex").slice(0, 16);
     const filePath = imageFilePath(hash);
-    writeFileSync(filePath, webpBuffer);
+    fs.writeFileSync(filePath, webpBuffer);
 
     console.log(`  🎨 Gemini image generated: ${hash}.webp (${Math.round(webpBuffer.length / 1024)}KB)`);
     return `/images/${hash}.webp`;
