@@ -1,7 +1,7 @@
 /**
  * @file client/src/pages/DigestView.tsx
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 3.5.10
+ * @version 3.6.0
  *
  * Cup of News — Public Digest Reader
  *
@@ -591,12 +591,12 @@ function StoryCard({ story, index, total, edition }: { story: DigestStory; index
            -mx offsets cancel the article's px padding so the image runs edge-to-edge.
            aspect-[16/7]: wider than 16:9 — shows more width, less vertical letterbox.
            object-cover: fills the frame completely, no black bars.
-           object-position top: crops from the bottom — news photos have faces/subjects near the top. */
+           object-position center: centers the crop — preserves faces and key subjects for all image types. */
         <div className="-mx-4 sm:-mx-8 lg:-mx-12 w-auto aspect-[16/7] overflow-hidden mb-5 sm:mb-7 lg:mb-9">
           <img
             src={story.imageUrl}
             alt={story.title}
-            className="w-full h-full object-cover object-top"
+            className="w-full h-full object-cover object-center"
             onError={e => {
               (e.target as HTMLImageElement).parentElement!.style.display = "none";
             }}
@@ -1236,7 +1236,7 @@ function GridOverlay({
                   <img
                     src={story.imageUrl}
                     alt=""
-                    className="w-full h-full object-cover object-top"
+                    className="w-full h-full object-cover object-center"
                     onError={e => { (e.target as HTMLImageElement).parentElement!.style.display = "none"; }}
                   />
                 </div>
