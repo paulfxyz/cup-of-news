@@ -417,6 +417,48 @@ async function fetchEditorialImage(
   category: string,
   summary: string,
   apiKey?: string,
+  sourceTitleHint?: string,
+  sourceUrl?: string
+): Promise<string | null> {
+  // ── Tier 1: AI-generated image (Gemini 2.5 Flash Image) — PRIMARY ────────
+  // Generates photorealistic, perfectly-composed editorial images.
+  // No branding, no cropping issues, no wrong subjects. ~$0.04/image.
+  // This is now tried FIRST — before any scraping.
+  if (apiKey) {
+    const aiImage = await generateAiImage(title, category, summary, apiKey);
+    if (aiImage) {
+      console.log(`  🎨 AI image (Gemini, tier 1): "${title.slice(0, 50)}"`);
+      return aiImage;
+    }
+    console.log(`  ⚠️  AI image failed — trying OG fallback`);
+  }
+
+  // ── Tier 2: OG image from article source ─────────────────────────────────
+  // For breaking news, the source may have a real Reuters/AP photo.
+  // Vision-checked to reject branded overlays and wrong subjects.
+  if (sourceUrl) {
+    const freshOg = await fetchOgImageDirect(sourceUrl);
+    if (freshOg && isValidOgImage(freshOg)) {
+      const dims = await getImageDimensions(freshOg);
+      if (dims && dims.w >= 600 && dims.h >= 300) {
+        const ogScore = apiKey ? await checkImageRelevanceWithVision(freshOg, title, apiKey) : 7;
+        if (ogScore >= 7) {
+          const hostedOg = await rehostImage(freshOg);
+          if (hostedOg) {
+            console.log(`  📰 OG fallback (tier 2): vision ${ogScore}/10 from ${sourceUrl.slice(0, 60)}`);
+            return hostedOg;
+          }
+        }
+      }
+    }
+  }
+
+  // ── Tier 3: null → SVG category placeholder ──────────────────────────────
+  return null;
+}
+  category: string,
+  summary: string,
+  apiKey?: string,
   sourceTitleHint?: string,  // Original source title (often English) — helps query generation for non-EN editions
   sourceUrl?: string         // The original article URL — tried first for OG image re-fetch
 ): Promise<string | null> {
