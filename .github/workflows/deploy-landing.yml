@@ -13,11 +13,8 @@
 name: Deploy Landing to Siteground
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'landing/index.html'
+  # Auto-deploy disabled until SITEGROUND_SFTP_* secrets are configured in repo settings.
+  # Run manually via Actions → Deploy Landing to Siteground → Run workflow
   workflow_dispatch:
 
 jobs:
