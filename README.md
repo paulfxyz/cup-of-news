@@ -382,6 +382,78 @@ The strategy: describe the **setting and profession**, not the event. This produ
 
 **Result:** Coverage across all 9 language editions reached 20/20 stories with AI-generated images.
 
+#### Generation 8: Flipping to AI-first (v4.0.0) — the pivot that actually worked
+
+**The insight we'd been avoiding:** Wikimedia Commons is not a news photo archive. After 7 generations of improving how we *searched* Wikimedia, the core problem remained: the images weren't *editorial*. A story about a Chinese tech company got a photo of a rice paddy. A story about a new Daft Punk album got a Wikipedia thumbnail of Thomas Bangalter from 2007. The search quality improved, but the source pool was wrong.
+
+The correct question wasn't "how do we find better images?" — it was "do we even need to *find* images at all?"
+
+**The switch:** Replace the entire multi-tier scraping pipeline with a single AI image generation call as the *primary* method. Gemini 2.5 Flash Image via OpenRouter generates a photorealistic editorial photo from the story context alone. Cost: ~$0.04/image. Latency: ~3 seconds. Quality: newspaper front-page standard.
+
+The new tier order:
+1. **Gemini 2.5 Flash Image** — generate a contextually accurate photo
+2. **OG image from article source** — fallback if AI fails (breaking news often has real Reuters/AP photos)
+3. **SVG category placeholder** — guaranteed fallback
+
+Everything else (Wikimedia, Unsplash, Jina OG multi-pass) was removed. Simpler code, better results.
+
+**Result:** EN/FR digests went from ~80% editorial images (after 7 generations of optimization) to **19–20/20 AI-generated WebP** in the first run.
+
+#### Generation 9: Text overlay problem (v4.1.0)
+
+**The bug:** Gemini adds news-style text headlines to images when the story is in a non-English language. A French story titled "Des frappes américaines ciblent des infrastructures" would generate an image with garbled French text in a headline banner at the top. The same story in German generated images with German text overlays. The model was interpreting "editorial news photograph" as "add a newspaper-style header."
+
+**Two fixes in parallel:**
+
+1. **Always English prompt:** The story summary is always passed to Gemini in English regardless of the digest language. French/German/Spanish summaries cause Gemini to add text in that language. The visual content is language-neutral — only the English prompt matters. The story's original English RSS title is used as context even for non-English editions.
+
+2. **Post-generation text detection gate:** After every image is generated and converted to WebP, a cheap vision model (Gemini 2.0 Flash Lite, ~$0.00003/call) inspects the output. The question: "Does this image contain any visible text, letters, words, readable signs, or readable characters anywhere?" If YES → reject, fall through to OG source. If NO → accept.
+
+This adds ~300ms and ~$0.00003 per story but eliminates the text overlay problem entirely.
+
+**Lesson:** Prompts alone are not sufficient to prevent model misbehavior. When a model consistently violates an instruction, the reliable fix is a *separate validation step* that checks the output, not a better version of the original instruction.
+
+#### Generation 10: Safety filter refusals (v4.2.0)
+
+**The bug:** Gemini 2.5 Flash Image silently returns 0 images for stories about death, military strikes, bombings, and conflict — even when described purely in journalistic terms. No error code. No warning. Just an empty `images` array. The pipeline fell through to OG source (often also unavailable for conflict stories) and then to SVG placeholder.
+
+The affected stories were the ones that most *need* a good image: Lebanese journalists killed in an airstrike, US strikes on Iranian nuclear infrastructure, political assassinations. These are the lead stories of any digest.
+
+**The fix: `sanitizeForImagePrompt()`** — a function that runs before every Gemini call and rewrites the prompt subject when conflict/death keywords are detected:
+
+```
+"Airstrikes hit non-military infrastructure sites across Iran"
+  → "Wide aerial view of an urban landscape with a river crossing. 
+     City blocks, roads, and bridges visible from above."
+
+"Three Lebanese journalists killed in Israeli strike near border"  
+  → "Press journalists with camera equipment and tripods working at 
+     a border area. White SUVs marked PRESS parked on a dusty road."
+
+"Jürgen Habermas, titan of philosophy, dies at 96"
+  → "A grand university lecture hall or library interior, rows of 
+     empty wooden seats, tall arched windows with warm afternoon light."
+```
+
+The strategy: describe the **setting and profession**, not the event. This produces better editorial images *and* avoids safety refusals — a forced constraint that improved the output quality.
+
+#### Generation 11: Multi-language safety gaps (v4.3.0)
+
+**The bug:** `sanitizeForImagePrompt()` in v4.2.0 was written with English-only regex. Non-English digests still failed:
+- French: *"Des frappes américaines"* → `frappes` not in the English `airstrike` regex
+- German: *"Die Welt nimmt Abschied von Jürgen Habermas"* → `Abschied` (farewell/death) not matched  
+- Spanish: *"Ataques aéreos"* → `ataques aéreos` (airstrikes) not matched
+- Artemis II moon mission → Gemini refuses astronaut/spacecraft topics as potential disaster imagery
+
+**Three fixes:**
+1. **Dual-language matching:** The sanitizer now receives BOTH the story summary (in the digest language) AND the original English source title. It concatenates them and runs one regex across both. A French summary mentioning `frappes` matches the pattern; the English title mentioning `airstrikes` also matches.
+
+2. **Expanded vocabulary:** Added multi-language death/conflict terms: `frappes`, `frappe`, `ataques aéreos`, `Luftangriff`, `gestorben`, `Abschied`, `fallece`, `morreu`, `bombardment`, `shelling`, `drone strike`.
+
+3. **New pattern classes:** Space missions (Gemini refuses astronaut imagery), political firings (`fired`, `removed`, `dismissed`, `abruptly`, `attorney general`), plus retry-on-empty logic: if Gemini returns 0 images after sanitization, auto-retry once with a bare category-level scene description.
+
+**Result:** Coverage across all 9 language editions reached 20/20 stories with AI-generated images.
+
 #### Current summary table
 
 | Version | Method | Success Rate | Notes |
@@ -502,6 +574,21 @@ The implementation: `ThemeProvider.tsx` reads `localStorage('theme')` first. If 
 The practical effect: on most modern devices, the first visit matches system preference. On devices that don't report a media query preference, they get dark. The rationale: Cup of News is a morning reading app. Most mornings involve low ambient light. Dark mode is the safer default.
 
 The CSS is implemented with `data-theme` attribute on `<html>`, not with `prefers-color-scheme` alone. This allows instant toggle without a CSS transition flash — the attribute change is synchronous with the JS, so no white flash on load.
+
+
+### v4.x: Fly.io Deployment Lessons
+
+**The OpenRouter key lives in SQLite, not just the env var.** When the OpenRouter key expired, the fix of running `flyctl secrets set OPENROUTER_KEY=...` and restarting the machine had no effect. The pipeline reads the key from `storage.getConfig("openrouter_key")` — a SQLite row — not from `process.env.OPENROUTER_KEY`. The env var seeds the DB on first boot only; after that, the DB value takes precedence. Updating the key requires calling `POST /api/setup` with the new key, not just updating the Fly.io secret.
+
+**`--local-only` build flag is critical.** `flyctl deploy --remote-only` builds the Docker image in Fly's depot registry. Intermittently, the depot registry returns `connection refused` on port 5000 during the push step — a Fly.io infrastructure issue that has no user-side fix. `--local-only` builds the image on the local machine and pushes the finished image to Fly. Slower (3–4 min vs 1–2 min), but 100% reliable.
+
+**512MB RAM is enough — if you rate-limit the image pipeline.** The reprocess queue has a hard limit of 2 digests/hour. Without this, running all 9 editions' image reprocessing concurrently (`sharp` + multiple OpenRouter calls) consumed ~380MB and triggered OOM kills on the Fly.io machine mid-job. The rate limit converts what would be a memory spike into a 4.5-hour background queue. For users, this is invisible — they trigger reprocessing, get `{ queued: true }`, and the images appear gradually.
+
+### v4.x: GitHub Actions Workflow Reliability
+
+**`exit 0` on timeout, not `exit 1`.** The daily digest workflow runs 9 editions sequentially (`max-parallel: 1`). If any edition's job step exits with code 1 (timeout, API error, pipeline failure), GitHub Actions cancels all remaining queued matrix jobs. The fix: all failure paths in the workflow step `exit 0` with a warning message. The pipeline may have succeeded on the server — the client-side timeout doesn't mean failure. Let the next step handle verification.
+
+**Poll until done, not `--max-time`.** The original workflow used `curl --max-time 300` on the generation endpoint. On slow digests (non-EN editions with complex image pipelines), the 5-minute limit was regularly hit. The fix: `POST /api/digest/start-job` returns a `jobId` in ~50ms; the workflow then polls `GET /api/digest/job/:id/status` every 10 seconds for up to 15 minutes. Each poll is a fresh 15-second HTTP request — no cumulative timeout accumulates. This scales to any pipeline duration.
 
 
 ### v4.x: Fly.io Deployment Lessons
