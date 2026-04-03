@@ -402,15 +402,36 @@ function generateCategoryImage(title: string, category: string): string {
  *   5 queries cover: person name, action, location, topic, visual concept.
  *   First hit wins — no AI ranking of results needed.
  *
- * FULL FALLBACK CHAIN (v3.4.8):
- *   1. Jina Reader og:image (already run during extraction)
- *   2. Direct HTML Range fetch (already run)
- *   3. AI 5-query → Wikimedia Commons, vision-checked (score ≥ 7)
- *   4. Unsplash (if UNSPLASH_ACCESS_KEY set)
- *   5. null → caller uses generateCategoryImage SVG (correct, on-brand, zero cost)
+ * Image source priority (v4.3.0 — AI-first):
  *
- * picsum.photos removed: random photos are worse than the SVG fallback.
- * A wolf photo is not better than a branded Technology SVG for a tech story.
+ *   Tier 1 — AI-generated (Gemini 2.5 Flash Image via OpenRouter)
+ *     PRIMARY. Generates a photorealistic editorial photo from story context.
+ *     ~$0.04/image. 3-second latency. Newspaper front-page quality.
+ *     Prompt is sanitized for Gemini safety filters (conflict/death/space topics
+ *     are rewritten as scene descriptions by sanitizeForImagePrompt()).
+ *     Post-generation: vision model checks the output for text overlays.
+ *     On empty response: auto-retries once with a bare category-level prompt.
+ *
+ *   Tier 2 — OG image from article source URL
+ *     FALLBACK. Used when AI fails (rate limit, safety refusal, network error).
+ *     Fetches the article's og:image meta tag directly.
+ *     Vision-checked (score ≥ 7/10) to reject branded overlays and wrong subjects.
+ *     Dimension-checked (≥ 600×300px) to reject thumbnails and icons.
+ *     Rehosted to /images/{hash}.webp if it passes all checks.
+ *
+ *   Tier 3 — null → SVG category placeholder
+ *     LAST RESORT. Caller (runDailyPipeline / reprocessDigestImages) generates
+ *     a styled SVG with the story title and category color.
+ *     Better than a random image (picsum) which has no editorial relevance.
+ *
+ * Evolution (see README Architecture section for the full history):
+ *   v1.x:    og:image only
+ *   v2.x:    two-pass OG + SVG fallback
+ *   v3.4.x:  AI 5-query → Wikimedia Commons (vision-scored)
+ *   v4.0.0:  AI image generation moved to PRIMARY (flipped from last-resort)
+ *   v4.1.0:  Always-English prompt + post-generation text detection
+ *   v4.2.0:  sanitizeForImagePrompt() for conflict/death safety filter bypass
+ *   v4.3.0:  Multi-language matching + retry on empty Gemini response
  */
 async function fetchEditorialImage(
   title: string,
