@@ -5,7 +5,23 @@
  *
  * Cup of News — Express Server Entry Point
  *
- * Startup sequence:
+ * WHAT THIS FILE DOES:
+ *   Creates the Express app, registers all routes, serves the React SPA,
+ *   and starts the HTTP server. This is the only file that calls `listen()`.
+ *
+ * STATIC FILE STRATEGY:
+ *   In production, Vite builds the React SPA to dist/public/.
+ *   Express serves it at /* using express.static(). All non-API routes
+ *   fall through to index.html (React Router handles client-side routing).
+ *   In development, Vite's dev server handles the SPA on port 5173.
+ *
+ * FLY.IO PROXY NOTES:
+ *   keepAliveTimeout must be > Fly.io's proxy idle timeout (75s).
+ *   We set it to 90s. Without this, Fly's proxy drops persistent connections
+ *   (like SSE streams and long-polls) and returns 502 to the client.
+ *   headersTimeout must be > keepAliveTimeout to avoid Node.js warning.
+ *
+ * STARTUP SEQUENCE:
  *   1. Express app + middleware
  *   2. Route registration
  *   3. Static file serving (production) or Vite dev server
