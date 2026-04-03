@@ -5,16 +5,43 @@
  *
  * Cup of News — SQLite Storage Layer
  *
- * Context:
- *   All application state lives in a single SQLite file (cup-of-news.db).
- *   This file is the sole persistence layer — no Redis, no external DB.
- *   Drizzle ORM provides type-safe queries; better-sqlite3 is synchronous
- *   (no async/await needed for DB ops).
+ * WHY SQLITE (not Postgres):
+ *   Cup of News is a single-user personal tool: one digest per day, ~100 links
+ *   per month, one admin. Concurrent writes essentially never happen. SQLite is
+ *   a single file on the Fly.io persistent volume — zero config, zero cost,
+ *   zero network hops. Postgres would add $15-30/month for a managed service,
+ *   connection pooling overhead, and network latency between app and DB.
  *
- * Schema overview:
- *   links   — every URL submitted by the user or auto-fetched from RSS
- *   digests — one row per day; storiesJson holds the full DigestStory[]
- *   config  — key/value store for OPENROUTER_KEY and ADMIN_KEY
+ *   better-sqlite3 is synchronous (not async) — ideal here. DB calls are
+ *   instantaneous (microseconds, not milliseconds), so Promise overhead would
+ *   add noise without benefit. All DB operations are synchronous and safe because
+ *   Node.js is single-threaded for the code that calls them.
+ *
+ * DATABASE FILE LOCATION:
+ *   Production: /data/cup-of-news.db  (Fly.io persistent volume, survives redeploys)
+ *   Development: ./data/cup-of-news.db (relative to project root)
+ *   Controlled by DB_PATH env var. If unset, defaults to ./data/cup-of-news.db.
+ *
+ * SCHEMA:
+ *   links   — user-submitted URLs (submitted all week, consumed at generation time)
+ *             status: "unprocessed" → "used" after digest generation
+ *   digests — one row per edition per day. storiesJson holds the full DigestStory[].
+ *             status: "draft" → "published" (no soft-delete; DELETE is permanent)
+ *   config  — flat key/value store for runtime configuration
+ *
+ * CONFIG KEYS (as of v4.3.0):
+ *   openrouter_key   — OpenRouter API key for all AI calls (LLM + image generation)
+ *                      IMPORTANT: lives in DB, not just env var. Updating the Fly.io
+ *                      secret alone has no effect — call POST /api/setup to update.
+ *   admin_key        — admin panel password (plain string, not hashed — low-stakes)
+ *   digest_pin       — 4-8 digit PIN for reader-side generation (not admin password)
+ *   editorial_prompt — user's interest profile, injected into the AI system prompt
+ *
+ * DIGEST LIFECYCLE:
+ *   1. Pipeline runs → creates digest with status="draft"
+ *   2. Admin reviews → POST /api/digest/:id/publish → status="published"
+ *   3. Public readers see it at GET /api/digest/latest
+ *   4. Next day: new draft is generated, old published digest is preserved in history
  *
  * Auto-migration:
  *   Tables are created with CREATE TABLE IF NOT EXISTS on startup.
