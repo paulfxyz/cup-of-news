@@ -461,7 +461,7 @@ Visual style:
       try {
         const retryRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
           method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": \`Bearer \${openrouterKey}\`, "HTTP-Referer": "https://cupof.news" },
+          headers: { "Content-Type": "application/json", "Authorization": "Bearer " + openrouterKey, "HTTP-Referer": "https://cupof.news" },
           body: JSON.stringify({ model: "google/gemini-2.5-flash-image", messages: [{ role: "user", content: fallbackPrompt }], modalities: ["image","text"] }),
           signal: AbortSignal.timeout(90_000),
         });
