@@ -1154,4 +1154,34 @@ Vibe coding is not a replacement for engineering depth. It is a way for people w
 > *"The best tool is the one that gets the job done."*
 
 ---
+
+---
+
+## 🤙 A Note on How This Was Built
+
+This project is **100% vibe coding**.
+
+I am not a software engineer. I am not a professional developer. I do not have a CS degree and I would not pass a LeetCode interview. I cannot explain how a binary tree works from memory and I have no intention of learning.
+
+What I am: a French entrepreneur who has been hacking things together since the early internet, who has a deep intuition for products, a high tolerance for iteration, and a genuinely good working relationship with AI tools — specifically [Claude](https://claude.ai) and [Perplexity Computer](https://www.perplexity.ai/computer).
+
+Every line of TypeScript in this repository was written by an AI. Every architecture decision was a conversation. Every bug fix was me describing what was broken and an AI figuring out why. The version history of this project is essentially a transcript of those conversations — 25+ versions, dozens of real production bugs, and a pipeline that now generates 20 AI-illustrated news digests per day in 9 languages.
+
+The things I brought to this project:
+
+- **Product taste** — knowing what a good morning news experience actually feels like
+- **Editorial judgment** — understanding which sources are worth trusting, which aren't
+- **Debugging instinct** — recognising that "the images are still bad" is a distribution problem, not a search problem
+- **Persistence** — not accepting SVG placeholders as a permanent state of affairs
+- **Context management** — knowing when to push the AI harder and when to change the approach entirely
+
+The things I did not bring: knowledge of `sharp` image processing internals, TypeScript type system nuances, SQLite WAL mode, Fly.io proxy timeout architecture, or how `EventSource` handles buffering differently from `fetch() + ReadableStream`.
+
+If you're a "real" developer reading this and feeling territorial about it — I get it. But this is the future. The barrier between "I have an idea for a product" and "the product exists" has collapsed. Cup of News is a real app, used daily, with real editorial quality, built by someone who couldn't have written any of this code five years ago.
+
+Vibe coding is not a replacement for engineering depth. It is a way for people with domain expertise, product instinct, and taste to build things that previously required a team. The AI handles the syntax. The human handles the judgement.
+
+> *"The best tool is the one that gets the job done."*
+
+---
 ⭐ **If Cup of News improves your mornings, a star helps others find it.**
