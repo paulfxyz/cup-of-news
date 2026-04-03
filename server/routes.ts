@@ -1,7 +1,7 @@
 /**
  * @file server/routes.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 4.2.0
+ * @version 4.3.0
  *
  * Cup of News — REST API Routes
  *
@@ -121,7 +121,7 @@ export function registerRoutes(httpServer: Server, app: Express) {
    * Public. Used by uptime monitors, Docker HEALTHCHECK, GitHub Actions.
    */
   app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok", version: "4.2.0" });
+    res.json({ status: "ok", version: "4.3.0" });
   });
 
   // ── Setup ──────────────────────────────────────────────────────────────────
@@ -846,7 +846,7 @@ export function registerRoutes(httpServer: Server, app: Express) {
    * POST /api/digest/:id/reprocess-images
    * Admin. Re-fetch and rehost images for all stories in a digest.
    *
-   * Default (v4.2.0): enqueues job and returns immediately with { queued, position, jobId }.
+   * Default (v4.3.0): enqueues job and returns immediately with { queued, position, jobId }.
    * With ?sync=true: runs synchronously (backwards compat for scripts).
    *
    * Body: { force?: boolean }
