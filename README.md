@@ -1028,33 +1028,71 @@ Full history with engineering narrative: **[CHANGELOG.md](./CHANGELOG.md)**
 
 ## 🗺️ Roadmap
 
-**v3.4.1 shipped.** PIN keypad for digest generation (triple-tap logo), click-outside for All Stories grid, admin PIN settings, 222 RSS sources, Read Again button, QuoteCard theme-aware design, persistent admin login, landing→app language handoff, 502 timeout fix.
+**Current stable: v4.3.0** — AI-first image pipeline, 9 language editions, 20/20 AI-generated images across all editions, automated twice-daily generation.
 
-### v3.2 — Delivery & Channels
-- 📧 Email delivery (Postmark / Resend) — digest in your inbox at 6 AM
-- 📱 Telegram bot — `/add <url>` and `/digest` commands
-- 🔔 Push notifications via Capacitor — native 6 AM alert
-- 🗂️ Multiple channels — separate Tech / World / Finance feeds
-- 🔖 Pocket / Readwise integration — auto-pull saved articles
-- 🌐 Browser extension — one-click save
-- 🛡️ Rate limiting — protect public API
+---
 
-### v3.0 — Trust & Verification Platform
+### v4.4 — Delivery & Reach
+*The digest is great. It should come to you, not the other way around.*
 
-The long-term vision: a transparent, battle-tested news verification platform.
+- 📧 **Email delivery** — digest in your inbox at 6 AM via Postmark / Resend. HTML template matching the app's dark aesthetic.
+- 🔔 **Push notifications** — Capacitor already integrated. Native 6 AM alert: "Your morning digest is ready."
+- 📲 **Telegram bot** — `/add <url>` to submit a link, `/digest` to get today's briefing inline.
+- 🌐 **Browser extension** — one-click "Add to Cup" from any tab. Replaces the copy-paste workflow.
+- 🔖 **Readwise / Pocket sync** — auto-pull saved articles into the link pool nightly.
+
+---
+
+### v4.5 — Personalisation & Quality
+*The digest should feel like it was written for you, not for everyone.*
+
+- ✏️ **Editorial prompt onboarding** — first-run wizard to set your interest profile. Currently buried in the admin panel; should be the first thing new users see.
+- 🔄 **Per-story regeneration** — tap a story to regenerate its summary or swap it out from the link pool. Already partially built (`/api/digest/:id/story/:storyId/swap`); needs a reader-facing UI.
+- 📊 **Reading analytics** — track which categories you read most, which you skip. Feed this back into the editorial prompt automatically.
+- 🗂️ **Multiple digest channels** — separate Tech / World / Finance digests, each with its own RSS pool and editorial prompt. One subscription, multiple lenses.
+- 🛡️ **Rate limiting** — protect the public API from abuse. Currently open; fine for personal use, needed before sharing with others.
+
+---
+
+### v5.0 — Native Mobile Apps 📱
+*Cup of News on the App Store and Google Play. The full native experience.*
+
+The app is already a PWA and the codebase already includes `capacitor.config.ts`. The React SPA compiles to a native iOS and Android app via Capacitor with minimal changes. The path to v5.0:
+
+| Step | What's needed |
+|------|---------------|
+| **iOS App Store** | Apple Developer account ($99/yr), App Store Connect listing, App Review (1–3 days) |
+| **Google Play** | Google Play Console account ($25 one-time), internal → production track |
+| **Build pipeline** | Codemagic CI/CD (free tier: 500 min/month on M2 Mac — enough for releases) |
+| **Push notifications** | Firebase Cloud Messaging (Android) + APNs (iOS) via Capacitor Push plugin |
+| **Share Sheet** | iOS/Android native share → "Add to Cup" deep link |
+| **Offline reading** | Cache last digest in SQLite on-device for offline access |
+| **Haptic feedback** | Native swipe gestures between stories with haptic response |
+| **Widget** | iOS home screen widget showing today's top story |
+
+The Capacitor wrapper (`capacitor.config.ts`) is already configured with:
+- App ID: `news.cupof.app`
+- App name: `Cup of News`
+- Web dir: `dist/public`
+
+What's missing is the CI/CD setup (Codemagic YAML), push notification integration, and store listings. No new feature code required — the full app already works in a WebView.
+
+**Recommended CI/CD:** [Codemagic](https://codemagic.io) — built specifically for Capacitor apps. Free tier covers personal releases. Push to main → iOS IPA + Android AAB → TestFlight + Play internal track automatically.
+
+---
+
+### v6.0 — Trust & Verification Platform
+*The long-term mission: not just a personal digest, but a tool that actively fights disinformation.*
 
 | Feature | Description |
 |---------|-------------|
-| **3-source validation** | Every story requires 3+ distinct domains. Enforced at the pipeline level, not optional |
-| **Friend network curation** | Share your Cup with trusted contacts. See how their editorial lens differs. Privacy-first (E2E encrypted) |
-| **Source credibility scoring** | Internal scores: historical accuracy, correction rate, cross-reference validation |
-| **Disinformation detection** | Cross-source narrative consistency + language pattern analysis (persuasion techniques) |
-| **Multi-model ensemble** | Trend detection across Claude + GPT-4 + Gemini in parallel. Consensus reduces single-model bias |
-| **Transparent provenance** | Full content lineage: "Story appeared in Source A at T1, Source B at T2" |
-| **Why This Matters** | Auto-generated historical context, stakeholder analysis, counter-perspectives |
-| **Multi-user** | Teams, shared digests, collaborative editorial prompts |
-
-This roadmap reflects the mission: not just a personal digest, but a tool that actively fights disinformation through transparency, multi-source verification, and network intelligence.
+| **3-source validation** | Every story surfaces the number of distinct sources confirming it. Enforced in the pipeline. |
+| **Provenance timeline** | "This story appeared in Source A at T1, Source B at T2" — full content lineage visible to the reader. |
+| **Multi-model ensemble** | Run story selection across Claude + GPT-4o + Gemini in parallel. Surface stories where models disagree. |
+| **Source credibility layer** | Internal scores: correction rate, historical accuracy, cross-reference validation against known reliable outlets. |
+| **Counter-perspectives** | Auto-fetch the strongest counterpoint to each story from a different publication or political tradition. |
+| **Friend network** | Share your Cup configuration with trusted contacts. See where your editorial lens differs from theirs. |
+| **Multi-user** | Teams, shared digests, collaborative editorial prompts. Each member's reading history informs the shared pool. |
 
 ---
 
