@@ -1,7 +1,7 @@
 /**
  * @file server/images.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 4.2.0
+ * @version 4.3.0
  *
  * Cup of News — Self-hosted image pipeline
  *
@@ -246,31 +246,87 @@ export function deleteStoredImage(hash: string): boolean {
  *
  * Strategy: describe the SETTING and PROFESSION, not the event itself.
  */
-function sanitizeForImagePrompt(summary: string, category: string): string {
-  const lower = summary.toLowerCase();
+/**
+ * sanitizeForImagePrompt — rewrites sensitive topics as scene descriptions.
+ *
+ * Gemini refuses prompts with: violence, death, conflict, space disasters,
+ * political firings. This function detects those topics in BOTH the story
+ * summary (any language) AND the English title hint, then returns a safe
+ * scene description that conveys the same editorial context.
+ *
+ * Rules for adding new patterns:
+ *   - Test the regex against real failing story titles/summaries
+ *   - Return a SCENE (setting + objects), never an event
+ *   - Be specific enough that the image is editorially relevant
+ */
+function sanitizeForImagePrompt(
+  summary: string,
+  category: string,
+  englishTitleHint: string = ""
+): string {
+  // Combine summary + english title for matching — catches non-EN summaries
+  const lower = (summary + " " + englishTitleHint).toLowerCase();
 
-  // Conflict / military violence
-  if (/\b(killed?|strike|struck|bomb|missile|airstrike|air strike|shot|dead|death|casualt|murder|assassin|executed?|soldier|troops|military operation|attack|explosion|blast|combat|warfare|battle|frontline|front line)\b/.test(lower)) {
-    if (/\b(journalist|reporter|press|media|camera|broadcast|correspondent|photojournalist)\b/.test(lower)) {
-      return `Press journalists with camera equipment and tripods working in a conflict zone border area. White press vehicles marked with equipment. Rocky arid landscape with mountains. Documentary field reporting scene.`;
+  // ── Death / obituary (multi-language) ─────────────────────────────────────
+  // EN: dies, dead, death, passed away, killed  FR: décède, mort, tué
+  // DE: stirbt, gestorben, Abschied  ES: fallece, muerto  PT: morreu
+  if (/(dies?|died|dead|death|passed away|obituar|in memoriam|fallece?|mouri?t|décèd|gestorben|stirbt|abschied|morreu|muerto|umer[lł])/.test(lower)) {
+    // Philosopher / intellectual / cultural figure
+    if (/(philosopher|philosophe|filosof|denker|essayist|author|writer|intellectual|artist|poet|composer|musician|director|architect|scientist|akadem)/.test(lower)) {
+      return `A grand university lecture hall or library interior, rows of empty wooden seats, tall arched windows with warm afternoon light streaming in. Stacks of academic books on reading tables. Atmospheric, quiet scholarly setting.`;
     }
-    if (/\b(israel|lebanon|gaza|ukraine|syria|iran|iraq|afghanistan|yemen|russia|war zone)\b/.test(lower)) {
-      return `Aerial wide view of a middle eastern border landscape with rocky terrain, sparse vegetation, and distant mountains. A quiet road with occasional vehicles. Documentary landscape photography.`;
+    // Political / public figure
+    if (/(president|minister|prime minister|senator|general|leader|chancellor|official|politician|diplomat)/.test(lower)) {
+      return `Exterior of a government building with flags at half-staff. Steps leading to grand classical architecture. Overcast sky, solemn atmosphere, no people visible.`;
     }
-    return `Wide landscape view of a conflict region. Distant terrain, overcast sky, documentary photography style. No people visible.`;
+    // Default obituary
+    return `A quiet memorial garden with stone benches and flowers. Soft natural light filtering through trees. Peaceful, contemplative outdoor setting.`;
   }
 
-  // Political protests / demonstrations
-  if (/\b(protest|demonstrat|rally|march|crowd|riot|unrest|uprising)\b/.test(lower)) {
+  // ── Conflict / military / airstrikes (multi-language) ─────────────────────
+  // EN: airstrike, bomb, missile, war  FR: frappes, frappe  ES: ataques aéreos
+  // DE: Angriff, Luftangriff  AR: ضربات
+  if (/(killed?|strike|struck|frappes?|frappe|bomb|missile|airstrike|air.?strike|ataques?\s+a[eé]reo|luftangriff|angriff|shot|casualt|murder|assassin|executed?|soldier|troops|military.?operation|attack|explosion|blast|combat|warfare|battle|frontline|front.?line|shelling|bombardment|drone.?strike|rocket.?fire)/.test(lower)) {
+    if (/(journalist|reporter|press|media|camera|broadcast|correspondent|photojournalist)/.test(lower)) {
+      return `Press journalists with professional camera equipment and tripods working at a border area. White SUVs marked PRESS parked on a dusty road. Rocky arid hills and distant mountains in background.`;
+    }
+    if (/(iran|israel|lebanon|gaza|ukraine|syria|iraq|afghanistan|yemen|russia|tehran|kyiv|beirut|rafah)/.test(lower)) {
+      return `Aerial wide view of a Middle Eastern border landscape. Rocky terrain, sparse dry vegetation, a straight road cutting through the desert. Distant mountains on the horizon. Documentary landscape photography.`;
+    }
+    if (/(infrastruct|bridge|power.?plant|hospital|school|building|civilian)/.test(lower)) {
+      return `Wide aerial view of an urban landscape with a river crossing. City blocks, roads, and bridges visible from above. Documentary urban landscape photography.`;
+    }
+    return `Wide landscape view of a remote border region. Flat terrain, dusty roads, overcast sky. Documentary photography, no people visible.`;
+  }
+
+  // ── Space / NASA / rocket missions ────────────────────────────────────────
+  // Gemini refuses astronaut/spacecraft imagery as potentially depicting disasters
+  if (/(nasa|artemis|spacex|rocket|spacecraft|astronaut|cosmonaut|lunar|moon.?mission|space.?station|iss|orbit|launch|liftoff|spacewalk|capsule|orion|starship|falcon)/.test(lower)) {
+    if (/(moon|lunar|apollo)/.test(lower)) {
+      return `Wide angle view of a moonlit desert landscape at night. The full moon large and bright on the horizon, illuminating rocky terrain. Atmospheric, cinematic, no people.`;
+    }
+    if (/(launch|rocket|liftoff)/.test(lower)) {
+      return `Wide shot of a coastal rocket launch facility at dawn. Launch towers and service structures silhouetted against a pale sky. Ocean visible in the background. Industrial, atmospheric.`;
+    }
+    return `Exterior of a modern space research facility with large satellite dishes and antenna arrays on an open plain under a clear blue sky.`;
+  }
+
+  // ── Political firing / removal / resignation ──────────────────────────────
+  if (/(fires?d?|removes?d?|dismiss[ei]|resign|ousted?|sack[ei]|forced.?out|steps?.?down|abruptly|attorney.?general|cabinet|white.?house)/.test(lower)) {
+    return `The exterior of the White House or a government ministry building. Wide shot showing the full facade, American flag flying above. Clear sky, formal setting, no people.`;
+  }
+
+  // ── Political protests / demonstrations ───────────────────────────────────
+  if (/(protest|demonstrat|rally|march|crowd|riot|unrest|uprising|demonstration)/.test(lower)) {
     return `A large public gathering in a city plaza or wide boulevard. People assembled in an open urban space, buildings in background, daytime scene with natural lighting.`;
   }
 
-  // Disaster / accident / crisis
-  if (/\b(disaster|earthquake|flood|hurricane|wildfire|crash|collaps|evacuат|emergency|rescue)\b/.test(lower)) {
+  // ── Disaster / accident / crisis ─────────────────────────────────────────
+  if (/(disaster|earthquake|flood|hurricane|wildfire|crash|collaps|evacuа|emergency|rescue|tsunami|cyclone|avalanche)/.test(lower)) {
     return `Emergency response professionals in high-visibility vests working at an outdoor scene. Vehicles and equipment visible in background. Documentary crisis response photography.`;
   }
 
-  // Default: return the original summary (no sanitization needed)
+  // Default: return the original summary
   return summary;
 }
 
@@ -304,7 +360,8 @@ export async function generateAiImage(
   // Gemini refuses to generate images for stories about death, violence, strikes,
   // or conflict. Instead of describing the event, describe the SCENE and CONTEXT.
   // This produces better editorial images AND avoids safety filter rejections.
-  const sanitizedSubject = sanitizeForImagePrompt(summaryCrop, category);
+  // Pass English title hint so sanitizer catches non-EN summaries (FR/DE/ES/etc)
+  const sanitizedSubject = sanitizeForImagePrompt(summaryCrop, category, title);
 
   const prompt = `A pure photograph only. No text. No letters. No words. Anywhere.
 
@@ -383,8 +440,31 @@ Visual style:
     }
 
     if (!dataUrl) {
-      console.warn("  ⚠️  generateAiImage: no image data found in Gemini response");
-      return null;
+      // ── Retry with minimal safe prompt ─────────────────────────────────────
+      // Gemini sometimes returns 0 images for sensitive topics even after
+      // sanitization. On first failure, retry once with an abstract category scene.
+      console.warn(`  ⚠️  generateAiImage: no image returned — retrying with fallback prompt`);
+      const fallbackPrompt = `A pure photograph only. No text anywhere.\n\nCategory: ${category}\nScene: ${categoryVisuals[category.toUpperCase()] ?? "professional editorial setting, wide establishing shot"}\n\nWide landscape or establishing shot. Natural lighting. No people required. No text, no signs, no logos anywhere.`;
+      try {
+        const retryRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": \`Bearer \${openrouterKey}\`, "HTTP-Referer": "https://cupof.news" },
+          body: JSON.stringify({ model: "google/gemini-2.5-flash-image", messages: [{ role: "user", content: fallbackPrompt }], modalities: ["image","text"] }),
+          signal: AbortSignal.timeout(90_000),
+        });
+        if (retryRes.ok) {
+          const retryData = await retryRes.json() as any;
+          const retryMsg = retryData.choices?.[0]?.message as any;
+          if (retryMsg?.images?.[0]?.image_url?.url?.startsWith("data:")) {
+            dataUrl = retryMsg.images[0].image_url.url;
+            console.log(`  🔄 Retry succeeded for category: ${category}`);
+          }
+        }
+      } catch (_) { /* retry failed — fall through to null */ }
+      if (!dataUrl) {
+        console.warn("  ⚠️  generateAiImage: retry also returned no image — falling back");
+        return null;
+      }
     }
 
     const base64Data = dataUrl.split(",")[1];
