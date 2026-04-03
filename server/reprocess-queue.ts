@@ -68,6 +68,22 @@ class ReprocessQueue {
   //   the admin can simply re-trigger the reprocess. Persisting the queue would
   //   require schema migrations, retry logic, and zombie job cleanup — complexity
   //   not justified for a rarely-used admin feature.
+  // Rate limit: 2 digest reprocesses per hour.
+  //
+  // WHY 2/HOUR:
+  //   Each reprocess runs the full image pipeline for 20 stories in sequence.
+  //   Each story: 1 Gemini API call ($0.04) + 1 vision check ($0.00003) + Sharp
+  //   conversion. Peak memory usage: ~180MB (Sharp + image buffers in flight).
+  //   At 20 stories × 180MB peak = OOM risk on 512MB Fly.io machines.
+  //
+  //   2/hour means 40 Gemini calls per hour maximum = ~$1.60/hour worst case.
+  //   In practice reprocessing is rare — only triggered manually by admin.
+  //
+  // WHY IN-MEMORY (not SQLite-persisted):
+  //   The queue is intentionally volatile. If the server restarts mid-queue,
+  //   the admin can simply re-trigger the reprocess. Persisting the queue would
+  //   require schema migrations, retry logic, and zombie job cleanup — complexity
+  //   not justified for a rarely-used admin feature.
   private readonly MAX_PER_HOUR = 2;
 
   /**
