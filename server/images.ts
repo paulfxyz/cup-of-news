@@ -226,38 +226,33 @@ export function deleteStoredImage(hash: string): boolean {
 }
 
 /**
- * generateAiImage — generate a photorealistic news photo via OpenRouter.
+ * sanitizeForImagePrompt — rewrites sensitive news topics as safe scene descriptions.
  *
- * Uses google/gemini-2.5-flash-image — photorealistic, $0.04/image, no branding.
- * Returns a hosted /images/{hash}.webp path, or null if generation fails.
+ * WHY THIS EXISTS:
+ *   Gemini 2.5 Flash Image silently returns 0 images (no error, no message) for
+ *   prompts containing violence, death, conflict, space disasters, or political
+ *   firings — even in purely journalistic contexts. This caused SVG placeholders
+ *   on the most important stories (war, obituaries, political crises).
  *
- * @param title    Story headline
- * @param category Story category (World, Business, etc.)
- * @param summary  Short summary (first 150 chars)
- * @param openrouterKey OpenRouter API key
- */
-/**
- * sanitizeForImagePrompt — reframe sensitive news topics for Gemini image generation.
+ *   Instead of describing the EVENT, we describe the SETTING.
+ *   "Airstrikes hit Iranian nuclear plant" → "Aerial view of an urban landscape
+ *   with a river crossing. City blocks and bridges visible from above."
+ *   The image is still contextually appropriate — and Gemini generates it.
  *
- * Gemini safety filters reject prompts containing words like "killed", "strike",
- * "bomb", "war", "dead", etc. — even in clearly journalistic contexts.
- * This function detects those topics and rewrites the subject as a scene description
- * that conveys the same editorial context without triggering refusals.
+ * HOW IT WORKS:
+ *   Receives both the story summary (in the digest language, e.g. French) AND
+ *   the English source title. Both are concatenated and lowercased before matching.
+ *   This catches:
+ *     - English patterns in non-English digests (via title hint)
+ *     - Non-English patterns (frappes, fallece, gestorben, etc.)
+ *   Pattern priority: death → conflict → space → political firing → protest → disaster
+ *   Returns original summary if no pattern matches (no sanitization needed).
  *
- * Strategy: describe the SETTING and PROFESSION, not the event itself.
- */
-/**
- * sanitizeForImagePrompt — rewrites sensitive topics as scene descriptions.
- *
- * Gemini refuses prompts with: violence, death, conflict, space disasters,
- * political firings. This function detects those topics in BOTH the story
- * summary (any language) AND the English title hint, then returns a safe
- * scene description that conveys the same editorial context.
- *
- * Rules for adding new patterns:
- *   - Test the regex against real failing story titles/summaries
- *   - Return a SCENE (setting + objects), never an event
- *   - Be specific enough that the image is editorially relevant
+ * HOW TO ADD A NEW PATTERN:
+ *   1. Take the real story title/summary that caused an SVG fallback
+ *   2. Add the problematic word(s) to the appropriate regex (or create a new block)
+ *   3. Write a SCENE description, not an event — "setting + objects + atmosphere"
+ *   4. Test with: sanitizeForImagePrompt("your summary", "World", "english title")
  */
 /**
  * sanitizeForImagePrompt — rewrites sensitive topics as scene descriptions.
