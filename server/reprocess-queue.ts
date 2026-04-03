@@ -1,7 +1,7 @@
 /**
  * @file server/reprocess-queue.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 4.2.0
+ * @version 4.3.0
  *
  * Cup of News — In-memory Reprocess Queue with Rate Limiting
  *
