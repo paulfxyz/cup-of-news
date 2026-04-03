@@ -259,6 +259,19 @@ export function deleteStoredImage(hash: string): boolean {
  *   - Return a SCENE (setting + objects), never an event
  *   - Be specific enough that the image is editorially relevant
  */
+/**
+ * sanitizeForImagePrompt — rewrites sensitive topics as scene descriptions.
+ *
+ * Gemini refuses prompts with: violence, death, conflict, space disasters,
+ * political firings. This function detects those topics in BOTH the story
+ * summary (any language) AND the English title hint, then returns a safe
+ * scene description that conveys the same editorial context.
+ *
+ * Rules for adding new patterns:
+ *   - Test the regex against real failing story titles/summaries
+ *   - Return a SCENE (setting + objects), never an event
+ *   - Be specific enough that the image is editorially relevant
+ */
 function sanitizeForImagePrompt(
   summary: string,
   category: string,
