@@ -1113,20 +1113,6 @@ MIT — free to use, modify, distribute.
 
 ---
 
-## 👤 Author
-
-Made with ❤️ by **Paul Fleury** — built with **[Perplexity Computer](https://www.perplexity.ai/computer)**
-
-[![Website](https://img.shields.io/badge/paulfleury.com-000?style=flat-square)](https://paulfleury.com)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-paulfxyz-0A66C2?style=flat-square&logo=linkedin)](https://www.linkedin.com/in/paulfxyz/)
-[![GitHub](https://img.shields.io/badge/GitHub-paulfxyz-181717?style=flat-square&logo=github)](https://github.com/paulfxyz)
-[![Email](https://img.shields.io/badge/hello@paulfleury.com-EA4335?style=flat-square&logo=gmail)](mailto:hello@paulfleury.com)
-
----
-
-
----
-
 ## 🤙 A Note on How This Was Built
 
 This project is **100% vibe coding**.
@@ -1152,6 +1138,17 @@ If you're a "real" developer reading this and feeling territorial about it — I
 Vibe coding is not a replacement for engineering depth. It is a way for people with domain expertise, product instinct, and taste to build things that previously required a team. The AI handles the syntax. The human handles the judgement.
 
 > *"The best tool is the one that gets the job done."*
+
+---
+
+## 👤 Author
+
+Made with ❤️ by **Paul Fleury** — built with **[Perplexity Computer](https://www.perplexity.ai/computer)**
+
+[![Website](https://img.shields.io/badge/paulfleury.com-000?style=flat-square)](https://paulfleury.com)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-paulfxyz-0A66C2?style=flat-square&logo=linkedin)](https://www.linkedin.com/in/paulfxyz/)
+[![GitHub](https://img.shields.io/badge/GitHub-paulfxyz-181717?style=flat-square&logo=github)](https://github.com/paulfxyz)
+[![Email](https://img.shields.io/badge/hello@paulfleury.com-EA4335?style=flat-square&logo=gmail)](mailto:hello@paulfleury.com)
 
 ---
 ⭐ **If Cup of News improves your mornings, a star helps others find it.**
