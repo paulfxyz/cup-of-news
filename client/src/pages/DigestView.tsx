@@ -151,6 +151,12 @@ export default function DigestView() {
   //   specifically for triggering generation from the reader. It's verified
   //   server-side (/api/admin/verify-pin) without exposing the admin key.
 
+  // ── Maintenance banner (dismissible) ─────────────────────────────────────
+  // Set MAINTENANCE_MODE to false when resuming publications on May 15 2026.
+  const MAINTENANCE_MODE = true;
+  const RESUME_DATE = "May 15, 2026";
+  const [showMaintenanceBanner, setShowMaintenanceBanner] = useState(true);
+
   const [logoSpinning,  setLogoSpinning]  = useState(false);
   const [showPinModal,  setShowPinModal]  = useState(false);
   const logoClickCount  = useRef(0);
@@ -265,6 +271,39 @@ export default function DigestView() {
     >
       {/* Economist signature red rule */}
       <div className="h-1.5 w-full bg-[#E3120B] flex-shrink-0" />
+
+      {/* ── Maintenance modal ─────────────────────────────────────────────── */}
+      {MAINTENANCE_MODE && showMaintenanceBanner && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
+          <div className="relative bg-background border border-border rounded-2xl max-w-md w-full p-8 shadow-2xl text-center">
+            <button
+              onClick={() => setShowMaintenanceBanner(false)}
+              className="absolute top-4 right-4 text-foreground/40 hover:text-foreground/80 transition-colors text-xl leading-none"
+              aria-label="Dismiss"
+            >
+              ✕
+            </button>
+            <div className="text-4xl mb-4">☕</div>
+            <h2 className="text-xl font-bold tracking-tight mb-3">
+              Taking a short break
+            </h2>
+            <p className="text-sm text-foreground/65 leading-relaxed mb-2">
+              Cup of News is on pause. The digests you see here are from our last
+              active edition — they&apos;re a bit out of date.
+            </p>
+            <p className="text-sm text-foreground/65 leading-relaxed mb-6">
+              We&apos;ll be back with fresh daily editions on{" "}
+              <span className="text-foreground font-semibold">{RESUME_DATE}</span>.
+            </p>
+            <button
+              onClick={() => setShowMaintenanceBanner(false)}
+              className="w-full py-2.5 px-4 rounded-xl bg-[#E3120B] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+            >
+              Got it — show me the archive
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Fallback notice (v2.0.3) ─────────────────────────────────────────
            When the selected edition has no digest, the server returns the most
