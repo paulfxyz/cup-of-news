@@ -1,4 +1,4 @@
-# ☕ Cup of News
+# ☕ Cup of News (CofN)
 
 <div align="center">
 
