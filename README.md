@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-4.3.0-red?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-4.4.0-red?style=for-the-badge)
 ![Status](https://img.shields.io/badge/status-stable-brightgreen?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
 ![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
@@ -1028,7 +1028,7 @@ Full history with engineering narrative: **[CHANGELOG.md](./CHANGELOG.md)**
 
 ## 🗺️ Roadmap
 
-**Current stable: v4.3.0** — AI-first image pipeline, 9 language editions, 20/20 AI-generated images across all editions, automated twice-daily generation.
+**Current stable: v4.4.0** — AI-first image pipeline, 9 language editions, 20/20 AI-generated images across all editions, automated twice-daily generation.
 
 ---
 

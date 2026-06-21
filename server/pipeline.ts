@@ -1,7 +1,7 @@
 /**
  * @file server/pipeline.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 4.3.0
+ * @version 4.4.0
  *
  * Cup of News — Daily Digest Generation Pipeline
  *
@@ -402,7 +402,7 @@ function generateCategoryImage(title: string, category: string): string {
  *   5 queries cover: person name, action, location, topic, visual concept.
  *   First hit wins — no AI ranking of results needed.
  *
- * Image source priority (v4.3.0 — AI-first):
+ * Image source priority (v4.4.0 — AI-first):
  *
  *   Tier 1 — AI-generated (Gemini 2.5 Flash Image via OpenRouter)
  *     PRIMARY. Generates a photorealistic editorial photo from story context.
@@ -432,6 +432,7 @@ function generateCategoryImage(title: string, category: string): string {
  *   v4.1.0:  Always-English prompt + post-generation text detection
  *   v4.2.0:  sanitizeForImagePrompt() for conflict/death safety filter bypass
  *   v4.3.0:  Multi-language matching + retry on empty Gemini response
+ *   v4.4.0:  Hardened no-text prompt + expanded sanitizer + stricter text detection
  */
 async function fetchEditorialImage(
   title: string,

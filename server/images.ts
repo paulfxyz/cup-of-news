@@ -1,7 +1,7 @@
 /**
  * @file server/images.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 4.3.0
+ * @version 4.4.0
  *
  * Cup of News — Self-hosted image pipeline
  *
@@ -334,6 +334,24 @@ function sanitizeForImagePrompt(
     return `Emergency response professionals in high-visibility vests working at an outdoor scene. Vehicles and equipment visible in background. Documentary crisis response photography.`;
   }
 
+  // ── Accident / crime / legal ──────────────────────────────────────────────
+  if (/\b(crash|collision|accident|shootin|gunman|gun|weapon|arrest|trial|verdict|sentenc|prison|jail|convict|murder|homicid|stabbing)\b/.test(lower)) {
+    if (/\b(court|judge|legal|trial|justice|law)\b/.test(lower)) {
+      return `Exterior of a grand courthouse building with classical columns. Stone steps leading to large wooden doors. Clear sky, urban setting, no people.`;
+    }
+    return `Wide aerial view of an urban intersection with emergency response vehicles. City streets and buildings visible from above. Documentary photography.`;
+  }
+
+  // ── Health crisis / pandemic / disease ────────────────────────────────────
+  if (/\b(pandemic|epidemic|outbreak|virus|pathogen|infection|contagion|quarantin|lockdown|covid|mpox|flu|disease spread)\b/.test(lower)) {
+    return `A modern hospital exterior with ambulance bay. Wide establishing shot, clinical white building, clear signage, blue sky. No people visible.`;
+  }
+
+  // ── Economic crisis / financial shock ─────────────────────────────────────
+  if (/\b(recession|crash|collapse|bankrupt|default|debt crisis|financial crisis|market crash|stock.*plunge|plummet)\b/.test(lower)) {
+    return `Wide view of a financial district skyline with tall glass towers reflecting clouds. River in foreground, overcast sky, no people. Documentary architectural photography.`;
+  }
+
   // Default: return the original summary
   return summary;
 }
@@ -371,7 +389,7 @@ export async function generateAiImage(
   // Pass English title hint so sanitizer catches non-EN summaries (FR/DE/ES/etc)
   const sanitizedSubject = sanitizeForImagePrompt(summaryCrop, category, title);
 
-  const prompt = `A pure photograph only. No text. No letters. No words. Anywhere.
+  const prompt = `A pure photograph only. No text. No letters. No words. No numbers. Anywhere in the image.
 
 Subject: ${sanitizedSubject}
 Category: ${category}
@@ -384,6 +402,9 @@ ABSOLUTE RULES — any violation means the image is rejected:
 4. No infographics, no diagrams, no data visualizations
 5. No watermarks, no logos, no brand names visible
 6. No news channel chyrons, no lower-thirds, no ticker bars
+7. No digital displays, no LED screens, no monitors showing content
+8. No holographic overlays, no AR displays, no floating UI elements
+9. No product packaging with text, no newspaper front pages, no books with readable titles
 
 Visual style:
 - Documentary photojournalism — real location, natural lighting, authentic scene
@@ -391,7 +412,7 @@ Visual style:
 - If people appear: medium shot or wider, full upper body visible, faces not cut off
 - Landscape orientation, 16:9 or wider
 - Sharp focus, professional quality throughout
-- Avoid futuristic/sci-fi aesthetics — realistic contemporary settings only`;
+- Avoid futuristic/sci-fi aesthetics — realistic contemporary settings only — no sci-fi, no futuristic, no CGI render feel`;
 
   try {
     const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -514,7 +535,7 @@ Visual style:
               },
               {
                 type: "text",
-                text: "Does this image contain any visible text, letters, words, readable signs, readable billboards, on-screen text, charts with labels, or readable characters anywhere in the image? Answer only YES or NO."
+                text: "Carefully examine every part of this image including backgrounds, signs, screens, clothing, objects, and overlays. Does it contain ANY visible text, letters, numbers, words, captions, headlines, banners, logos with text, screen content, digital displays, or any readable characters? Answer only YES or NO."
               }
             ]
           }],
