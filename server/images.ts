@@ -356,6 +356,18 @@ function sanitizeForImagePrompt(
     return `Wide view of a financial district skyline with tall glass towers reflecting clouds. River in foreground, overcast sky, no people. Documentary architectural photography.`;
   }
 
+  // ── Cybersecurity / hacking / data breach ───────────────────────────────
+  // Gemini refuses hacker/cyberattack imagery (dark hoodie figures, skull icons etc.)
+  if (/\b(hack|hacker|cyberattack|cyber.?attack|cybersecurity|data breach|ransomware|malware|phishing|exploit|zero.?day|vulnerability|intrusion|fake alert|emergency alert|system compromise)\b/.test(lower)) {
+    return `Wide shot of a modern data centre corridor. Rows of illuminated server racks extending into the distance, cool blue and white lighting, clean floor. No people, no screens showing data, no text visible. Technology infrastructure photography.`;
+  }
+
+  // ── Semiconductor / chips / microelectronics trade ────────────────────────
+  // Often triggers text detection (Gemini adds sales charts) or safety refusal
+  if (/\b(semiconductor|microchip|chip.*sales|chip.*export|wafer|fab|tsmc|nvidia|intel.*chip|arm chip|silicon|integrated circuit|chip.*ban|chip.*restrict)\b/.test(lower)) {
+    return `Extreme close-up macro photograph of a silicon microchip circuit board. Copper traces and transistor arrays in sharp focus, shallow depth of field, vivid detail. No text, no labels, pure industrial macro photography.`;
+  }
+
   // Default: return the original summary
   return summary;
 }
