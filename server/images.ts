@@ -304,7 +304,8 @@ function sanitizeForImagePrompt(
     if (/(infrastruct|bridge|power.?plant|hospital|school|building|civilian)/.test(lower)) {
       return `Wide aerial view of an urban landscape with a river crossing. City blocks, roads, and bridges visible from above. Documentary urban landscape photography.`;
     }
-    return `Wide landscape view of a remote border region. Flat terrain, dusty roads, overcast sky. Documentary photography, no people visible.`;
+    // NOTE: completely neutral — no war zone cues, no region names
+    return `Wide panoramic view of an empty desert plain at golden hour. Flat terrain extending to distant mountains, dramatic warm sky. No people, no vehicles, no structures. Landscape photography.`;
   }
 
   // ── Space / NASA / rocket missions ────────────────────────────────────────
