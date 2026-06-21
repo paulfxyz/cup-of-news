@@ -1,7 +1,7 @@
 /**
  * @file capacitor.config.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 4.4.0
+ * @version 4.5.0
  *
  * Cup of News — Capacitor Native App Configuration
  *

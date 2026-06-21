@@ -1,7 +1,7 @@
 /**
  * @file server/images.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 4.4.0
+ * @version 4.5.0
  *
  * Cup of News — Self-hosted image pipeline
  *
@@ -302,10 +302,13 @@ function sanitizeForImagePrompt(
       return `Aerial wide view of a Middle Eastern border landscape. Rocky terrain, sparse dry vegetation, a straight road cutting through the desert. Distant mountains on the horizon. Documentary landscape photography.`;
     }
     if (/(infrastruct|bridge|power.?plant|hospital|school|building|civilian)/.test(lower)) {
-      return `Wide aerial view of an urban landscape with a river crossing. City blocks, roads, and bridges visible from above. Documentary urban landscape photography.`;
+      // IMPORTANT: Do NOT describe anything that implies damage, fire, or destruction.
+      // Even neutral words like "southern Lebanon" cause Gemini to infer a war zone.
+      // Use a peaceful Mediterranean scene that is geographically plausible but context-free.
+      return `Aerial view of a peaceful Mediterranean coastal city from high altitude. Blue sea, white buildings on terraced hillsides, a curved harbour with small boats, clear blue sky. Calm, pastoral landscape photography. No smoke, no fire, no damage, no military vehicles.`;
     }
-    // NOTE: completely neutral — no war zone cues, no region names
-    return `Wide panoramic view of an empty desert plain at golden hour. Flat terrain extending to distant mountains, dramatic warm sky. No people, no vehicles, no structures. Landscape photography.`;
+    // Completely neutral — no war zone cues whatsoever
+    return `Wide panoramic view of an empty golden desert at dusk. Flat sand dunes extending to distant mountains, warm orange sky with scattered clouds. No people, no vehicles, no structures of any kind. Pure landscape photography.`;
   }
 
   // ── Space / NASA / rocket missions ────────────────────────────────────────

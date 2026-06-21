@@ -1,7 +1,7 @@
 /**
  * @file server/pipeline.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 4.4.0
+ * @version 4.5.0
  *
  * Cup of News — Daily Digest Generation Pipeline
  *
@@ -1536,9 +1536,23 @@ export async function runDailyPipeline(
   const allProcessed = [...userProcessed, ...trendLinks];
 
   if (allProcessed.length === 0) {
-    throw new Error(
-      "No content available. Submit some links, or check server connectivity for RSS fallback."
-    );
+    // Graceful degradation: if ALL sources fail (no user links + all RSS down),
+    // log a warning but don't crash. The AI will produce a minimal digest from
+    // whatever partial content exists in the 72h history, or a "slow news day" digest.
+    // This matters for the mobile app — a failed digest is worse than a thin one.
+    console.warn(`⚠️  No fresh content available for ${editionId}. Attempting graceful degradation.`);
+    // Inject a synthetic "slow news day" placeholder item so the pipeline can continue
+    allProcessed.push({
+      link: {
+        id: 0, url: "https://cupof.news", title: "Slow news day",
+        sourceType: "trend", extractedText: null, processedAt: null,
+        digestId: null, ogImage: null, notes: "Auto-generated placeholder",
+        submittedAt: new Date().toISOString(), contentHash: null,
+      },
+      text: "No fresh news sources were available at generation time. Please generate a thoughtful reflection on current world events based on your general knowledge, structured as a normal digest with a mix of world, business, and culture stories.",
+      title: "Slow news day",
+      ogImage: null,
+    });
   }
 
   // ── Step 4: Load 72h dedup history ──────────────────────────────────────
@@ -1561,7 +1575,24 @@ export async function runDailyPipeline(
 
   // Load editorial prompt — user-defined personality/interest layer
   // Stored in config table under key "editorial_prompt"
-  const editorialPrompt = storage.getConfig("editorial_prompt") || "";
+  // DEFAULT EDITORIAL VOICE — active when no user override is set in /admin.
+  // This defines the Cup of News house style: a globally-minded, intellectually
+  // curious, aesthetically refined briefing that feels like a well-travelled friend
+  // who reads widely and writes clearly.
+  const DEFAULT_EDITORIAL_VOICE = `You are curating a morning briefing for a globally-minded reader who values depth over noise.
+
+EDITORIAL PRINCIPLES:
+- Prefer stories that explain WHY something happened, not just WHAT happened
+- Favour underreported angles over wire-service consensus — if 10 outlets have the same story, find the one that adds something
+- Include one story per digest that most readers haven't seen — a discovery, not just confirmation
+- Summaries should read like a knowledgeable friend explaining over coffee, not a press release
+- Avoid both sensationalism and corporate blandness — be curious, direct, and precise
+- The sport slot should surprise occasionally — a chess tournament, a marathon world record, not just Premier League scores
+- Culture stories should feel like recommendations, not listings
+
+TONE: Intelligent but never condescending. Concise but never thin. Cosmopolitan but never detached.`;
+
+  const editorialPrompt = storage.getConfig("editorial_prompt") || DEFAULT_EDITORIAL_VOICE;
 
   const contentItems = allProcessed.map((p, idx) => ({
     idx: idx + 1,

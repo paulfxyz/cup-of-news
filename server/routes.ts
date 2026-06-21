@@ -1,7 +1,7 @@
 /**
  * @file server/routes.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 4.4.0
+ * @version 4.5.0
  *
  * Cup of News — REST API Routes
  *
@@ -121,7 +121,7 @@ export function registerRoutes(httpServer: Server, app: Express) {
    * Public. Used by uptime monitors, Docker HEALTHCHECK, GitHub Actions.
    */
   app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok", version: "4.4.0" });
+    res.json({ status: "ok", version: "4.5.0" });
   });
 
   // ── Setup ──────────────────────────────────────────────────────────────────
