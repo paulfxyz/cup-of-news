@@ -294,7 +294,7 @@ function sanitizeForImagePrompt(
   // ── Conflict / military / airstrikes (multi-language) ─────────────────────
   // EN: airstrike, bomb, missile, war  FR: frappes, frappe  ES: ataques aéreos
   // DE: Angriff, Luftangriff  AR: ضربات
-  if (/(killed?|strike|struck|frappes?|frappe|bomb|missile|airstrike|air.?strike|ataques?\s+a[eé]reo|luftangriff|angriff|shot|casualt|murder|assassin|executed?|soldier|troops|military.?operation|attack|explosion|blast|combat|warfare|battle|frontline|front.?line|shelling|bombardment|drone.?strike|rocket.?fire)/.test(lower)) {
+  if (/(killed?|strikes?|struck|frappes?|frappe|bomb|missile|airstrikes?|air.?strikes?|ataques?\s+a[eé]reo|luftangriff|angriff|shot|casualt|murder|assassin|executed?|soldier|troops|military.?operation|attacks?|explosion|blast|combat|warfare|battle|frontline|front.?line|shelling|bombardment|drone.?strikes?|rocket.?fire|blockade|hormuz|naval.?clos|clos.*strait)/.test(lower)) {
     if (/(journalist|reporter|press|media|camera|broadcast|correspondent|photojournalist)/.test(lower)) {
       return `Press journalists with professional camera equipment and tripods working at a border area. White SUVs marked PRESS parked on a dusty road. Rocky arid hills and distant mountains in background.`;
     }
