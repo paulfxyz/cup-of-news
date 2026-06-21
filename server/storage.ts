@@ -1,7 +1,7 @@
 /**
  * @file server/storage.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 4.3.0
+ * @version 4.4.0
  *
  * Cup of News — SQLite Storage Layer
  *
@@ -29,7 +29,7 @@
  *             status: "draft" → "published" (no soft-delete; DELETE is permanent)
  *   config  — flat key/value store for runtime configuration
  *
- * CONFIG KEYS (as of v4.3.0):
+ * CONFIG KEYS (as of v4.4.0):
  *   openrouter_key   — OpenRouter API key for all AI calls (LLM + image generation)
  *                      IMPORTANT: lives in DB, not just env var. Updating the Fly.io
  *                      secret alone has no effect — call POST /api/setup to update.

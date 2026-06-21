@@ -1,7 +1,7 @@
 /**
  * @file client/src/pages/DigestView.tsx
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 4.3.0
+ * @version 4.4.0
  *
  * Cup of News — Public Digest Reader
  *
@@ -151,11 +151,10 @@ export default function DigestView() {
   //   specifically for triggering generation from the reader. It's verified
   //   server-side (/api/admin/verify-pin) without exposing the admin key.
 
-  // ── Maintenance banner (dismissible) ─────────────────────────────────────
-  // Set MAINTENANCE_MODE to false when resuming publications on May 15 2026.
-  const MAINTENANCE_MODE = true;
-  const RESUME_DATE = "May 15, 2026";
-  const [showMaintenanceBanner, setShowMaintenanceBanner] = useState(true);
+  // ── Maintenance banner (disabled — set MAINTENANCE_MODE = true to re-enable) ──
+  const MAINTENANCE_MODE = false;
+  // const RESUME_DATE = "TBD";
+  // const [showMaintenanceBanner, setShowMaintenanceBanner] = useState(true);
 
   const [logoSpinning,  setLogoSpinning]  = useState(false);
   const [showPinModal,  setShowPinModal]  = useState(false);
@@ -272,12 +271,17 @@ export default function DigestView() {
       {/* Economist signature red rule */}
       <div className="h-1.5 w-full bg-[#E3120B] flex-shrink-0" />
 
-      {/* ── Maintenance modal ─────────────────────────────────────────────── */}
-      {MAINTENANCE_MODE && showMaintenanceBanner && (
+      {/* ── Maintenance modal (disabled) ──────────────────────────────────────
+           Preserved for future maintenance windows. To re-enable:
+             1. Set MAINTENANCE_MODE = false → true (see top of component)
+             2. Restore the RESUME_DATE constant and showMaintenanceBanner state
+             3. Change `{false && (` below back to
+                `{MAINTENANCE_MODE && showMaintenanceBanner && (`
+           Wrapped in `{false && ...}` so it is never rendered while disabled. */}
+      {false && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
           <div className="relative bg-background border border-border rounded-2xl max-w-md w-full p-8 shadow-2xl text-center">
             <button
-              onClick={() => setShowMaintenanceBanner(false)}
               className="absolute top-4 right-4 text-foreground/40 hover:text-foreground/80 transition-colors text-xl leading-none"
               aria-label="Dismiss"
             >
@@ -292,11 +296,9 @@ export default function DigestView() {
               active edition — they&apos;re a bit out of date.
             </p>
             <p className="text-sm text-foreground/65 leading-relaxed mb-6">
-              We&apos;ll be back with fresh daily editions on{" "}
-              <span className="text-foreground font-semibold">{RESUME_DATE}</span>.
+              We&apos;ll be back with fresh daily editions soon.
             </p>
             <button
-              onClick={() => setShowMaintenanceBanner(false)}
               className="w-full py-2.5 px-4 rounded-xl bg-[#E3120B] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
             >
               Got it — show me the archive
