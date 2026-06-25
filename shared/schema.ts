@@ -1,7 +1,7 @@
 /**
  * @file shared/schema.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 4.5.0
+ * @version 4.6.0
  *
  * Cup of News — Shared Data Schema
  *
@@ -134,6 +134,14 @@ export const digests = sqliteTable("digests", {
    * Migration: existing rows default to "en-WORLD" (applied in storage.ts AUTO-MIGRATE).
    */
   edition: text("edition").notNull().default("en-WORLD"),
+
+  /**
+   * slot — which daily edition this digest belongs to.
+   * 'morning' = 6 AM GMT run, 'afternoon' = 4 PM GMT run.
+   * Combined with (date, edition) gives a unique triple per digest.
+   * Added in v4.6.0 to support genuine twice-daily publishing.
+   */
+  slot: text("slot").notNull().default("morning"),
 });
 
 export const insertDigestSchema = createInsertSchema(digests).omit({ id: true });

@@ -1,7 +1,7 @@
 /**
  * @file server/routes.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 4.5.0
+ * @version 4.6.0
  *
  * Cup of News — REST API Routes
  *
@@ -121,7 +121,7 @@ export function registerRoutes(httpServer: Server, app: Express) {
    * Public. Used by uptime monitors, Docker HEALTHCHECK, GitHub Actions.
    */
   app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok", version: "4.5.0" });
+    res.json({ status: "ok", version: "4.6.0" });
   });
 
   // ── Setup ──────────────────────────────────────────────────────────────────
@@ -397,6 +397,8 @@ export function registerRoutes(httpServer: Server, app: Express) {
   const jobs = new Map<string, {
     status: "pending"|"running"|"done"|"error";
     edition: string;
+    slot: "morning"|"afternoon";
+    digestId?: number;         // set when the pipeline completes — surfaced in status
     events: object[];          // full event objects — replayed to late subscribers
     result?: { digestId: number; storiesCount: number; elapsed: number };
     error?: string;
@@ -417,7 +419,8 @@ export function registerRoutes(httpServer: Server, app: Express) {
    * Verifies PIN, starts the pipeline in the background, returns jobId.
    */
   app.post("/api/digest/start-job", async (req, res) => {
-    const { pin, edition: editionId = "en" } = req.body || {};
+    const { pin, edition: editionId = "en", slot = "morning" } = req.body || {};
+    const slotVal: "morning" | "afternoon" = slot === "afternoon" ? "afternoon" : "morning";
 
     const storedPin = storage.getConfig("digest_pin") || "123456";
     if (String(pin) !== storedPin) {
@@ -430,10 +433,10 @@ export function registerRoutes(httpServer: Server, app: Express) {
 
     // Create job
     const jobId = `job_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-    jobs.set(jobId, { status: "pending", edition: editionId, events: [], listeners: [] });
+    jobs.set(jobId, { status: "pending", edition: editionId, slot: slotVal, events: [], listeners: [] });
 
     // Return jobId immediately
-    res.json({ jobId, edition: editionId });
+    res.json({ jobId, edition: editionId, slot: slotVal });
 
     // Run pipeline in background
     const job = jobs.get(jobId)!;
@@ -443,9 +446,9 @@ export function registerRoutes(httpServer: Server, app: Express) {
 
     emitJob(jobId, { type: "start", edition: editionId });
 
-    // Auto-unpublish existing published digest for today
+    // Auto-unpublish existing published digest for today (this slot only)
     const today = new Date().toISOString().slice(0, 10);
-    const existing = storage.getDigestByDate(today, editionId);
+    const existing = storage.getDigestByDate(today, editionId, slotVal);
     if (existing?.status === "published") {
       emitJob(jobId, { type: "progress", step: 1, total: 5, message: "Unpublishing existing digest to allow regeneration…", elapsed: elapsed() });
       storage.updateDigest(existing.id, { status: "draft", publishedAt: null });
@@ -462,7 +465,7 @@ export function registerRoutes(httpServer: Server, app: Express) {
       // 15-minute overall timeout — image pipeline (Jina + OpenRouter + rehosting)
       // can take 8-12 min for non-EN editions. Quality over speed.
       const PIPELINE_TIMEOUT_MS = 15 * 60 * 1000;
-      let pipelinePromise = runDailyPipeline(apiKey, editionId);
+      let pipelinePromise = runDailyPipeline(apiKey, editionId, slotVal);
       const result = await Promise.race([
         pipelinePromise,
         new Promise<never>((_, reject) =>
@@ -480,6 +483,7 @@ export function registerRoutes(httpServer: Server, app: Express) {
 
       const elapsedFinal = elapsed();
       job.status = "done";
+      job.digestId = result.digestId;
       job.result = { digestId: result.digestId, storiesCount: result.storiesCount, elapsed: elapsedFinal };
       emitJob(jobId, { type: "progress", step: 5, total: 5, message: "Published!", elapsed: elapsedFinal });
       emitJob(jobId, { type: "done", digestId: result.digestId, storiesCount: result.storiesCount, elapsed: elapsedFinal });
@@ -497,7 +501,7 @@ export function registerRoutes(httpServer: Server, app: Express) {
         await new Promise(r => setTimeout(r, 60_000));
 
         const today2 = new Date().toISOString().slice(0, 10);
-        const created = storage.getDigestByDate(today2, editionId);
+        const created = storage.getDigestByDate(today2, editionId, slotVal);
         if (created) {
           if (created.status !== "published") {
             storage.updateDigest(created.id, {
@@ -507,6 +511,7 @@ export function registerRoutes(httpServer: Server, app: Express) {
           const elapsedFinal2 = elapsed();
           const storiesCount = JSON.parse(created.storiesJson || "[]").length;
           job.status = "done";
+          job.digestId = created.id;
           job.result = { digestId: created.id, storiesCount, elapsed: elapsedFinal2 };
           emitJob(jobId, { type: "progress", step: 5, total: 5, message: "Published!", elapsed: elapsedFinal2 });
           emitJob(jobId, { type: "done", digestId: created.id, storiesCount, elapsed: elapsedFinal2 });
@@ -586,6 +591,11 @@ export function registerRoutes(httpServer: Server, app: Express) {
     res.json({
       status: job.status,
       edition: job.edition,
+      slot: job.slot,
+      // v4.6.0: surface digestId + storiesCount at the top level so the workflow
+      // can publish the digest after polling sees status="done".
+      digestId: job.digestId ?? job.result?.digestId,
+      storiesCount: job.result?.storiesCount,
       result: job.result,
       error: job.error,
     });

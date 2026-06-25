@@ -1,7 +1,7 @@
 ##
 ## .github/workflows/daily-digest.yml
 ## @author Paul Fleury <hello@paulfleury.com>
-## @version 4.5.0
+## @version 4.6.0
 ##
 ## Cup of News — Digest Generation for ALL 9 Language Editions
 ##
@@ -101,19 +101,29 @@ jobs:
         env:
           APP_URL: ${{ secrets.ESPRESSO_URL }}
           DIGEST_PIN: ${{ secrets.DIGEST_PIN || '123456' }}
+          ADMIN_KEY: ${{ secrets.ESPRESSO_ADMIN_KEY }}
           EDITION: ${{ matrix.edition }}
         run: |
           echo "🌍 Generating edition: $EDITION"
           echo "⏰ Trigger time: $(date -u '+%Y-%m-%d %H:%M UTC')"
 
+          # ── Determine slot from the current UTC hour ─────────────────────────
+          # < 12:00 UTC = the 6 AM morning run, otherwise the 4 PM afternoon run.
+          SLOT=$(python3 -c "
+          import datetime
+          h = datetime.datetime.utcnow().hour
+          print('morning' if h < 12 else 'afternoon')
+          ")
+          echo "🕑 Slot: $SLOT"
+
           # ── Step 1: Start the job ────────────────────────────────────────────
           # Returns immediately with { jobId }. The server runs the pipeline async.
-          echo "📤 Starting job for $EDITION..."
+          echo "📤 Starting job for $EDITION ($SLOT)..."
           START_RESPONSE=$(curl -s -w "\n%{http_code}" \
             -X POST "${APP_URL}/api/digest/start-job" \
             -H "Content-Type: application/json" \
             --max-time 30 \
-            -d "{\"pin\": \"${DIGEST_PIN}\", \"edition\": \"${EDITION}\"}")
+            -d "{\"pin\": \"${DIGEST_PIN}\", \"edition\": \"${EDITION}\", \"slot\": \"${SLOT}\"}")
 
           START_HTTP=$(echo "$START_RESPONSE" | tail -1)
           START_BODY=$(echo "$START_RESPONSE" | head -1)
@@ -206,4 +216,33 @@ jobs:
               echo "⚠️ $EDITION ended with status: $FINAL_STATUS — continuing to next edition"
             fi
             exit 0
+          fi
+
+          # ── Step 3: Publish the digest ───────────────────────────────────────────────
+          # Bug 1 fix: the pipeline creates the digest as status="draft" and nothing
+          # publishes it, so readers only ever saw stale content. Publish it now.
+          echo "📢 Publishing digest for $EDITION ($SLOT)..."
+          DIGEST_ID=$(echo "$STATUS_RESPONSE" | python3 -c "
+          import sys, json
+          try:
+              d = json.loads(sys.stdin.read())
+              print(d.get('digestId', ''))
+          except:
+              print('')
+          ")
+
+          if [ -n "$DIGEST_ID" ]; then
+            PUB_RESPONSE=$(curl -s -w "\n%{http_code}" \
+              -X POST "${APP_URL}/api/digest/${DIGEST_ID}/publish" \
+              -H "x-admin-key: ${ADMIN_KEY}" \
+              --max-time 15)
+            PUB_HTTP=$(echo "$PUB_RESPONSE" | tail -1)
+            echo "Publish HTTP: $PUB_HTTP"
+            if [ "$PUB_HTTP" = "200" ]; then
+              echo "✅ Published digest $DIGEST_ID for $EDITION"
+            else
+              echo "⚠️ Publish returned HTTP $PUB_HTTP — may already be published"
+            fi
+          else
+            echo "⚠️ No digestId in status response — cannot publish"
           fi

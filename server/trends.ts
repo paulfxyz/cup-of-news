@@ -1,7 +1,7 @@
 /**
  * @file server/trends.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 4.5.0
+ * @version 4.6.0
  *
  * Cup of News — RSS Trend Fallback Engine (Edition-Aware)
  *

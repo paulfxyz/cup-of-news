@@ -1,7 +1,7 @@
 /**
  * @file server/storage.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 4.5.0
+ * @version 4.6.0
  *
  * Cup of News — SQLite Storage Layer
  *
@@ -126,7 +126,8 @@ sqlite.exec(`
     generated_at         TEXT,
     published_at         TEXT,
     edition              TEXT    NOT NULL DEFAULT 'en',
-    UNIQUE(date, edition)
+    slot                 TEXT    NOT NULL DEFAULT 'morning',
+    UNIQUE(date, edition, slot)
   );
 
   CREATE TABLE IF NOT EXISTS config (
@@ -230,6 +231,79 @@ try {
   // Non-fatal: app still runs, but multi-edition generation will be blocked.
 }
 
+// ─── v4.6.0 Migration: add slot column ───────────────────────────────────────
+// SQLite supports ADD COLUMN but not DROP/MODIFY. Safe to run repeatedly:
+// throws if the column already exists, which we swallow.
+try {
+  sqlite.exec(`ALTER TABLE digests ADD COLUMN slot TEXT NOT NULL DEFAULT 'morning';`);
+  console.log("✅ Migration v4.6.0: added digests.slot column");
+} catch {
+  // Column already exists — expected on all runs after first migration
+}
+
+// ─── v4.6.0 Migration: UNIQUE(date, edition) → UNIQUE(date, edition, slot) ──────
+//
+// THE PROBLEM:
+//   The v2.0.3 rebuild left a UNIQUE(date, edition) constraint. With twice-daily
+//   publishing, the morning and afternoon digests share the same (date, edition)
+//   and differ only by slot — so inserting the afternoon digest fails with
+//   "UNIQUE constraint failed: digests.date, digests.edition".
+//
+// THE FIX: same table-rebuild pattern as v2.0.3, widening the unique key to
+//   include slot. Existing rows keep slot='morning' (from the migration above).
+//   Idempotent: skips if the table already carries UNIQUE(date, edition, slot).
+try {
+  const needsRebuild = sqlite.prepare(`
+    SELECT COUNT(*) as cnt FROM sqlite_master
+    WHERE type='table' AND name='digests'
+    AND sql NOT LIKE '%UNIQUE(date, edition, slot)%'
+  `).get() as { cnt: number };
+
+  if (needsRebuild?.cnt > 0) {
+    console.log("🔧 Migration v4.6.0: rebuilding digests table to UNIQUE(date, edition, slot)");
+    sqlite.exec(`
+      BEGIN;
+
+      CREATE TABLE digests_new (
+        id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+        date                 TEXT    NOT NULL,
+        status               TEXT    NOT NULL DEFAULT 'draft',
+        stories_json         TEXT    NOT NULL,
+        closing_quote        TEXT,
+        closing_quote_author TEXT,
+        generated_at         TEXT,
+        published_at         TEXT,
+        edition              TEXT    NOT NULL DEFAULT 'en',
+        slot                 TEXT    NOT NULL DEFAULT 'morning',
+        UNIQUE(date, edition, slot)
+      );
+
+      INSERT INTO digests_new
+        (id, date, status, stories_json, closing_quote, closing_quote_author,
+         generated_at, published_at, edition, slot)
+      SELECT
+        id, date, status, stories_json, closing_quote, closing_quote_author,
+        generated_at, published_at,
+        COALESCE(edition, 'en'),
+        COALESCE(slot, 'morning')
+      FROM digests;
+
+      DROP TABLE digests;
+      ALTER TABLE digests_new RENAME TO digests;
+
+      CREATE INDEX IF NOT EXISTS idx_digests_date ON digests (date);
+      CREATE INDEX IF NOT EXISTS idx_digests_date_edition ON digests (date, edition);
+      CREATE INDEX IF NOT EXISTS idx_digests_status ON digests (status, date);
+
+      COMMIT;
+    `);
+    console.log("✅ Migration v4.6.0: digests table rebuilt with UNIQUE(date, edition, slot)");
+  }
+} catch (e) {
+  console.error("❌ Migration v4.6.0 (slot unique) failed:", e);
+  // Non-fatal: app still runs, but afternoon slot inserts may collide.
+}
+
 // ─── Row Mapper ───────────────────────────────────────────────────────
 
 /**
@@ -259,6 +333,7 @@ function mapDigestRow(row: any): any {
     generatedAt:          row.generatedAt          ?? row.generated_at,
     publishedAt:          row.publishedAt          ?? row.published_at,
     edition:              row.edition              ?? "en",
+    slot:                 row.slot                 ?? "morning",
   };
 }
 
@@ -281,8 +356,9 @@ export interface IStorage {
   // Digests
   createDigest(digest: InsertDigest): Digest;
   getDigest(id: number): Digest | undefined;
-  /** v2.0.0: edition-aware — returns digest for (date, edition) pair */
-  getDigestByDate(date: string, edition?: string): Digest | undefined;
+  /** v2.0.0: edition-aware — returns digest for (date, edition) pair.
+   *  v4.6.0: slot-aware — returns digest for the (date, edition, slot) triple. */
+  getDigestByDate(date: string, edition?: string, slot?: string): Digest | undefined;
   /** v2.0.0: returns most recent published digest for the given edition */
   getLatestPublishedDigest(edition?: string): Digest | undefined;
   /**
@@ -359,10 +435,10 @@ class Storage implements IStorage {
    * (stories_json, closing_quote, etc). We must manually map to camelCase to match
    * the Digest TypeScript type that Drizzle's ORM queries produce automatically.
    */
-  getDigestByDate(date: string, edition = "en"): Digest | undefined {
+  getDigestByDate(date: string, edition = "en", slot = "morning"): Digest | undefined {
     const row = sqlite.prepare(
-      `SELECT * FROM digests WHERE date = ? AND edition = ? LIMIT 1`
-    ).get(date, edition) as any;
+      `SELECT * FROM digests WHERE date = ? AND edition = ? AND slot = ? LIMIT 1`
+    ).get(date, edition, slot) as any;
     return row ? mapDigestRow(row) : undefined;
   }
 

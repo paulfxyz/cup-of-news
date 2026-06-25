@@ -1,7 +1,7 @@
 /**
  * @file server/pipeline.ts
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 4.5.0
+ * @version 4.6.0
  *
  * Cup of News — Daily Digest Generation Pipeline
  *
@@ -1464,22 +1464,22 @@ function enrichStorySources(
  */
 export async function runDailyPipeline(
   apiKey: string,
-  editionId = "en"
+  editionId = "en",
+  slot: "morning" | "afternoon" = "morning"
 ): Promise<{ digestId: number; storiesCount: number; edition: string }> {
   const today = getTodayDate();
   const edition = getEdition(editionId);
 
-  console.log(`☕ Generating digest for edition: ${edition.flag} ${edition.name} (${editionId})`);
+  console.log(`☕ Generating digest for edition: ${edition.flag} ${edition.name} (${editionId}) [${slot}]`);
 
-  // Block regeneration ONLY if THIS edition's digest is already published.
-  // v2.0.3 fix: must pass editionId to getDigestByDate.
-  // Previous bug: called getDigestByDate(today) with no edition — defaulted to
-  // "en-WORLD" — so generating ANY edition after en-WORLD was published would
-  // throw "Published digest already exists" even for editions with no digest.
-  const existing = storage.getDigestByDate(today, editionId);
+  // Block regeneration ONLY if THIS slot's digest for today is already published.
+  // v4.6.0 fix (Bug 2): pass slot to getDigestByDate so the morning slot being
+  // published can NEVER block the afternoon slot. Previously the afternoon cron
+  // found the morning's published digest and silently exited on all 9 editions.
+  const existing = storage.getDigestByDate(today, editionId, slot);
   if (existing?.status === "published") {
     throw new Error(
-      `Published digest already exists for ${today} / ${editionId}. Unpublish it first to regenerate.`
+      `Published digest already exists for ${today} / ${editionId} / ${slot}. Unpublish it first.`
     );
   }
 
@@ -1561,15 +1561,31 @@ export async function runDailyPipeline(
   cutoff.setDate(cutoff.getDate() - 3);
 
   const recentStoryUrls = new Set<string>();
+  // Also collect recent story TITLES to prevent same-topic repetition.
+  // Stories about the same event from a different URL should not repeat within 48h.
+  const recentStoryTitles = new Set<string>();
   for (const d of storage.getAllDigests()) {
     if (new Date(d.date) <= cutoff) continue;
     try {
       const stories: DigestStory[] = JSON.parse(d.storiesJson);
-      stories.forEach((s) => recentStoryUrls.add(s.sourceUrl));
+      stories.forEach((s) => {
+        recentStoryUrls.add(s.sourceUrl);
+        if (s.title) {
+          // Normalise: lowercase, strip punctuation, take first 6 words as fingerprint
+          const fingerprint = s.title
+            .toLowerCase()
+            .replace(/[^a-z0-9\s]/g, "")
+            .split(/\s+/)
+            .slice(0, 6)
+            .join(" ");
+          recentStoryTitles.add(fingerprint);
+        }
+      });
     } catch {}
   }
 
   console.log(`🔁 ${recentStoryUrls.size} URLs in 72h dedup pool`);
+  console.log(`🔁 ${recentStoryTitles.size} title fingerprints in 48h dedup pool`);
 
   // ── Step 5: AI ranking + summarization ──────────────────────────────────
 
@@ -1673,6 +1689,12 @@ ${editionIndependenceBlock}`;
     // v2.2.0: use the edition's own aiSportSlot
   const sportSlot = edition.aiSportSlot;
 
+  // v4.6.0 (Bug 3): also dedup by story TITLE fingerprint, not just URL, so the
+  // AI cannot re-pick the same topic from a different source within 48h.
+  const titleDedupHint = recentStoryTitles.size > 0
+    ? `\n\nADDITIONAL DEDUP: Do NOT cover ANY story whose topic matches these recent story fingerprints (first 6 words of title, normalised): ${Array.from(recentStoryTitles).slice(0, 40).join(" | ")}`
+    : "";
+
   const systemPrompt = `You are the editorial AI for "Cup of News" — a curated morning news digest inspired by The Economist Espresso. Your writing is intelligent, slightly opinionated, and respects the reader's time.
 ${languageBlock}
 ${regionalBlock}
@@ -1724,7 +1746,7 @@ QUALITY:
 - ALL OUTPUT TEXT MUST BE IN ${edition.languageName.toUpperCase()} — this is the ${edition.name} edition
 - Imagine a reader who wants to feel informed about the whole world over breakfast — not exhausted by one topic
 - If a reader profile is provided above, honour their interests — but NEVER at the cost of geographic and topical breadth
-- Return ONLY valid JSON matching the schema. No markdown fences, no extra keys.`;
+- Return ONLY valid JSON matching the schema. No markdown fences, no extra keys.${titleDedupHint}`;
 
   const userPrompt = `Here are ${contentItems.length} articles. Select the 20 best and summarize them. Then add a closing quote.
 
@@ -1946,6 +1968,7 @@ IMPORTANT: For additionalIdxs — if multiple articles in the list cover the SAM
     generatedAt: new Date().toISOString(),
     publishedAt: null,
     edition: editionId,
+    slot,
   };
 
   // Upsert: update draft if exists, create if not
