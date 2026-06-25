@@ -5,14 +5,14 @@
     Built with Perplexity Computer — https://www.perplexity.ai/computer
     @type SoftwareApplication
     @name Cup of News
-    @version 4.6.0
+    @version 5.1.0
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cup of News — Your AI Morning Briefing</title>
-  <meta name="description" content="20 curated stories, every morning at 6 AM. AI-powered. Self-hosted. 9 languages. One API key.">
+  <meta name="description" content="20 curated stories, twice daily at 6 AM & 4 PM GMT. AI-powered. Self-hosted. 9 languages. One API key.">
   <meta property="og:title" content="Cup of News">
-  <meta property="og:description" content="Your personal AI morning digest. 20 stories. 9 languages. 6 AM. Every day.">
+  <meta property="og:description" content="Your personal AI morning digest. 20 stories. 9 languages. 6 AM & 4 PM GMT. Every day.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://cupof.news">
   <meta property="og:image" content="https://cupof.news/og.png">
@@ -51,7 +51,29 @@
       --card:     #141414;
       --font-sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       --font-body: 'Libre Baskerville', Georgia, serif;
+      /* light-mode aliases (same as dark by default; overridden below) */
+      --bg: #0f0f0f;
+      --bg-card: #141414;
     }
+
+    /* ── Light mode (Change 6) ── */
+    body.light {
+      --bg: #f9f7f4;
+      --bg-card: #ffffff;
+      --white: #111111;
+      --grey: #555555;
+      --border: #e0ddd8;
+    }
+    body.light .stats-bar { background: #f0ede8; }
+    body.light .editions-section { background: #f5f2ed; }
+    body.light .native-section { background: #f5f2ed; }
+    body.light .feature { background: #f0ede8; }
+    body.light .edition-card { background: #f0ede8; }
+    body.light .store-badge { background: #f0ede8; border-color: #ddd; color: #111; }
+    body.light nav { background: #f9f7f4; border-color: #e0ddd8; }
+    body.light .lang-panel { background: #ffffff; border-color: #e0ddd8; }
+    body.light .source-table tr { border-color: #e0ddd8; }
+    body.light .cta-section { background: #f0ede8; }
 
     html { font-size: 16px; scroll-behavior: smooth; }
     body {
@@ -89,8 +111,6 @@
     }
     .logo {
       display: flex; align-items: center; gap: 10px; text-decoration: none;
-      /* The logo mark on the landing page also supports hover→refresh,
-         matching the behaviour in the app (DigestView.tsx v4.6.0+). */
     }
     .logo-mark {
       width: 32px; height: 32px;
@@ -101,15 +121,12 @@
       cursor: pointer;
       transition: transform 0.15s;
       position: relative;
-      /* group-hover handled via JS classes since CSS :has() not yet universal */
     }
     .logo-mark:hover { transform: scale(1.08); }
-    /* Default state: shows "C". On hover: shows refresh SVG. */
     .logo-mark .logo-c   { display: block; }
     .logo-mark .logo-ref { display: none; }
     .logo-mark:hover .logo-c   { display: none; }
     .logo-mark:hover .logo-ref { display: block; }
-    /* Spinning state (class added by JS on click) */
     .logo-mark.spinning .logo-c   { display: none; }
     .logo-mark.spinning .logo-ref { display: block; animation: logo-spin 1s linear infinite; }
     @keyframes logo-spin { to { transform: rotate(360deg); } }
@@ -125,20 +142,12 @@
       display: flex;
       align-items: center;
     }
-    /* ── Custom language dropdown (v4.6.0) ──────────────────────────────────
-       Mirrors the EditionSelector.tsx design from the React app:
-       - Trigger: flag + code + chevron
-       - Dropdown: 9 rows, flag + name + description
-       - Active row: red left border + red text
-       - Backdrop: click outside or Escape to close
-       ────────────────────────────────────────────────────────────────────── */
 
     .lang-dropdown {
       position: relative;
       flex-shrink: 0;
     }
 
-    /* Trigger button */
     .lang-trigger {
       display: flex;
       align-items: center;
@@ -170,7 +179,6 @@
     }
     .lang-dropdown.open .trigger-chevron { transform: rotate(180deg); opacity: 1; }
 
-    /* Dropdown panel */
     .lang-panel {
       display: none;
       position: absolute;
@@ -185,7 +193,6 @@
     }
     .lang-dropdown.open .lang-panel { display: block; }
 
-    /* Panel header */
     .lang-panel-header {
       padding: 8px 14px;
       border-bottom: 1px solid rgba(255,255,255,0.08);
@@ -200,7 +207,6 @@
       color: var(--red);
     }
 
-    /* Edition rows */
     .lang-option {
       display: flex;
       align-items: center;
@@ -248,7 +254,6 @@
     }
     .lang-option.active .opt-active-mark { opacity: 1; }
 
-    /* Panel footer */
     .lang-panel-footer {
       padding: 6px 14px;
       border-top: 1px solid rgba(255,255,255,0.08);
@@ -325,6 +330,7 @@
       display: flex; align-items: center; gap: 10px;
       border: 1px solid var(--border); padding: 10px 18px; border-radius: 10px;
       text-decoration: none; color: var(--white); transition: border-color 0.15s;
+      cursor: pointer; background: transparent;
     }
     .store-badge:hover { border-color: #444; }
     .store-badge .icon { font-size: 22px; }
@@ -426,7 +432,7 @@
     .step-text { font-family: var(--font-body); font-size: 14px; color: #777; line-height: 2.0; }
     .step-text strong { color: #aaa; }
 
-    /* ── Native app section ── */
+    /* ── Native app / Mobile App section ── */
     .native-section { background: #0a0a0a; }
     .native-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 2px; background: var(--border); margin-top: 3.5rem; }
     .native-card { background: #0a0a0a; padding: 2rem; }
@@ -501,6 +507,27 @@
     .footer-bottom a { color: #444; text-decoration: none; transition: color 0.15s; }
     .footer-bottom a:hover { color: var(--white); }
 
+    /* ── Modal ── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000; padding: 1rem;
+    }
+    .modal-box {
+      background: #0f0f0f; border: 1px solid #222; border-radius: 16px;
+      padding: 2rem; max-width: 520px; width: 100%; position: relative;
+      max-height: 90vh; overflow-y: auto;
+    }
+    .modal-close {
+      position: absolute; top: 1rem; right: 1rem;
+      background: #1a1a1a; border: none; color: #888;
+      width: 32px; height: 32px; border-radius: 50%;
+      cursor: pointer; font-size: 14px; display: flex;
+      align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s;
+    }
+    .modal-close:hover { background: #222; color: #fff; }
+
     /* ── Responsive ── */
     @media (max-width: 640px) {
       nav { padding: 0 1rem; }
@@ -512,6 +539,10 @@
       .footer-bottom { padding: 1.5rem 1rem; flex-direction: column; align-items: flex-start; }
       .mockup-section { flex-direction: column; }
       .phone { width: min(280px, 85vw); }
+      /* Premium pricing stack on mobile */
+      #premium [style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
+      /* App section stack on mobile */
+      #apps [style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
     }
   </style>
 </head>
@@ -522,16 +553,9 @@
 
 <!-- ── Navigation ──────────────────────────────────────────────────────── -->
 <nav>
-  <!--
-    The "C" logo on the landing page mirrors the app's v4.6.0 behaviour:
-    hover reveals a refresh icon, click spins for 1250ms then hard-reloads.
-    This keeps the landing page fresh after a deploy without a forced cache-bust.
-  -->
   <a class="logo" href="#" onclick="return false;">
     <div class="logo-mark" id="navLogoMark" onclick="handleLogoClick()" title="Refresh page" aria-label="Refresh page">
-      <!-- Default: "C" glyph -->
       <span class="logo-c">C</span>
-      <!-- Hover / spin: SVG refresh icon (inline, no external dep) -->
       <svg class="logo-ref" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
         <path d="M21 3v5h-5"/>
@@ -549,11 +573,18 @@
       <a href="https://github.com/paulfxyz/cup-of-news" target="_blank" rel="noopener" data-lang-key="nav_github">GitHub</a>
     </nav>
 
+    <!-- Change 6: Theme toggle — before lang-switcher -->
+    <button id="themeToggle" onclick="toggleLandingTheme()"
+      style="width:36px;height:36px;background:transparent;border:1px solid #222;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;color:#888;transition:border-color 0.2s;"
+      title="Toggle light/dark"
+      aria-label="Toggle theme">
+      ☀️
+    </button>
+
     <!-- Language switcher — custom dropdown (v4.6.0), mirrors EditionSelector.tsx -->
     <div class="lang-switcher">
       <div class="lang-dropdown" id="langDropdown" aria-label="Interface language">
 
-        <!-- Trigger: shows current flag + code + chevron -->
         <button class="lang-trigger" id="langTrigger" onclick="toggleLangDropdown()" aria-haspopup="listbox" aria-expanded="false">
           <span class="trigger-flag" id="triggerFlag">🌐</span>
           <span class="trigger-code" id="triggerCode">EN</span>
@@ -562,11 +593,9 @@
           </svg>
         </button>
 
-        <!-- Dropdown panel -->
         <div class="lang-panel" id="langPanel" role="listbox">
           <div class="lang-panel-header"><span>Language</span></div>
 
-          <!-- 9 editions — flag · name · description -->
           <button class="lang-option" data-lang="en" onclick="setLang('en');closeLangDropdown()" role="option">
             <span class="opt-flag">🌐</span>
             <span class="opt-text">
@@ -654,7 +683,7 @@
 <!-- ── Hero ───────────────────────────────────────────────────────────── -->
 <section class="hero">
   <div class="hero-eyebrow">
-    <span class="hero-eyebrow-badge">v4.6.0</span>
+    <span class="hero-eyebrow-badge">v5.1.0</span>
     <span class="hero-eyebrow-text" data-lang-key="hero_badge">Open source · Self-hosted · One API key</span>
   </div>
 
@@ -665,7 +694,7 @@
   </h1>
 
   <p class="hero-sub serif" data-lang-key="hero_sub">
-    20 curated stories. Every morning at 6 AM. Self-hosted, AI-powered, open source.
+    20 curated stories. Twice daily — 6 AM &amp; 4 PM GMT, in your timezone. Self-hosted, AI-powered, open source.
     Choose your language — the digest is generated natively in each, not translated.
   </p>
 
@@ -674,26 +703,37 @@
     <a href="https://github.com/paulfxyz/cup-of-news" target="_blank" rel="noopener" class="btn-ghost" data-lang-key="hero_github">View on GitHub ↗</a>
   </div>
 
+  <!-- Change 1: New store badges -->
   <div class="store-badges">
-    <a href="https://app.cupof.news" class="store-badge" onclick="openApp(event)">
-      <span class="icon">🌐</span>
+    <!-- App Store (iOS) -->
+    <a href="#" class="store-badge" onclick="openAppModal(event)">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="white" xmlns="http://www.w3.org/2000/svg">
+        <path d="M16.462 11.615c-.027-2.81 2.298-4.163 2.401-4.226-1.308-1.912-3.34-2.174-4.063-2.201-1.723-.176-3.377 1.02-4.253 1.02-.878 0-2.222-0.998-3.656-0.97-1.869.028-3.6 1.094-4.562 2.762-1.956 3.388-.499 8.387 1.397 11.126.929 1.342 2.031 2.845 3.474 2.792 1.402-.057 1.928-.9 3.62-.9 1.693 0 2.18.9 3.657.872 1.504-.027 2.451-1.356 3.367-2.704 1.072-1.549 1.512-3.063 1.535-3.143-.034-.013-2.944-1.126-2.917-4.428zM13.75 3.48c.766-.94 1.285-2.232 1.143-3.527-1.107.046-2.47.746-3.264 1.666-.712.822-1.34 2.152-1.175 3.415 1.243.094 2.518-.627 3.296-1.554z"/>
+      </svg>
       <div>
-        <small data-lang-key="badge_web_label">Open in browser</small>
-        <strong data-lang-key="badge_web_name">Web App</strong>
+        <small data-lang-key="badge_ios_label">Download on the</small>
+        <strong data-lang-key="badge_ios_name">App Store</strong>
       </div>
     </a>
-    <a href="https://app.cupof.news" class="store-badge" onclick="openApp(event)">
-      <span class="icon">📱</span>
+    <!-- Google Play (Android) -->
+    <a href="#" class="store-badge" onclick="openAppModal(event)">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="white" xmlns="http://www.w3.org/2000/svg">
+        <path d="M4 2.5L14.5 11 4 19.5V2.5z"/>
+        <path d="M4 2.5l11.5 4.75L14.5 11 4 2.5z" fill="rgba(255,255,255,0.6)"/>
+        <path d="M4 19.5l11.5-4.75L14.5 11 4 19.5z" fill="rgba(255,255,255,0.4)"/>
+        <path d="M14.5 11L18 11" stroke="white" stroke-width="1.5"/>
+      </svg>
+      <div>
+        <small data-lang-key="badge_android_label">Get it on</small>
+        <strong data-lang-key="badge_android_name">Google Play</strong>
+      </div>
+    </a>
+    <!-- PWA -->
+    <a href="#" class="store-badge" onclick="openPwaModal(event)">
+      <span class="icon">📲</span>
       <div>
         <small data-lang-key="badge_pwa_label">Add to Home Screen</small>
-        <strong data-lang-key="badge_pwa_name">PWA (iOS/Android)</strong>
-      </div>
-    </a>
-    <a href="https://github.com/paulfxyz/cup-of-news/blob/main/NATIVE.md" target="_blank" rel="noopener" class="store-badge">
-      <span class="icon">📦</span>
-      <div>
-        <small data-lang-key="badge_native_label">Capacitor build</small>
-        <strong data-lang-key="badge_native_name">Native App</strong>
+        <strong data-lang-key="badge_pwa_name">PWA — Free</strong>
       </div>
     </a>
   </div>
@@ -724,7 +764,6 @@
     </p>
   </div>
 
-  <!-- Simplified phone wireframe — editorial aesthetic, no external images -->
   <div class="phone">
     <div class="phone-inner">
       <div class="phone-rule"></div>
@@ -842,63 +881,54 @@
     </p>
 
     <div class="editions-grid">
-      <!-- English -->
       <div class="edition-card">
         <div class="edition-flag">🌐</div>
         <div class="edition-name">English</div>
         <div class="edition-lang">Global · en</div>
         <p class="edition-desc">Reuters, BBC, FT, The Economist, NYT, Guardian — global flagship edition.</p>
       </div>
-      <!-- Français -->
       <div class="edition-card">
         <div class="edition-flag">🇫🇷</div>
         <div class="edition-name">Français</div>
         <div class="edition-lang">France · fr</div>
         <p class="edition-desc">Le Monde, RFI, France 24, AFP, Le Figaro — politique française, Europe, Afrique francophone.</p>
       </div>
-      <!-- Deutsch -->
       <div class="edition-card">
         <div class="edition-flag">🇩🇪</div>
         <div class="edition-name">Deutsch</div>
         <div class="edition-lang">DACH · de</div>
         <p class="edition-desc">DW, Der Spiegel, FAZ, Süddeutsche, Die Zeit — DACH region, EU, Bundesliga.</p>
       </div>
-      <!-- Español -->
       <div class="edition-card">
         <div class="edition-flag">🇪🇸</div>
         <div class="edition-name">Español</div>
         <div class="edition-lang">Spain + LATAM · es</div>
         <p class="edition-desc">El País, EFE, BBC Mundo, DW ES — Spain and all of Latin America.</p>
       </div>
-      <!-- Português -->
       <div class="edition-card">
         <div class="edition-flag">🇧🇷</div>
         <div class="edition-name">Português</div>
         <div class="edition-lang">Brazil + Portugal · pt</div>
         <p class="edition-desc">Folha, G1, Público, Jornal de Notícias — the full lusophone world.</p>
       </div>
-      <!-- 中文 -->
       <div class="edition-card">
         <div class="edition-flag">🇨🇳</div>
         <div class="edition-name">中文</div>
         <div class="edition-lang">Chinese · zh</div>
         <p class="edition-desc">BBC中文, DW中文, RFI中文 — independent outlets only. Asia-Pacific focus.</p>
       </div>
-      <!-- Русский -->
       <div class="edition-card">
         <div class="edition-flag">🇷🇺</div>
         <div class="edition-name">Русский</div>
         <div class="edition-lang">Russian · ru</div>
         <p class="edition-desc">Meduza, BBC Русская, DW Русская, Радио Свобода — independent journalism only.</p>
       </div>
-      <!-- Türkçe -->
       <div class="edition-card">
         <div class="edition-flag">🇹🇷</div>
         <div class="edition-name">Türkçe</div>
         <div class="edition-lang">Turkish · tr</div>
         <p class="edition-desc">BBC Türkçe, DW Türkçe, Bianet, Cumhuriyet — Turkey, Middle East, NATO.</p>
       </div>
-      <!-- Italiano -->
       <div class="edition-card">
         <div class="edition-flag">🇮🇹</div>
         <div class="edition-name">Italiano</div>
@@ -907,16 +937,17 @@
       </div>
     </div>
 
-    <p style="font-size:11px;color:#333;margin-top:1.25rem;letter-spacing:0.05em;" data-lang-key="editions_note">✦ 9 native language editions · each generates independently · v4.6.0</p>
+    <p style="font-size:11px;color:#333;margin-top:1.25rem;letter-spacing:0.05em;" data-lang-key="editions_note">✦ 9 native language editions · each generates independently · v5.1.0</p>
   </div>
 </section>
 
 <!-- ── How it works ────────────────────────────────────────────────────── -->
+<!-- Change 3: Updated twice-daily timing -->
 <section class="section" id="how" style="background:#0a0a0a;">
   <div class="section-inner">
     <p class="label" data-lang-key="how_label">How it works</p>
     <h2 style="font-family:var(--font-body);font-size:clamp(2rem,5vw,3.5rem);font-weight:700;line-height:1.1;" data-lang-key="how_headline">
-      Pipeline fires at 6 AM.<br>You wake up to a briefing.
+      Pipeline fires at 6 AM &amp; 4 PM GMT.<br>Two briefings, every day.
     </h2>
 
     <div class="steps">
@@ -929,9 +960,9 @@
       </div>
       <div class="step">
         <div class="step-num">02</div>
-        <div class="step-title" data-lang-key="step2_title">Pipeline fires at 6 AM</div>
+        <div class="step-title" data-lang-key="step2_title">Pipeline fires at 6 AM &amp; 4 PM GMT</div>
         <p class="step-text" data-lang-key="step2_text">
-          At <strong>6 AM GMT</strong>, the pipeline fires. Jina Reader extracts full text from every link — including paywalled articles, YouTube transcripts, TikTok captions. No API key needed. Then it fetches 34+ trusted RSS sources to fill any gaps.
+          Jina Reader extracts full text from every link — paywalls, YouTube, TikTok. Then 34+ RSS sources fill any gaps. Runs twice daily: morning edition at 6 AM GMT, afternoon edition at 4 PM GMT — applied to your timezone.
         </p>
       </div>
       <div class="step">
@@ -959,44 +990,120 @@
   </div>
 </section>
 
-<!-- ── Native App ─────────────────────────────────────────────────────── -->
-<section class="section native-section" id="native">
+<!-- ── Mobile App ─────────────────────────────────────────────────────── -->
+<!-- Change 4: New Mobile App section replacing Native App section -->
+<section class="section native-section" id="apps">
   <div class="section-inner">
-    <p class="label" data-lang-key="native_label">Native App</p>
-    <h2 style="font-family:var(--font-body);font-size:clamp(2rem,5vw,3.5rem);font-weight:700;line-height:1.1;" data-lang-key="native_headline">
-      App Store ready.<br>Zero extra code.
+    <p class="label" data-lang-key="app_section_label">Mobile App</p>
+    <h2 style="font-family:var(--font-body);font-size:clamp(2rem,5vw,3.5rem);font-weight:700;line-height:1.1;" data-lang-key="app_section_headline">
+      iOS &amp; Android.<br>Coming to your pocket.
     </h2>
+    <p style="font-family:var(--font-body);color:#666;font-size:15px;line-height:1.9;max-width:580px;margin-top:1rem;margin-bottom:3rem;" data-lang-key="app_section_sub">
+      Cup of News is launching on the App Store and Google Play. Built with Capacitor — the same codebase, native performance. Sign up at read.cupof.news and be first to know.
+    </p>
 
-    <div class="native-grid">
-      <div class="native-card">
-        <div class="native-card-header">
-          <div class="native-card-icon">🍎</div>
-          <div class="native-card-title" data-lang-key="native1_title">Capacitor (iOS)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start;max-width:760px;">
+      <!-- iOS card -->
+      <div style="background:#111;border:1px solid #1a1a1a;border-radius:16px;padding:2rem;text-align:center;">
+        <div style="font-size:48px;margin-bottom:1rem;">🍎</div>
+        <div style="font-size:18px;font-weight:800;margin-bottom:0.5rem;" data-lang-key="app_ios_title">iPhone</div>
+        <div style="font-size:13px;color:#555;margin-bottom:1.5rem;" data-lang-key="app_ios_sub">App Store · Coming soon</div>
+        <div style="width:120px;height:120px;background:#0a0a0a;border:1px solid #222;border-radius:8px;margin:0 auto 1.25rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;">
+          <span style="font-size:32px;">📷</span>
+          <span style="font-size:10px;color:#333;">QR coming soon</span>
         </div>
-        <p data-lang-key="native1_text">Run <code>npx cap add ios && npx cap sync</code> and open in Xcode. The same React codebase wraps into a real native shell. Submit to the App Store or sideload via TestFlight.</p>
+        <a href="#" onclick="openAppModal(event)" style="display:inline-flex;align-items:center;gap:8px;background:#E3120B;color:white;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;" data-lang-key="app_ios_btn">
+          Notify me →
+        </a>
       </div>
-      <div class="native-card">
-        <div class="native-card-header">
-          <div class="native-card-icon">🤖</div>
-          <div class="native-card-title" data-lang-key="native2_title">Capacitor (Android)</div>
+
+      <!-- Android card -->
+      <div style="background:#111;border:1px solid #1a1a1a;border-radius:16px;padding:2rem;text-align:center;">
+        <div style="font-size:48px;margin-bottom:1rem;">🤖</div>
+        <div style="font-size:18px;font-weight:800;margin-bottom:0.5rem;" data-lang-key="app_android_title">Android</div>
+        <div style="font-size:13px;color:#555;margin-bottom:1.5rem;" data-lang-key="app_android_sub">Google Play · Coming soon</div>
+        <div style="width:120px;height:120px;background:#0a0a0a;border:1px solid #222;border-radius:8px;margin:0 auto 1.25rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;">
+          <span style="font-size:32px;">📷</span>
+          <span style="font-size:10px;color:#333;">QR coming soon</span>
         </div>
-        <p data-lang-key="native2_text">Run <code>npx cap add android && npx cap sync</code> and open in Android Studio. Sign, build, upload to the Play Store. Same code, no rewrites.</p>
-      </div>
-      <div class="native-card">
-        <div class="native-card-header">
-          <div class="native-card-icon">🌐</div>
-          <div class="native-card-title" data-lang-key="native3_title">PWA (no store)</div>
-        </div>
-        <p data-lang-key="native3_text">Visit <code>app.cupof.news</code> in Safari → Share → Add to Home Screen. Full-screen, icon on the home screen, works offline for cached content. <strong>Available today</strong> on any device — no App Store needed.</p>
-      </div>
-      <div class="native-card">
-        <div class="native-card-header">
-          <div class="native-card-icon">☁️</div>
-          <div class="native-card-title" data-lang-key="native4_title">Median / AppMySite</div>
-        </div>
-        <p data-lang-key="native4_text">Point Median at <code>https://app.cupof.news</code>. It wraps the URL into a native iOS + Android app, handles App Store submission, and updates automatically when you deploy. <strong>Zero code changes.</strong></p>
+        <a href="#" onclick="openAppModal(event)" style="display:inline-flex;align-items:center;gap:8px;background:#E3120B;color:white;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;" data-lang-key="app_android_btn">
+          Notify me →
+        </a>
       </div>
     </div>
+
+    <!-- PWA option -->
+    <div style="margin-top:2rem;padding:1.5rem;background:#0a0a0a;border:1px solid #1a1a1a;border-radius:12px;max-width:760px;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+      <div>
+        <div style="font-weight:700;margin-bottom:4px;" data-lang-key="pwa_available_now">Available now: PWA</div>
+        <div style="font-size:13px;color:#555;" data-lang-key="pwa_available_sub">Add to your home screen from any browser, today.</div>
+      </div>
+      <a href="#" onclick="openPwaModal(event)" style="background:#111;border:1px solid #333;color:white;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap;" data-lang-key="pwa_how_btn">How to install →</a>
+    </div>
+  </div>
+</section>
+
+<!-- ── Premium ───────────────────────────────────────────────────────── -->
+<!-- Change 5: New Premium section -->
+<section class="section" id="premium" style="background:linear-gradient(180deg,#0a0a0a 0%,#0d0508 50%,#0a0a0a 100%);border-top:1px solid #1a0a0a;">
+  <div class="section-inner">
+    <p class="label" style="color:#c4973a;" data-lang-key="premium_label">⭐ Premium</p>
+    <h2 style="font-family:var(--font-body);font-size:clamp(2rem,5vw,3.5rem);font-weight:700;line-height:1.1;" data-lang-key="premium_headline">
+      More digests.<br>More editorial depth.
+    </h2>
+    <p style="font-family:var(--font-body);color:#666;font-size:15px;line-height:1.9;max-width:580px;margin-top:1rem;" data-lang-key="premium_sub">
+      Free users get 3 on-demand digest credits per month. Premium unlocks 30 credits, personalised editorial topics, and early access to new features.
+    </p>
+
+    <!-- Pricing cards -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;max-width:600px;margin-top:2.5rem;">
+
+      <!-- Monthly -->
+      <div style="background:#111;border:1px solid #222;border-radius:16px;padding:1.75rem;">
+        <div style="font-size:13px;color:#555;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:1rem;" data-lang-key="plan_monthly_label">Monthly</div>
+        <div style="font-size:2.5rem;font-weight:900;letter-spacing:-0.03em;margin-bottom:4px;">$4.99</div>
+        <div style="font-size:12px;color:#444;margin-bottom:1.5rem;" data-lang-key="plan_monthly_sub">per month · billed monthly</div>
+        <a href="#" onclick="openPremiumModal(event)" style="display:block;text-align:center;background:#222;color:#aaa;padding:10px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;" data-lang-key="plan_choose_btn">Choose Monthly</a>
+      </div>
+
+      <!-- Annual — highlighted -->
+      <div style="background:linear-gradient(135deg,#1a0a0a,#111);border:2px solid #E3120B;border-radius:16px;padding:1.75rem;position:relative;overflow:hidden;">
+        <div style="position:absolute;top:12px;right:12px;background:#E3120B;color:white;font-size:10px;font-weight:800;padding:3px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:0.05em;" data-lang-key="plan_best_badge">Best value</div>
+        <div style="font-size:13px;color:#c4973a;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:1rem;" data-lang-key="plan_annual_label">Annual ⭐</div>
+        <div style="font-size:2.5rem;font-weight:900;letter-spacing:-0.03em;margin-bottom:4px;">$3.25<span style="font-size:1rem;color:#666;font-weight:400;">/mo</span></div>
+        <div style="font-size:12px;color:#555;margin-bottom:4px;" data-lang-key="plan_annual_billing">Billed $39/year</div>
+        <div style="display:inline-block;background:#1a3a0a;color:#4caf50;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;margin-bottom:1.5rem;" data-lang-key="plan_save_badge">Save 35%</div>
+        <a href="#" onclick="openPremiumModal(event)" style="display:block;text-align:center;background:#E3120B;color:white;padding:10px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;" data-lang-key="plan_annual_btn">Choose Annual →</a>
+      </div>
+    </div>
+
+    <!-- What's included -->
+    <div style="max-width:600px;margin-top:2.5rem;display:grid;gap:0.75rem;">
+      <div style="font-size:12px;color:#444;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-bottom:0.5rem;" data-lang-key="premium_includes_label">What's included</div>
+      <div style="display:flex;align-items:flex-start;gap:12px;">
+        <span style="color:#E3120B;font-weight:900;flex-shrink:0;margin-top:2px;">✓</span>
+        <div>
+          <strong style="color:#ccc;" data-lang-key="prem_feat1_title">30 on-demand digest credits/month</strong>
+          <p style="font-size:13px;color:#555;margin:2px 0 0;" data-lang-key="prem_feat1_sub">Generate a fresh personal digest anytime. Free users get 3.</p>
+        </div>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:12px;">
+        <span style="color:#E3120B;font-weight:900;flex-shrink:0;margin-top:2px;">✓</span>
+        <div>
+          <strong style="color:#ccc;" data-lang-key="prem_feat2_title">Personalised editorial mix</strong>
+          <p style="font-size:13px;color:#555;margin:2px 0 0;" data-lang-key="prem_feat2_sub">Choose from 24 topic categories: Techie, Markets, Foodie, Sports, and more.</p>
+        </div>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:12px;">
+        <span style="color:#E3120B;font-weight:900;flex-shrink:0;margin-top:2px;">✓</span>
+        <div>
+          <strong style="color:#ccc;" data-lang-key="prem_feat3_title">Early access to new features</strong>
+          <p style="font-size:13px;color:#555;margin:2px 0 0;" data-lang-key="prem_feat3_sub">Be first when push notifications, widgets, and more roll out.</p>
+        </div>
+      </div>
+    </div>
+
+    <p style="font-size:12px;color:#333;margin-top:2rem;" data-lang-key="premium_note">✦ Twice-daily public digests remain free for everyone, forever.</p>
   </div>
 </section>
 
@@ -1060,6 +1167,128 @@
 </section>
 
 <!-- ── Footer ─────────────────────────────────────────────────────────── -->
+<!-- ── Enterprise / White-label ──────────────────────────────────────────── -->
+<section class="section" id="enterprise" style="background:linear-gradient(180deg,#0a0a0a 0%,#080a0d 50%,#0a0a0a 100%);border-top:1px solid #111;">
+  <div class="section-inner">
+
+    <p class="label" style="color:#5b9bd5;" data-lang-key="ent_label">For Organisations</p>
+    <h2 style="font-family:var(--font-body);font-size:clamp(2rem,5vw,3.5rem);font-weight:700;line-height:1.1;" data-lang-key="ent_headline">
+      Your own branded<br>news app.
+    </h2>
+    <p style="font-family:var(--font-body);color:#666;font-size:15px;line-height:1.9;max-width:620px;margin-top:1rem;" data-lang-key="ent_sub">
+      We build fully branded iOS and Android apps powered by Cup of News — with your logo, your editorial, your sources. For press outlets, journals, cities, universities, clubs, and any organisation that wants to give their community a world-class daily briefing.
+    </p>
+
+    <!-- Use-case cards -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;max-width:860px;margin-top:2.5rem;">
+      <div style="background:#0d1117;border:1px solid #1a2232;border-radius:12px;padding:1.5rem;">
+        <div style="font-size:32px;margin-bottom:0.75rem;">📰</div>
+        <div style="font-weight:700;margin-bottom:0.5rem;font-size:14px;" data-lang-key="ent_card1_title">Press & Journals</div>
+        <p style="font-size:13px;color:#555;line-height:1.7;" data-lang-key="ent_card1_text">Give your subscribers a daily AI digest from your own sources — in your voice, on iOS and Android.</p>
+      </div>
+      <div style="background:#0d1117;border:1px solid #1a2232;border-radius:12px;padding:1.5rem;">
+        <div style="font-size:32px;margin-bottom:0.75rem;">🏛️</div>
+        <div style="font-weight:700;margin-bottom:0.5rem;font-size:14px;" data-lang-key="ent_card2_title">Cities & Institutions</div>
+        <p style="font-size:13px;color:#555;line-height:1.7;" data-lang-key="ent_card2_text">Keep residents and members informed with a curated local and global briefing, branded for your institution.</p>
+      </div>
+      <div style="background:#0d1117;border:1px solid #1a2232;border-radius:12px;padding:1.5rem;">
+        <div style="font-size:32px;margin-bottom:0.75rem;">🎓</div>
+        <div style="font-weight:700;margin-bottom:0.5rem;font-size:14px;" data-lang-key="ent_card3_title">Universities & Clubs</div>
+        <p style="font-size:13px;color:#555;line-height:1.7;" data-lang-key="ent_card3_text">A daily briefing for your community — campus news, world events, your field — in one elegant app.</p>
+      </div>
+      <div style="background:#0d1117;border:1px solid #1a2232;border-radius:12px;padding:1.5rem;">
+        <div style="font-size:32px;margin-bottom:0.75rem;">🏢</div>
+        <div style="font-weight:700;margin-bottom:0.5rem;font-size:14px;" data-lang-key="ent_card4_title">Companies & Teams</div>
+        <p style="font-size:13px;color:#555;line-height:1.7;" data-lang-key="ent_card4_text">Internal news digest for your organisation — industry news, company updates, curated for your sector.</p>
+      </div>
+    </div>
+
+    <!-- What's included -->
+    <div style="max-width:860px;margin-top:2.5rem;display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+      <div style="display:flex;align-items:flex-start;gap:10px;">
+        <span style="color:#5b9bd5;font-weight:900;flex-shrink:0;margin-top:2px;">✓</span>
+        <span style="font-size:13px;color:#888;" data-lang-key="ent_feat1">Your branding — logo, colours, app name</span>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:10px;">
+        <span style="color:#5b9bd5;font-weight:900;flex-shrink:0;margin-top:2px;">✓</span>
+        <span style="font-size:13px;color:#888;" data-lang-key="ent_feat2">Custom editorial — your sources, your prompts</span>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:10px;">
+        <span style="color:#5b9bd5;font-weight:900;flex-shrink:0;margin-top:2px;">✓</span>
+        <span style="font-size:13px;color:#888;" data-lang-key="ent_feat3">iOS & Android App Store submission</span>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:10px;">
+        <span style="color:#5b9bd5;font-weight:900;flex-shrink:0;margin-top:2px;">✓</span>
+        <span style="font-size:13px;color:#888;" data-lang-key="ent_feat4">Multiple language editions</span>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:10px;">
+        <span style="color:#5b9bd5;font-weight:900;flex-shrink:0;margin-top:2px;">✓</span>
+        <span style="font-size:13px;color:#888;" data-lang-key="ent_feat5">Fully managed — we handle hosting &amp; updates</span>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:10px;">
+        <span style="color:#5b9bd5;font-weight:900;flex-shrink:0;margin-top:2px;">✓</span>
+        <span style="font-size:13px;color:#888;" data-lang-key="ent_feat6">Built on proven open-source infrastructure</span>
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <div style="margin-top:3rem;display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;">
+      <button onclick="openEnterpriseModal()" style="background:#5b9bd5;color:white;border:none;padding:14px 32px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:-0.2px;" data-lang-key="ent_cta">
+        Get in touch →
+      </button>
+      <span style="font-size:13px;color:#444;" data-lang-key="ent_cta_sub">We'll get back to you within 48 hours</span>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── Enterprise contact modal ───────────────────────────────────────────── -->
+<div id="enterpriseModal" class="modal-overlay" style="display:none;" onclick="closeEnterpriseModal(event)">
+  <div class="modal-box" onclick="event.stopPropagation()" style="max-width:460px;">
+    <button class="modal-close" onclick="closeEnterpriseModal()">✕</button>
+
+    <div style="margin-bottom:1.5rem;">
+      <div style="font-size:36px;margin-bottom:0.75rem;">🤝</div>
+      <h3 style="font-family:var(--font-serif);font-size:1.5rem;margin-bottom:0.5rem;" data-lang-key="ent_modal_title">Let's build your app</h3>
+      <p style="color:#666;font-size:14px;line-height:1.7;" data-lang-key="ent_modal_sub">Tell us who you are and we'll reach out to discuss a tailored solution.</p>
+    </div>
+
+    <form id="enterpriseForm" onsubmit="submitEnterprise(event)" style="display:grid;gap:1rem;">
+      <div>
+        <label style="display:block;font-size:12px;color:#555;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;" data-lang-key="ent_form_name">Your name</label>
+        <input type="text" id="entName" required placeholder="Paul Fleury"
+          style="width:100%;background:#111;border:1px solid #222;color:white;padding:12px 14px;border-radius:8px;font-size:14px;outline:none;box-sizing:border-box;"
+          onfocus="this.style.borderColor='#5b9bd5'" onblur="this.style.borderColor='#222'">
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;color:#555;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;" data-lang-key="ent_form_email">Email address</label>
+        <input type="email" id="entEmail" required placeholder="hello@yourorg.com"
+          style="width:100%;background:#111;border:1px solid #222;color:white;padding:12px 14px;border-radius:8px;font-size:14px;outline:none;box-sizing:border-box;"
+          onfocus="this.style.borderColor='#5b9bd5'" onblur="this.style.borderColor='#222'">
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;color:#555;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;" data-lang-key="ent_form_org">Organisation</label>
+        <input type="text" id="entOrg" placeholder="The Daily Tribune, City of Lyon…"
+          style="width:100%;background:#111;border:1px solid #222;color:white;padding:12px 14px;border-radius:8px;font-size:14px;outline:none;box-sizing:border-box;"
+          onfocus="this.style.borderColor='#5b9bd5'" onblur="this.style.borderColor='#222'">
+      </div>
+      <button type="submit" id="entSubmitBtn"
+        style="background:#5b9bd5;color:white;border:none;padding:14px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin-top:0.5rem;"
+        data-lang-key="ent_form_submit">
+        Send →
+      </button>
+    </form>
+
+    <!-- Success state (hidden by default) -->
+    <div id="entSuccess" style="display:none;text-align:center;padding:1rem 0;">
+      <div style="font-size:40px;margin-bottom:1rem;">✅</div>
+      <h4 style="margin-bottom:0.5rem;" data-lang-key="ent_success_title">Got it — we'll be in touch.</h4>
+      <p style="font-size:13px;color:#555;" data-lang-key="ent_success_sub">Expect a reply within 48 hours at the email you provided.</p>
+    </div>
+  </div>
+</div>
+
+
 <div style="border-top:1px solid var(--border);max-width:960px;margin:0 auto;">
   <footer>
     <div class="footer-brand">
@@ -1099,66 +1328,168 @@
 </div>
 
 <div class="footer-bottom">
-  <p data-lang-key="footer_copy">© 2026 Cup of News · MIT License · v4.6.0 · <a href="https://github.com/paulfxyz/cup-of-news" style="color:inherit;opacity:0.6">Open source core</a> · Mobile apps coming soon</p>
+  <p data-lang-key="footer_copy">© 2026 Cup of News · MIT License · v5.1.0 · <a href="https://github.com/paulfxyz/cup-of-news" style="color:inherit;opacity:0.6">Open source core</a> · Mobile apps coming soon</p>
   <p>
     Made by <a href="https://www.linkedin.com/in/paulfxyz/" target="_blank" rel="noopener">Paul Fleury</a>
     · Built with <a href="https://www.perplexity.ai/computer" target="_blank" rel="noopener">Perplexity Computer</a>
   </p>
 </div>
 
+<!-- ── Modals ──────────────────────────────────────────────────────────── -->
+
+<!-- Change 1: PWA Modal -->
+<div id="pwaModal" class="modal-overlay" style="display:none;" onclick="closePwaModal(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closePwaModal()">✕</button>
+    <div style="font-size:48px;text-align:center;margin-bottom:1rem;">📲</div>
+    <h3 style="font-family:var(--font-serif);font-size:1.5rem;margin-bottom:0.75rem;text-align:center;" data-lang-key="pwa_modal_title">Install as an app</h3>
+    <p style="color:#888;font-size:14px;line-height:1.8;margin-bottom:1.5rem;text-align:center;" data-lang-key="pwa_modal_sub">No app store needed. Works on any device.</p>
+    <div style="display:grid;gap:1rem;">
+      <div style="background:#111;border-radius:8px;padding:1rem;">
+        <div style="font-weight:700;margin-bottom:0.5rem;">🍎 iOS (Safari)</div>
+        <p style="font-size:13px;color:#666;line-height:1.7;" data-lang-key="pwa_ios_steps">Open read.cupof.news in Safari → tap the Share button → select "Add to Home Screen" → tap Add.</p>
+      </div>
+      <div style="background:#111;border-radius:8px;padding:1rem;">
+        <div style="font-weight:700;margin-bottom:0.5rem;">🤖 Android (Chrome)</div>
+        <p style="font-size:13px;color:#666;line-height:1.7;" data-lang-key="pwa_android_steps">Open read.cupof.news in Chrome → tap the menu (⋮) → select "Add to Home screen" → tap Add.</p>
+      </div>
+    </div>
+    <a href="https://read.cupof.news" class="btn-primary" style="display:block;text-align:center;margin-top:1.5rem;text-decoration:none;" data-lang-key="pwa_open_btn">Open read.cupof.news →</a>
+  </div>
+</div>
+
+<!-- Change 2: App Modal -->
+<div id="appModal" class="modal-overlay" style="display:none;" onclick="closeAppModal(event)">
+  <div class="modal-box" onclick="event.stopPropagation()" style="max-width:480px;">
+    <button class="modal-close" onclick="closeAppModal()">✕</button>
+    <div style="text-align:center;margin-bottom:1.5rem;">
+      <div style="font-size:40px;margin-bottom:0.5rem;">☕</div>
+      <h3 style="font-family:var(--font-serif);font-size:1.5rem;" data-lang-key="app_modal_title">Read Cup of News</h3>
+    </div>
+
+    <div style="display:grid;gap:1rem;margin-bottom:1.5rem;">
+      <!-- iOS -->
+      <div style="background:#111;border-radius:12px;padding:1.25rem;display:flex;align-items:center;gap:1rem;">
+        <div style="width:48px;height:48px;background:#1a1a1a;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">🍎</div>
+        <div style="flex:1;">
+          <div style="font-weight:700;margin-bottom:2px;" data-lang-key="app_modal_ios_title">iPhone — App Store</div>
+          <div style="font-size:12px;color:#555;" data-lang-key="app_modal_ios_sub">Coming to App Store soon</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <div style="width:56px;height:56px;background:#111;border:1px solid #333;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#444;text-align:center;line-height:1.2;">QR<br>soon</div>
+        </div>
+      </div>
+
+      <!-- Android -->
+      <div style="background:#111;border-radius:12px;padding:1.25rem;display:flex;align-items:center;gap:1rem;">
+        <div style="width:48px;height:48px;background:#1a1a1a;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">🤖</div>
+        <div style="flex:1;">
+          <div style="font-weight:700;margin-bottom:2px;" data-lang-key="app_modal_android_title">Android — Google Play</div>
+          <div style="font-size:12px;color:#555;" data-lang-key="app_modal_android_sub">Coming to Play Store soon</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <div style="width:56px;height:56px;background:#111;border:1px solid #333;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#444;text-align:center;line-height:1.2;">QR<br>soon</div>
+        </div>
+      </div>
+
+      <!-- Web -->
+      <a href="https://read.cupof.news" style="background:#E3120B;border-radius:12px;padding:1.25rem;display:flex;align-items:center;gap:1rem;text-decoration:none;color:white;">
+        <div style="width:48px;height:48px;background:rgba(255,255,255,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">🌐</div>
+        <div>
+          <div style="font-weight:700;margin-bottom:2px;" data-lang-key="app_modal_web_title">Web App</div>
+          <div style="font-size:12px;opacity:0.8;">read.cupof.news</div>
+        </div>
+        <div style="margin-left:auto;font-size:20px;">→</div>
+      </a>
+    </div>
+
+    <div style="border-top:1px solid #1a1a1a;padding-top:1rem;text-align:center;">
+      <p style="font-size:11px;color:#333;margin-bottom:0.5rem;" data-lang-key="app_modal_oss_label">Or use the open source version</p>
+      <a href="https://app.cupof.news" style="font-size:12px;color:#444;text-decoration:underline;" data-lang-key="app_modal_oss_link">app.cupof.news — open source web app</a>
+    </div>
+  </div>
+</div>
+
+<!-- Change 5: Premium Coming Soon Modal -->
+<div id="premiumModal" class="modal-overlay" style="display:none;" onclick="closePremiumModal(event)">
+  <div class="modal-box" onclick="event.stopPropagation()" style="max-width:420px;text-align:center;">
+    <button class="modal-close" onclick="closePremiumModal()">✕</button>
+    <div style="font-size:48px;margin-bottom:1rem;">🚀</div>
+    <h3 style="font-family:var(--font-serif);font-size:1.5rem;margin-bottom:0.75rem;" data-lang-key="premium_modal_title">Coming Soon</h3>
+    <p style="color:#666;font-size:14px;line-height:1.8;margin-bottom:1.5rem;" data-lang-key="premium_modal_body">Premium subscriptions are in development. Sign up at read.cupof.news and you'll be the first to know when it launches.</p>
+    <a href="https://read.cupof.news" class="btn-primary" style="display:block;text-align:center;text-decoration:none;margin-bottom:0.75rem;" data-lang-key="premium_modal_cta">Go to read.cupof.news →</a>
+    <button onclick="closePremiumModal()" style="background:none;border:none;color:#444;font-size:13px;cursor:pointer;" data-lang-key="premium_modal_dismiss">Maybe later</button>
+  </div>
+</div>
+
 <!-- ── JavaScript ─────────────────────────────────────────────────────── -->
 <script>
 /**
- * Landing page JavaScript — Cup of News v4.6.0
+ * Landing page JavaScript — Cup of News v5.1.0
  *
  * Responsibilities:
  *   1. Logo hard-refresh (matches app behaviour from DigestView.tsx v4.6.0)
  *   2. Multi-language UI switching (9 languages, localStorage persistence)
- *
- * LOGO REFRESH:
- *   The "C" logo square in the nav header mirrors the app behaviour:
- *   - Hover: "C" glyph is replaced by a refresh icon (CSS :hover handles it)
- *   - Click: calls handleLogoClick() which:
- *       a. Adds class "spinning" → CSS animation starts
- *       b. After exactly 1250ms → window.location.reload() (hard reload)
- *   The 1250ms delay is intentional — it signals the click was deliberate
- *   and gives the spinner time to render before the page reloads.
- *   Hard reload (not fetch) ensures the browser re-downloads the HTML,
- *   picking up any new deploy without stale cache artifacts.
- *
- * MULTI-LANGUAGE:
- *   All UI strings live in the TRANSLATIONS object below.
- *   Each key maps to the data-lang-key attribute on HTML elements.
- *   Language preference is stored in localStorage under "cup_landing_lang".
- *   On load, the saved language is restored automatically.
- *   The custom dropdown dispatches setLang(value) on each option click.
+ *   3. Modal management (App, PWA, Premium)
+ *   4. Light/dark theme toggle (Change 6)
  */
 
 // ── Logo hard-refresh ──────────────────────────────────────────────────────
 
-/**
- * Handles the logo click on the landing page.
- * Adds "spinning" class (CSS animates the refresh icon for 1250ms)
- * then triggers a hard page reload to catch any new deployment.
- */
 function handleLogoClick() {
   var el = document.getElementById('navLogoMark');
-  if (!el || el.classList.contains('spinning')) return; // prevent double-click
+  if (!el || el.classList.contains('spinning')) return;
   el.classList.add('spinning');
   setTimeout(function() {
     window.location.reload();
   }, 1250);
 }
 
+// ── Modal functions (Change 1, 2, 5) ─────────────────────────────────────
+
+function openPwaModal(e) { if(e) e.preventDefault(); document.getElementById('pwaModal').style.display='flex'; }
+function closePwaModal(e) {
+  if(e && e.target !== document.getElementById('pwaModal')) return;
+  document.getElementById('pwaModal').style.display='none';
+}
+
+function openApp(e) { if(e) e.preventDefault(); document.getElementById('appModal').style.display='flex'; }
+function openAppModal(e) { if(e) e.preventDefault(); document.getElementById('appModal').style.display='flex'; }
+function closeAppModal(e) {
+  if(e && e.target !== document.getElementById('appModal')) return;
+  document.getElementById('appModal').style.display='none';
+}
+
+function openPremiumModal(e) { if(e) e.preventDefault(); document.getElementById('premiumModal').style.display='flex'; }
+function closePremiumModal(e) {
+  if(e && e.target !== document.getElementById('premiumModal')) return;
+  document.getElementById('premiumModal').style.display='none';
+}
+
+// Close modals on Escape
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    document.getElementById('appModal').style.display='none';
+    document.getElementById('pwaModal').style.display='none';
+    document.getElementById('premiumModal').style.display='none';
+    closeLangDropdown();
+  }
+});
+
+// ── Light/dark theme toggle (Change 6) ───────────────────────────────────
+
+var landingTheme = localStorage.getItem('cup_landing_theme') || 'dark';
+function applyLandingTheme(t) {
+  document.body.classList.toggle('light', t === 'light');
+  var btn = document.getElementById('themeToggle');
+  if (btn) btn.textContent = t === 'light' ? '🌙' : '☀️';
+  localStorage.setItem('cup_landing_theme', t);
+  landingTheme = t;
+}
+function toggleLandingTheme() { applyLandingTheme(landingTheme === 'dark' ? 'light' : 'dark'); }
+
 // ── Translations ──────────────────────────────────────────────────────────
 
-/**
- * TRANSLATIONS — all UI strings for 9 landing page languages.
- * These are intentionally written as native-speaker copy, not machine-translated.
- * Translations were reviewed for natural register and cultural fit.
- *
- * Keys match data-lang-key attributes in the HTML above.
- */
 var TRANSLATIONS = {
 
   /* ── English ─────────────────────────────────────────────────────────── */
@@ -1166,11 +1497,11 @@ var TRANSLATIONS = {
     nav_features: 'Features', nav_editions: 'Languages', nav_github: 'GitHub', nav_cta: 'Open App →',
     hero_badge: 'Open source · Self-hosted · One API key',
     hero_h1_line1: 'Your morning', hero_h1_line2: 'briefing,', hero_h1_line3: 'your language.',
-    hero_sub: '20 curated stories. Every morning at 6 AM. Self-hosted, AI-powered, open source. Choose your language — the digest is generated natively, not translated.',
+    hero_sub: '20 curated stories. Twice daily — 6 AM &amp; 4 PM GMT, in your timezone. Self-hosted, AI-powered, open source. Choose your language — the digest is generated natively, not translated.',
     hero_cta: 'Open the App →', hero_github: 'View on GitHub ↗',
-    badge_web_label: 'Open in browser', badge_web_name: 'Web App',
-    badge_pwa_label: 'Add to Home Screen', badge_pwa_name: 'PWA (iOS/Android)',
-    badge_native_label: 'Capacitor build', badge_native_name: 'Native App',
+    badge_ios_label: 'Download on the', badge_ios_name: 'App Store',
+    badge_android_label: 'Get it on', badge_android_name: 'Google Play',
+    badge_pwa_label: 'Add to Home Screen', badge_pwa_name: 'PWA — Free',
     stat_stories: 'Stories per digest', stat_editions: 'Languages', stat_rss: 'RSS sources', stat_cost: 'Cost per digest',
     mockup_h2: 'The Economist Espresso,\nbut yours.',
     mockup_p1: 'Cup of News reads like a premium editorial product. <strong>One story per screen.</strong> Large type. Deep summary. No clutter.',
@@ -1187,18 +1518,37 @@ var TRANSLATIONS = {
     feat8_title: '~$0.07 per digest', feat8_text: 'One OpenRouter API key. One structured call. 20 stories at once. At Gemini 2.5 Pro rates, a Starbucks latte buys you three months of daily digests.',
     editions_label: '9 Languages', editions_headline: 'One app. Your language.',
     editions_sub: 'Each edition is generated independently with native-language sources, AI instructions in the target language, and region-specific editorial priorities. The principle: <strong style="color:#888;">1 edition = 1 language.</strong>',
-    editions_note: '✦ 9 native language editions · each generates independently · v4.6.0',
-    how_label: 'How it works', how_headline: 'Pipeline fires at 6 AM.\nYou wake up to a briefing.',
+    editions_note: '✦ 9 native language editions · each generates independently · v5.1.0',
+    how_label: 'How it works', how_headline: 'Pipeline fires at 6 AM &amp; 4 PM GMT.<br>Two briefings, every day.',
     step1_title: 'You submit links', step1_text: 'Drop URLs via the admin panel, API, or Apple Shortcuts. No links? The RSS fallback covers it.',
-    step2_title: 'Pipeline fires at 6 AM', step2_text: 'Jina Reader extracts full text from every link — paywalls, YouTube, TikTok. Then 34+ RSS sources fill any gaps.',
+    step2_title: 'Pipeline fires at 6 AM &amp; 4 PM GMT', step2_text: 'Jina Reader extracts full text from every link — paywalls, YouTube, TikTok. Then 34+ RSS sources fill any gaps. Runs twice daily: morning edition at 6 AM GMT, afternoon edition at 4 PM GMT — applied to your timezone.',
     step3_title: 'AI curates 20 stories', step3_text: 'One structured API call to Gemini 2.5 Pro selects 20 stories: no duplicates, mandatory diversity, closing quote included.',
     step4_title: 'You review and publish', step4_text: 'Draft lands in the admin panel. Edit, swap, or publish. Or set AUTO_PUBLISH=true for hands-off delivery.',
     step5_title: 'Read in any language', step5_text: 'Switch editions with the flag selector. 9 languages generate simultaneously. One reader — every edition.',
-    native_label: 'Native App', native_headline: 'App Store ready.\nZero extra code.',
-    native1_title: 'Capacitor (iOS)', native1_text: 'Run <code>npx cap add ios && npx cap sync</code> and open in Xcode. Submit to the App Store or sideload via TestFlight.',
-    native2_title: 'Capacitor (Android)', native2_text: 'Run <code>npx cap add android && npx cap sync</code> and open in Android Studio. Sign, build, upload to the Play Store.',
-    native3_title: 'PWA (no store)', native3_text: 'Visit <code>app.cupof.news</code> in Safari → Share → Add to Home Screen. <strong>Available today</strong> on any device.',
-    native4_title: 'Median / AppMySite', native4_text: 'Point Median at <code>https://app.cupof.news</code>. Wraps the URL into a native app, handles App Store submission. <strong>Zero code changes.</strong>',
+    app_section_label: 'Mobile App', app_section_headline: 'iOS &amp; Android.<br>Coming to your pocket.',
+    app_section_sub: 'Cup of News is launching on the App Store and Google Play. Built with Capacitor — the same codebase, native performance. Sign up at read.cupof.news and be first to know.',
+    app_ios_title: 'iPhone', app_ios_sub: 'App Store · Coming soon', app_ios_btn: 'Notify me →',
+    app_android_title: 'Android', app_android_sub: 'Google Play · Coming soon', app_android_btn: 'Notify me →',
+    pwa_available_now: 'Available now: PWA', pwa_available_sub: 'Add to your home screen from any browser, today.', pwa_how_btn: 'How to install →',
+    pwa_modal_title: 'Install as an app', pwa_modal_sub: 'No app store needed. Works on any device.',
+    pwa_ios_steps: 'Open read.cupof.news in Safari → tap the Share button → select "Add to Home Screen" → tap Add.',
+    pwa_android_steps: 'Open read.cupof.news in Chrome → tap the menu (⋮) → select "Add to Home screen" → tap Add.',
+    pwa_open_btn: 'Open read.cupof.news →',
+    app_modal_title: 'Read Cup of News',
+    app_modal_ios_title: 'iPhone — App Store', app_modal_ios_sub: 'Coming to App Store soon',
+    app_modal_android_title: 'Android — Google Play', app_modal_android_sub: 'Coming to Play Store soon',
+    app_modal_web_title: 'Web App', app_modal_oss_label: 'Or use the open source version', app_modal_oss_link: 'app.cupof.news — open source web app',
+    premium_label: '⭐ Premium', premium_headline: 'More digests.<br>More editorial depth.',
+    premium_sub: 'Free users get 3 on-demand digest credits per month. Premium unlocks 30 credits, personalised editorial topics, and early access to new features.',
+    plan_monthly_label: 'Monthly', plan_monthly_sub: 'per month · billed monthly', plan_choose_btn: 'Choose Monthly',
+    plan_annual_label: 'Annual ⭐', plan_annual_billing: 'Billed $39/year', plan_best_badge: 'Best value', plan_save_badge: 'Save 35%', plan_annual_btn: 'Choose Annual →',
+    premium_includes_label: 'What\'s included',
+    prem_feat1_title: '30 on-demand digest credits/month', prem_feat1_sub: 'Generate a fresh personal digest anytime. Free users get 3.',
+    prem_feat2_title: 'Personalised editorial mix', prem_feat2_sub: 'Choose from 24 topic categories: Techie, Markets, Foodie, Sports, and more.',
+    prem_feat3_title: 'Early access to new features', prem_feat3_sub: 'Be first when push notifications, widgets, and more roll out.',
+    premium_note: '✦ Twice-daily public digests remain free for everyone, forever.',
+    premium_modal_title: 'Coming Soon', premium_modal_body: 'Premium subscriptions are in development. Sign up at read.cupof.news and you\'ll be the first to know when it launches.',
+    premium_modal_cta: 'Go to read.cupof.news →', premium_modal_dismiss: 'Maybe later',
     sources_label: 'RSS Sources', sources_headline: '34+ trusted outlets.\nZero API keys.',
     sources_sub: 'The RSS fallback fills any gaps in your submitted links. Source list is explicit, inspectable, and free.',
     sources_note: '✦ Your submitted links always take priority · RSS fills the gaps · zero cost',
@@ -1207,7 +1557,7 @@ var TRANSLATIONS = {
     footer_brand_text: 'Your personal AI-powered morning news digest. Self-hosted, open source, one API key.',
     footer_product_title: 'Product', footer_open_app: 'Open App', footer_admin: 'Admin Panel', footer_editions: 'Languages',
     footer_oss_title: 'Open Source', footer_github: 'GitHub Repository', footer_releases: 'Releases', footer_install: 'Install Guide', footer_changelog: 'Changelog', footer_issues: 'Issues',
-    footer_copy: '© 2026 Cup of News · MIT License · v4.6.0 · <a href="https://github.com/paulfxyz/cup-of-news" style="color:inherit;opacity:0.6">Open source core</a> · Mobile apps coming soon',
+    footer_copy: '© 2026 Cup of News · MIT License · v5.1.0 · <a href="https://github.com/paulfxyz/cup-of-news" style="color:inherit;opacity:0.6">Open source core</a> · Mobile apps coming soon',
   },
 
   /* ── Français ─────────────────────────────────────────────────────────── */
@@ -1215,11 +1565,11 @@ var TRANSLATIONS = {
     nav_features: 'Fonctionnalités', nav_editions: 'Langues', nav_github: 'GitHub', nav_cta: 'Ouvrir l\'app →',
     hero_badge: 'Open source · Auto-hébergé · Une seule clé API',
     hero_h1_line1: 'Votre revue', hero_h1_line2: 'de presse,', hero_h1_line3: 'dans votre langue.',
-    hero_sub: '20 articles sélectionnés. Chaque matin à 6 h. Auto-hébergé, propulsé par l\'IA, open source. Choisissez votre langue — le digest est généré nativement, pas traduit.',
+    hero_sub: '20 articles sélectionnés. Deux fois par jour — 6 h &amp; 16 h GMT, selon votre fuseau. Auto-hébergé, propulsé par l\'IA, open source. Choisissez votre langue — le digest est généré nativement, pas traduit.',
     hero_cta: 'Ouvrir l\'app →', hero_github: 'Voir sur GitHub ↗',
-    badge_web_label: 'Ouvrir dans le navigateur', badge_web_name: 'Application web',
-    badge_pwa_label: 'Ajouter à l\'écran d\'accueil', badge_pwa_name: 'PWA (iOS/Android)',
-    badge_native_label: 'Build Capacitor', badge_native_name: 'App native',
+    badge_ios_label: 'Télécharger sur l\'', badge_ios_name: 'App Store',
+    badge_android_label: 'Disponible sur', badge_android_name: 'Google Play',
+    badge_pwa_label: 'Ajouter à l\'écran d\'accueil', badge_pwa_name: 'PWA — Gratuit',
     stat_stories: 'Articles par digest', stat_editions: 'Langues', stat_rss: 'Sources RSS', stat_cost: 'Coût par digest',
     mockup_h2: 'L\'Économiste Espresso,\nmais le vôtre.',
     mockup_p1: 'Cup of News se lit comme un produit éditorial premium. <strong>Une histoire par écran.</strong> Grande typographie. Résumé en profondeur. Zéro encombrement.',
@@ -1236,18 +1586,37 @@ var TRANSLATIONS = {
     feat8_title: '~0,07 $ par digest', feat8_text: 'Une clé API OpenRouter. Un seul appel structuré. 20 articles en une fois. Aux tarifs Gemini 2.5 Pro, un latte Starbucks vous offre trois mois de revues de presse quotidiennes.',
     editions_label: '9 langues', editions_headline: 'Une app. Votre langue.',
     editions_sub: 'Chaque édition est générée indépendamment avec des sources en langue native, des instructions IA dans la langue cible et des priorités éditoriales régionales. Principe : <strong style="color:#888;">1 édition = 1 langue.</strong>',
-    editions_note: '✦ 9 éditions en langue native · chacune génère indépendamment · v4.6.0',
-    how_label: 'Comment ça marche', how_headline: 'Le pipeline se déclenche à 6 h.\nVous vous réveillez avec un briefing.',
+    editions_note: '✦ 9 éditions en langue native · chacune génère indépendamment · v5.1.0',
+    how_label: 'Comment ça marche', how_headline: 'Le pipeline se déclenche à 6 h et 16 h GMT.<br>Deux briefings, chaque jour.',
     step1_title: 'Vous soumettez des liens', step1_text: 'Déposez des URLs via le panneau admin, l\'API, ou Raccourcis Apple. Sans liens ? Le fallback RSS couvre tout.',
-    step2_title: 'Pipeline à 6 h', step2_text: 'Jina Reader extrait le texte complet de chaque lien — paywalls, YouTube, TikTok. Puis 34+ sources RSS comblent les lacunes.',
+    step2_title: 'Pipeline à 6 h et 16 h GMT', step2_text: 'Jina Reader extrait le texte complet de chaque lien — paywalls, YouTube, TikTok. Puis 34+ sources RSS comblent les lacunes. Deux fois par jour : édition du matin à 6 h GMT, édition de l\'après-midi à 16 h GMT — selon votre fuseau horaire.',
     step3_title: 'L\'IA sélectionne 20 histoires', step3_text: 'Un seul appel structuré à Gemini 2.5 Pro sélectionne 20 histoires : sans doublons, diversité obligatoire, citation finale incluse.',
     step4_title: 'Vous relisez et publiez', step4_text: 'Le digest arrive en brouillon. Modifiez, échangez, publiez. Ou définissez AUTO_PUBLISH=true pour une publication automatique.',
     step5_title: 'Lire dans n\'importe quelle langue', step5_text: 'Changez d\'édition avec le sélecteur de langue. 9 langues génèrent simultanément.',
-    native_label: 'App native', native_headline: 'Prêt pour l\'App Store.\nZéro code supplémentaire.',
-    native1_title: 'Capacitor (iOS)', native1_text: 'Lancez <code>npx cap add ios && npx cap sync</code> et ouvrez dans Xcode. Soumettez à l\'App Store ou distribuez via TestFlight.',
-    native2_title: 'Capacitor (Android)', native2_text: 'Lancez <code>npx cap add android && npx cap sync</code> et ouvrez dans Android Studio. Signez, compilez, uploadez sur le Play Store.',
-    native3_title: 'PWA (sans store)', native3_text: 'Visitez <code>app.cupof.news</code> dans Safari → Partager → Sur l\'écran d\'accueil. <strong>Disponible aujourd\'hui</strong> sur tout appareil.',
-    native4_title: 'Median / AppMySite', native4_text: 'Pointez Median sur <code>https://app.cupof.news</code>. Il transforme l\'URL en app native iOS + Android. <strong>Aucune modification de code.</strong>',
+    app_section_label: 'Application mobile', app_section_headline: 'iOS &amp; Android.<br>Bientôt dans votre poche.',
+    app_section_sub: 'Cup of News arrive sur l\'App Store et Google Play. Développé avec Capacitor — même code, performances natives. Inscrivez-vous sur read.cupof.news pour être les premiers informés.',
+    app_ios_title: 'iPhone', app_ios_sub: 'App Store · Bientôt disponible', app_ios_btn: 'Me notifier →',
+    app_android_title: 'Android', app_android_sub: 'Google Play · Bientôt disponible', app_android_btn: 'Me notifier →',
+    pwa_available_now: 'Disponible maintenant : PWA', pwa_available_sub: 'Ajoutez à votre écran d\'accueil depuis n\'importe quel navigateur, dès aujourd\'hui.', pwa_how_btn: 'Comment installer →',
+    pwa_modal_title: 'Installer comme une app', pwa_modal_sub: 'Aucune boutique d\'applications requise. Fonctionne sur tous les appareils.',
+    pwa_ios_steps: 'Ouvrez read.cupof.news dans Safari → appuyez sur Partager → sélectionnez "Sur l\'écran d\'accueil" → appuyez sur Ajouter.',
+    pwa_android_steps: 'Ouvrez read.cupof.news dans Chrome → appuyez sur le menu (⋮) → sélectionnez "Ajouter à l\'écran d\'accueil" → appuyez sur Ajouter.',
+    pwa_open_btn: 'Ouvrir read.cupof.news →',
+    app_modal_title: 'Lire Cup of News',
+    app_modal_ios_title: 'iPhone — App Store', app_modal_ios_sub: 'Bientôt sur l\'App Store',
+    app_modal_android_title: 'Android — Google Play', app_modal_android_sub: 'Bientôt sur le Play Store',
+    app_modal_web_title: 'Application web', app_modal_oss_label: 'Ou utiliser la version open source', app_modal_oss_link: 'app.cupof.news — application web open source',
+    premium_label: '⭐ Premium', premium_headline: 'Plus de digests.<br>Plus de profondeur éditoriale.',
+    premium_sub: 'Les utilisateurs gratuits disposent de 3 crédits de digest à la demande par mois. Premium débloque 30 crédits, des thèmes éditoriaux personnalisés et un accès anticipé aux nouvelles fonctionnalités.',
+    plan_monthly_label: 'Mensuel', plan_monthly_sub: 'par mois · facturé mensuellement', plan_choose_btn: 'Choisir mensuel',
+    plan_annual_label: 'Annuel ⭐', plan_annual_billing: 'Facturé 39 $/an', plan_best_badge: 'Meilleur rapport', plan_save_badge: 'Économisez 35 %', plan_annual_btn: 'Choisir annuel →',
+    premium_includes_label: 'Ce qui est inclus',
+    prem_feat1_title: '30 crédits de digest à la demande/mois', prem_feat1_sub: 'Générez un digest personnel à tout moment. Les utilisateurs gratuits ont 3 crédits.',
+    prem_feat2_title: 'Mix éditorial personnalisé', prem_feat2_sub: 'Choisissez parmi 24 catégories thématiques : Tech, Marchés, Gastronomie, Sport, et plus.',
+    prem_feat3_title: 'Accès anticipé aux nouvelles fonctionnalités', prem_feat3_sub: 'Soyez le premier quand les notifications push, widgets et plus arrivent.',
+    premium_note: '✦ Les digests publics deux fois par jour restent gratuits pour tous, pour toujours.',
+    premium_modal_title: 'Bientôt disponible', premium_modal_body: 'Les abonnements Premium sont en cours de développement. Inscrivez-vous sur read.cupof.news pour être le premier informé du lancement.',
+    premium_modal_cta: 'Aller sur read.cupof.news →', premium_modal_dismiss: 'Peut-être plus tard',
     sources_label: 'Sources RSS', sources_headline: '34+ médias de confiance.\nAucune clé API.',
     sources_sub: 'Le fallback RSS comble les lacunes de vos liens soumis. La liste des sources est explicite, vérifiable et gratuite.',
     sources_note: '✦ Vos liens soumis ont toujours la priorité · RSS comble les lacunes · coût zéro',
@@ -1256,7 +1625,7 @@ var TRANSLATIONS = {
     footer_brand_text: 'Votre revue de presse matinale personnelle, propulsée par l\'IA. Auto-hébergée, open source, une seule clé API.',
     footer_product_title: 'Produit', footer_open_app: 'Ouvrir l\'app', footer_admin: 'Panneau admin', footer_editions: 'Langues',
     footer_oss_title: 'Open Source', footer_github: 'Dépôt GitHub', footer_releases: 'Versions', footer_install: 'Guide d\'installation', footer_changelog: 'Journal des modifications', footer_issues: 'Signaler un problème',
-    footer_copy: '© 2026 Cup of News · Licence MIT · v4.6.0',
+    footer_copy: '© 2026 Cup of News · Licence MIT · v5.1.0',
   },
 
   /* ── Deutsch ──────────────────────────────────────────────────────────── */
@@ -1264,11 +1633,11 @@ var TRANSLATIONS = {
     nav_features: 'Funktionen', nav_editions: 'Sprachen', nav_github: 'GitHub', nav_cta: 'App öffnen →',
     hero_badge: 'Open Source · Selbst gehostet · Ein API-Schlüssel',
     hero_h1_line1: 'Dein morgendliches', hero_h1_line2: 'Briefing,', hero_h1_line3: 'in deiner Sprache.',
-    hero_sub: '20 kuratierte Artikel. Jeden Morgen um 6 Uhr. Selbst gehostet, KI-gestützt, Open Source. Wähle deine Sprache — der Digest wird nativ generiert, nicht übersetzt.',
+    hero_sub: '20 kuratierte Artikel. Zweimal täglich — 6 Uhr &amp; 16 Uhr GMT, in deiner Zeitzone. Selbst gehostet, KI-gestützt, Open Source. Wähle deine Sprache — der Digest wird nativ generiert, nicht übersetzt.',
     hero_cta: 'App öffnen →', hero_github: 'Auf GitHub ansehen ↗',
-    badge_web_label: 'Im Browser öffnen', badge_web_name: 'Web-App',
-    badge_pwa_label: 'Zum Home-Bildschirm', badge_pwa_name: 'PWA (iOS/Android)',
-    badge_native_label: 'Capacitor-Build', badge_native_name: 'Native App',
+    badge_ios_label: 'Laden im', badge_ios_name: 'App Store',
+    badge_android_label: 'Jetzt bei', badge_android_name: 'Google Play',
+    badge_pwa_label: 'Zum Home-Bildschirm', badge_pwa_name: 'PWA — Kostenlos',
     stat_stories: 'Artikel pro Digest', stat_editions: 'Sprachen', stat_rss: 'RSS-Quellen', stat_cost: 'Kosten pro Digest',
     mockup_h2: 'Der Economist Espresso,\nauch für dich.',
     mockup_p1: 'Cup of News liest sich wie ein hochwertiges redaktionelles Produkt. <strong>Eine Geschichte pro Bildschirm.</strong> Große Schrift. Tiefe Zusammenfassung. Kein Lärm.',
@@ -1285,18 +1654,37 @@ var TRANSLATIONS = {
     feat8_title: '~0,07 $ pro Digest', feat8_text: 'Ein OpenRouter-API-Schlüssel. Ein strukturierter Aufruf. 20 Meldungen auf einmal. Zu Gemini-2.5-Pro-Preisen reicht ein Starbucks-Latte für drei Monate tägliche Nachrichtenzusammenfassungen.',
     editions_label: '9 Sprachen', editions_headline: 'Eine App. Deine Sprache.',
     editions_sub: 'Jede Ausgabe wird unabhängig mit muttersprachlichen Quellen, KI-Anweisungen in der Zielsprache und regionsspezifischen Redaktionsprioritäten generiert. Prinzip: <strong style="color:#888;">1 Ausgabe = 1 Sprache.</strong>',
-    editions_note: '✦ 9 native Sprachausgaben · jede generiert unabhängig · v4.6.0',
-    how_label: 'Wie es funktioniert', how_headline: 'Pipeline startet um 6 Uhr.\nDu wachst mit einem Briefing auf.',
+    editions_note: '✦ 9 native Sprachausgaben · jede generiert unabhängig · v5.1.0',
+    how_label: 'Wie es funktioniert', how_headline: 'Pipeline um 6 Uhr &amp; 16 Uhr (GMT).<br>Zwei Briefings, jeden Tag.',
     step1_title: 'Du sendest Links', step1_text: 'URLs über das Admin-Panel, die API oder Apple-Kurzbefehle einreichen. Keine Links? Der RSS-Fallback deckt alles ab.',
-    step2_title: 'Pipeline um 6 Uhr', step2_text: 'Jina Reader extrahiert den vollständigen Text jedes Links — Paywalls, YouTube, TikTok. Dann füllen 34+ RSS-Quellen die Lücken.',
+    step2_title: 'Pipeline um 6 Uhr &amp; 16 Uhr (GMT)', step2_text: 'Jina Reader extrahiert den vollständigen Text jedes Links — Paywalls, YouTube, TikTok. Dann füllen 34+ RSS-Quellen die Lücken. Zweimal täglich: Morgenausgabe um 6 Uhr GMT, Nachmittagsausgabe um 16 Uhr GMT — angepasst an deine Zeitzone.',
     step3_title: 'KI kuratiert 20 Geschichten', step3_text: 'Ein strukturierter API-Aufruf an Gemini 2.5 Pro wählt 20 Geschichten aus: keine Duplikate, obligatorische Vielfalt, Abschlusszitat inklusive.',
     step4_title: 'Du prüfst und veröffentlichst', step4_text: 'Der Digest landet als Entwurf. Bearbeite, tausche aus, veröffentliche. Oder setze AUTO_PUBLISH=true für vollautomatische Lieferung.',
     step5_title: 'In jeder Sprache lesen', step5_text: 'Ausgabe per Flag-Selector wechseln. 9 Sprachen generieren gleichzeitig.',
-    native_label: 'Native App', native_headline: 'App Store-fertig.\nKein extra Code.',
-    native1_title: 'Capacitor (iOS)', native1_text: '<code>npx cap add ios && npx cap sync</code> ausführen und in Xcode öffnen. Im App Store einreichen oder via TestFlight verteilen.',
-    native2_title: 'Capacitor (Android)', native2_text: '<code>npx cap add android && npx cap sync</code> ausführen und in Android Studio öffnen. Signieren, bauen, in den Play Store hochladen.',
-    native3_title: 'PWA (kein Store)', native3_text: '<code>app.cupof.news</code> in Safari öffnen → Teilen → Zum Home-Bildschirm. <strong>Heute verfügbar</strong> auf jedem Gerät.',
-    native4_title: 'Median / AppMySite', native4_text: 'Median auf <code>https://app.cupof.news</code> richten. Wandelt die URL in eine native App um. <strong>Keine Code-Änderungen.</strong>',
+    app_section_label: 'Mobile App', app_section_headline: 'iOS &amp; Android.<br>Bald in deiner Tasche.',
+    app_section_sub: 'Cup of News kommt in den App Store und auf Google Play. Gebaut mit Capacitor — gleiche Codebasis, native Performance. Melde dich auf read.cupof.news an und erfahre es als Erster.',
+    app_ios_title: 'iPhone', app_ios_sub: 'App Store · Demnächst', app_ios_btn: 'Benachrichtigen →',
+    app_android_title: 'Android', app_android_sub: 'Google Play · Demnächst', app_android_btn: 'Benachrichtigen →',
+    pwa_available_now: 'Jetzt verfügbar: PWA', pwa_available_sub: 'Füge es noch heute von jedem Browser aus zu deinem Home-Bildschirm hinzu.', pwa_how_btn: 'Wie installieren →',
+    pwa_modal_title: 'Als App installieren', pwa_modal_sub: 'Kein App Store nötig. Funktioniert auf jedem Gerät.',
+    pwa_ios_steps: 'Öffne read.cupof.news in Safari → tippe auf Teilen → wähle "Zum Home-Bildschirm" → tippe auf Hinzufügen.',
+    pwa_android_steps: 'Öffne read.cupof.news in Chrome → tippe auf das Menü (⋮) → wähle "Zum Startbildschirm hinzufügen" → tippe auf Hinzufügen.',
+    pwa_open_btn: 'read.cupof.news öffnen →',
+    app_modal_title: 'Cup of News lesen',
+    app_modal_ios_title: 'iPhone — App Store', app_modal_ios_sub: 'Bald im App Store',
+    app_modal_android_title: 'Android — Google Play', app_modal_android_sub: 'Bald im Play Store',
+    app_modal_web_title: 'Web-App', app_modal_oss_label: 'Oder die Open-Source-Version nutzen', app_modal_oss_link: 'app.cupof.news — Open-Source-Web-App',
+    premium_label: '⭐ Premium', premium_headline: 'Mehr Digests.<br>Mehr redaktionelle Tiefe.',
+    premium_sub: 'Gratis-Nutzer erhalten 3 On-Demand-Digest-Credits pro Monat. Premium schaltet 30 Credits, personalisierte Themen und frühen Zugang zu neuen Funktionen frei.',
+    plan_monthly_label: 'Monatlich', plan_monthly_sub: 'pro Monat · monatlich abgerechnet', plan_choose_btn: 'Monatlich wählen',
+    plan_annual_label: 'Jährlich ⭐', plan_annual_billing: '39 $/Jahr abgerechnet', plan_best_badge: 'Bestes Angebot', plan_save_badge: '35 % sparen', plan_annual_btn: 'Jährlich wählen →',
+    premium_includes_label: 'Enthaltene Leistungen',
+    prem_feat1_title: '30 On-Demand-Digest-Credits/Monat', prem_feat1_sub: 'Erstelle jederzeit einen frischen persönlichen Digest. Gratis-Nutzer erhalten 3.',
+    prem_feat2_title: 'Personalisierter Themenmix', prem_feat2_sub: 'Wähle aus 24 Themenkategorien: Tech, Märkte, Kulinarik, Sport und mehr.',
+    prem_feat3_title: 'Früher Zugang zu neuen Funktionen', prem_feat3_sub: 'Sei als Erster dabei, wenn Push-Benachrichtigungen, Widgets und mehr erscheinen.',
+    premium_note: '✦ Die zweimal täglichen öffentlichen Digests bleiben für alle kostenlos — für immer.',
+    premium_modal_title: 'Demnächst verfügbar', premium_modal_body: 'Premium-Abonnements sind in Entwicklung. Melde dich auf read.cupof.news an, um als Erster über den Launch informiert zu werden.',
+    premium_modal_cta: 'Zu read.cupof.news →', premium_modal_dismiss: 'Vielleicht später',
     sources_label: 'RSS-Quellen', sources_headline: '34+ vertrauenswürdige Quellen.\nKein API-Schlüssel.',
     sources_sub: 'Der RSS-Fallback füllt Lücken in deinen eingereichten Links. Quellliste ist explizit, prüfbar und kostenlos.',
     sources_note: '✦ Deine Links haben immer Vorrang · RSS füllt die Lücken · keine Kosten',
@@ -1305,7 +1693,7 @@ var TRANSLATIONS = {
     footer_brand_text: 'Dein persönlicher KI-gestützter morgendlicher Nachrichten-Digest. Selbst gehostet, Open Source, ein API-Schlüssel.',
     footer_product_title: 'Produkt', footer_open_app: 'App öffnen', footer_admin: 'Admin-Panel', footer_editions: 'Sprachen',
     footer_oss_title: 'Open Source', footer_github: 'GitHub-Repository', footer_releases: 'Versionen', footer_install: 'Installationsanleitung', footer_changelog: 'Änderungsprotokoll', footer_issues: 'Probleme melden',
-    footer_copy: '© 2026 Cup of News · MIT-Lizenz · v4.6.0',
+    footer_copy: '© 2026 Cup of News · MIT-Lizenz · v5.1.0',
   },
 
   /* ── Español ──────────────────────────────────────────────────────────── */
@@ -1313,11 +1701,11 @@ var TRANSLATIONS = {
     nav_features: 'Funciones', nav_editions: 'Idiomas', nav_github: 'GitHub', nav_cta: 'Abrir app →',
     hero_badge: 'Código abierto · Autoalojado · Una sola clave API',
     hero_h1_line1: 'Tu resumen', hero_h1_line2: 'matutino,', hero_h1_line3: 'en tu idioma.',
-    hero_sub: '20 historias seleccionadas. Cada mañana a las 6 AM. Autoalojado, impulsado por IA, código abierto. Elige tu idioma — el digest se genera de forma nativa, no traducido.',
+    hero_sub: '20 historias seleccionadas. Dos veces al día — 6 AM &amp; 16:00 GMT, en tu zona horaria. Autoalojado, impulsado por IA, código abierto. Elige tu idioma — el digest se genera de forma nativa, no traducido.',
     hero_cta: 'Abrir la app →', hero_github: 'Ver en GitHub ↗',
-    badge_web_label: 'Abrir en el navegador', badge_web_name: 'Aplicación web',
-    badge_pwa_label: 'Añadir a pantalla de inicio', badge_pwa_name: 'PWA (iOS/Android)',
-    badge_native_label: 'Build con Capacitor', badge_native_name: 'App nativa',
+    badge_ios_label: 'Descargar en el', badge_ios_name: 'App Store',
+    badge_android_label: 'Disponible en', badge_android_name: 'Google Play',
+    badge_pwa_label: 'Añadir a pantalla de inicio', badge_pwa_name: 'PWA — Gratis',
     stat_stories: 'Historias por digest', stat_editions: 'Idiomas', stat_rss: 'Fuentes RSS', stat_cost: 'Costo por digest',
     mockup_h2: 'El Economist Espresso,\npero tuyo.',
     mockup_p1: 'Cup of News se lee como un producto editorial premium. <strong>Una historia por pantalla.</strong> Tipografía grande. Resumen en profundidad. Sin ruido.',
@@ -1334,18 +1722,37 @@ var TRANSLATIONS = {
     feat8_title: '~0,07 $ por digest', feat8_text: 'Una clave API de OpenRouter. Una llamada estructurada. 20 noticias a la vez. Con las tarifas de Gemini 2.5 Pro, un café de Starbucks te da para tres meses de resúmenes diarios.',
     editions_label: '9 idiomas', editions_headline: 'Una app. Tu idioma.',
     editions_sub: 'Cada edición se genera de forma independiente con fuentes en lengua nativa, instrucciones de IA en el idioma objetivo y prioridades editoriales regionales. Principio: <strong style="color:#888;">1 edición = 1 idioma.</strong>',
-    editions_note: '✦ 9 ediciones en idioma nativo · cada una genera de forma independiente · v4.6.0',
-    how_label: 'Cómo funciona', how_headline: 'El pipeline se activa a las 6 AM.\nTe despiertas con un briefing.',
+    editions_note: '✦ 9 ediciones en idioma nativo · cada una genera de forma independiente · v5.1.0',
+    how_label: 'Cómo funciona', how_headline: 'El pipeline se activa a las 6 AM y 16:00 GMT.<br>Dos briefings, cada día.',
     step1_title: 'Envías enlaces', step1_text: 'Añade URLs desde el panel admin, la API o Accesos Directos de Apple. ¿Sin enlaces? El RSS fallback lo cubre.',
-    step2_title: 'Pipeline a las 6 AM', step2_text: 'Jina Reader extrae el texto completo de cada enlace — muros de pago, YouTube, TikTok. Luego 34+ fuentes RSS llenan los huecos.',
+    step2_title: 'Pipeline a las 6 AM y 16:00 GMT', step2_text: 'Jina Reader extrae el texto completo de cada enlace — muros de pago, YouTube, TikTok. Luego 34+ fuentes RSS llenan los huecos. Dos veces al día: edición matutina a las 6 AM GMT, edición vespertina a las 16:00 GMT — según tu zona horaria.',
     step3_title: 'La IA selecciona 20 historias', step3_text: 'Una llamada estructurada a Gemini 2.5 Pro selecciona 20 historias: sin duplicados, diversidad obligatoria, cita final incluida.',
     step4_title: 'Revisas y publicas', step4_text: 'El digest llega como borrador. Edita, intercambia, publica. O activa AUTO_PUBLISH=true para entrega automática.',
     step5_title: 'Lee en cualquier idioma', step5_text: 'Cambia de edición con el selector de idioma. 9 idiomas generan simultáneamente.',
-    native_label: 'App nativa', native_headline: 'Listo para el App Store.\nCero código extra.',
-    native1_title: 'Capacitor (iOS)', native1_text: 'Ejecuta <code>npx cap add ios && npx cap sync</code> y abre en Xcode. Envía al App Store o distribuye vía TestFlight.',
-    native2_title: 'Capacitor (Android)', native2_text: 'Ejecuta <code>npx cap add android && npx cap sync</code> y abre en Android Studio. Firma, compila, sube al Play Store.',
-    native3_title: 'PWA (sin tienda)', native3_text: 'Visita <code>app.cupof.news</code> en Safari → Compartir → Añadir a pantalla de inicio. <strong>Disponible hoy</strong> en cualquier dispositivo.',
-    native4_title: 'Median / AppMySite', native4_text: 'Apunta Median a <code>https://app.cupof.news</code>. Convierte la URL en una app nativa. <strong>Cero cambios de código.</strong>',
+    app_section_label: 'App móvil', app_section_headline: 'iOS &amp; Android.<br>Próximamente en tu bolsillo.',
+    app_section_sub: 'Cup of News llega al App Store y Google Play. Desarrollado con Capacitor — el mismo código, rendimiento nativo. Regístrate en read.cupof.news y sé el primero en saberlo.',
+    app_ios_title: 'iPhone', app_ios_sub: 'App Store · Próximamente', app_ios_btn: 'Notificarme →',
+    app_android_title: 'Android', app_android_sub: 'Google Play · Próximamente', app_android_btn: 'Notificarme →',
+    pwa_available_now: 'Disponible ahora: PWA', pwa_available_sub: 'Añádelo a tu pantalla de inicio desde cualquier navegador, hoy mismo.', pwa_how_btn: 'Cómo instalar →',
+    pwa_modal_title: 'Instalar como app', pwa_modal_sub: 'Sin tienda de apps. Funciona en cualquier dispositivo.',
+    pwa_ios_steps: 'Abre read.cupof.news en Safari → toca el botón Compartir → selecciona "Añadir a pantalla de inicio" → toca Añadir.',
+    pwa_android_steps: 'Abre read.cupof.news en Chrome → toca el menú (⋮) → selecciona "Añadir a pantalla de inicio" → toca Añadir.',
+    pwa_open_btn: 'Abrir read.cupof.news →',
+    app_modal_title: 'Leer Cup of News',
+    app_modal_ios_title: 'iPhone — App Store', app_modal_ios_sub: 'Próximamente en el App Store',
+    app_modal_android_title: 'Android — Google Play', app_modal_android_sub: 'Próximamente en el Play Store',
+    app_modal_web_title: 'Aplicación web', app_modal_oss_label: 'O usar la versión de código abierto', app_modal_oss_link: 'app.cupof.news — app web de código abierto',
+    premium_label: '⭐ Premium', premium_headline: 'Más digests.<br>Mayor profundidad editorial.',
+    premium_sub: 'Los usuarios gratuitos tienen 3 créditos de digest a demanda por mes. Premium desbloquea 30 créditos, temas editoriales personalizados y acceso anticipado a nuevas funciones.',
+    plan_monthly_label: 'Mensual', plan_monthly_sub: 'por mes · facturado mensualmente', plan_choose_btn: 'Elegir mensual',
+    plan_annual_label: 'Anual ⭐', plan_annual_billing: 'Facturado $39/año', plan_best_badge: 'Mejor valor', plan_save_badge: 'Ahorra 35 %', plan_annual_btn: 'Elegir anual →',
+    premium_includes_label: 'Qué está incluido',
+    prem_feat1_title: '30 créditos de digest a demanda/mes', prem_feat1_sub: 'Genera un digest personal fresco en cualquier momento. Los usuarios gratuitos tienen 3.',
+    prem_feat2_title: 'Mix editorial personalizado', prem_feat2_sub: 'Elige entre 24 categorías temáticas: Tecnología, Mercados, Gastronomía, Deportes, y más.',
+    prem_feat3_title: 'Acceso anticipado a nuevas funciones', prem_feat3_sub: 'Sé el primero cuando lleguen notificaciones push, widgets y más.',
+    premium_note: '✦ Los digests públicos dos veces al día siguen siendo gratuitos para todos, para siempre.',
+    premium_modal_title: 'Próximamente', premium_modal_body: 'Las suscripciones Premium están en desarrollo. Regístrate en read.cupof.news y serás el primero en saber cuándo se lanza.',
+    premium_modal_cta: 'Ir a read.cupof.news →', premium_modal_dismiss: 'Quizás más tarde',
     sources_label: 'Fuentes RSS', sources_headline: '34+ medios de confianza.\nSin claves API.',
     sources_sub: 'El RSS fallback rellena los huecos en tus enlaces enviados. La lista de fuentes es explícita, verificable y gratuita.',
     sources_note: '✦ Tus enlaces siempre tienen prioridad · RSS llena los huecos · costo cero',
@@ -1354,7 +1761,7 @@ var TRANSLATIONS = {
     footer_brand_text: 'Tu digest de noticias matutino personal, impulsado por IA. Autoalojado, código abierto, una sola clave API.',
     footer_product_title: 'Producto', footer_open_app: 'Abrir app', footer_admin: 'Panel admin', footer_editions: 'Idiomas',
     footer_oss_title: 'Código abierto', footer_github: 'Repositorio GitHub', footer_releases: 'Versiones', footer_install: 'Guía de instalación', footer_changelog: 'Cambios', footer_issues: 'Problemas',
-    footer_copy: '© 2026 Cup of News · Licencia MIT · v4.6.0',
+    footer_copy: '© 2026 Cup of News · Licencia MIT · v5.1.0',
   },
 
   /* ── Português ────────────────────────────────────────────────────────── */
@@ -1362,11 +1769,11 @@ var TRANSLATIONS = {
     nav_features: 'Funcionalidades', nav_editions: 'Idiomas', nav_github: 'GitHub', nav_cta: 'Abrir app →',
     hero_badge: 'Código aberto · Auto-alojado · Uma chave API',
     hero_h1_line1: 'O teu resumo', hero_h1_line2: 'matinal,', hero_h1_line3: 'na tua língua.',
-    hero_sub: '20 histórias selecionadas. Todas as manhãs às 6h. Auto-alojado, impulsionado por IA, código aberto. Escolhe o teu idioma — o digest é gerado nativamente, não traduzido.',
+    hero_sub: '20 histórias selecionadas. Duas vezes por dia — 6h &amp; 16h GMT, no teu fuso. Auto-alojado, impulsionado por IA, código aberto. Escolhe o teu idioma — o digest é gerado nativamente, não traduzido.',
     hero_cta: 'Abrir a app →', hero_github: 'Ver no GitHub ↗',
-    badge_web_label: 'Abrir no navegador', badge_web_name: 'App web',
-    badge_pwa_label: 'Adicionar ao ecrã inicial', badge_pwa_name: 'PWA (iOS/Android)',
-    badge_native_label: 'Build com Capacitor', badge_native_name: 'App nativa',
+    badge_ios_label: 'Descarregar na', badge_ios_name: 'App Store',
+    badge_android_label: 'Disponível no', badge_android_name: 'Google Play',
+    badge_pwa_label: 'Adicionar ao ecrã inicial', badge_pwa_name: 'PWA — Grátis',
     stat_stories: 'Histórias por digest', stat_editions: 'Idiomas', stat_rss: 'Fontes RSS', stat_cost: 'Custo por digest',
     mockup_h2: 'O Economist Espresso,\nmas teu.',
     mockup_p1: 'Cup of News lê-se como um produto editorial premium. <strong>Uma história por ecrã.</strong> Tipografia grande. Resumo aprofundado. Sem ruído.',
@@ -1383,18 +1790,37 @@ var TRANSLATIONS = {
     feat8_title: '~0,07 $ por digest', feat8_text: 'Uma chave API do OpenRouter. Uma chamada estruturada. 20 histórias de uma vez. Às tarifas do Gemini 2.5 Pro, um café no Starbucks paga três meses de digests diários.',
     editions_label: '9 idiomas', editions_headline: 'Uma app. O teu idioma.',
     editions_sub: 'Cada edição é gerada independentemente com fontes em língua nativa, instruções de IA no idioma alvo e prioridades editoriais regionais. Princípio: <strong style="color:#888;">1 edição = 1 idioma.</strong>',
-    editions_note: '✦ 9 edições em língua nativa · cada uma gera independentemente · v4.6.0',
-    how_label: 'Como funciona', how_headline: 'O pipeline dispara às 6h.\nAcordas com um briefing.',
+    editions_note: '✦ 9 edições em língua nativa · cada uma gera independentemente · v5.1.0',
+    how_label: 'Como funciona', how_headline: 'O pipeline dispara às 6h e 16h GMT.<br>Dois briefings, todos os dias.',
     step1_title: 'Envias links', step1_text: 'Adiciona URLs pelo painel admin, API ou Atalhos Apple. Sem links? O fallback RSS cobre tudo.',
-    step2_title: 'Pipeline às 6h', step2_text: 'Jina Reader extrai o texto completo de cada link — paywalls, YouTube, TikTok. Depois 34+ fontes RSS preenchem as lacunas.',
+    step2_title: 'Pipeline às 6h e 16h GMT', step2_text: 'Jina Reader extrai o texto completo de cada link — paywalls, YouTube, TikTok. Depois 34+ fontes RSS preenchem as lacunas. Duas vezes por dia: edição matinal às 6h GMT, edição vespertina às 16h GMT — ajustada ao teu fuso horário.',
     step3_title: 'A IA seleciona 20 histórias', step3_text: 'Uma chamada estruturada ao Gemini 2.5 Pro seleciona 20 histórias: sem duplicados, diversidade obrigatória, citação final incluída.',
     step4_title: 'Reves e publicas', step4_text: 'O digest chega como rascunho. Edita, troca, publica. Ou define AUTO_PUBLISH=true para entrega totalmente automática.',
     step5_title: 'Lê em qualquer idioma', step5_text: 'Muda de edição com o seletor de idioma. 9 idiomas geram simultaneamente.',
-    native_label: 'App nativa', native_headline: 'Pronto para a App Store.\nZero código extra.',
-    native1_title: 'Capacitor (iOS)', native1_text: 'Executa <code>npx cap add ios && npx cap sync</code> e abre no Xcode. Submete à App Store ou distribui via TestFlight.',
-    native2_title: 'Capacitor (Android)', native2_text: 'Executa <code>npx cap add android && npx cap sync</code> e abre no Android Studio. Assina, compila, carrega para o Play Store.',
-    native3_title: 'PWA (sem loja)', native3_text: 'Visita <code>app.cupof.news</code> no Safari → Partilhar → Adicionar ao ecrã inicial. <strong>Disponível hoje</strong> em qualquer dispositivo.',
-    native4_title: 'Median / AppMySite', native4_text: 'Aponta o Median para <code>https://app.cupof.news</code>. Converte o URL numa app nativa. <strong>Zero alterações de código.</strong>',
+    app_section_label: 'App móvel', app_section_headline: 'iOS &amp; Android.<br>Em breve no teu bolso.',
+    app_section_sub: 'Cup of News vai estar na App Store e no Google Play. Desenvolvido com Capacitor — mesmo código, desempenho nativo. Regista-te em read.cupof.news e sê o primeiro a saber.',
+    app_ios_title: 'iPhone', app_ios_sub: 'App Store · Em breve', app_ios_btn: 'Notificar-me →',
+    app_android_title: 'Android', app_android_sub: 'Google Play · Em breve', app_android_btn: 'Notificar-me →',
+    pwa_available_now: 'Disponível agora: PWA', pwa_available_sub: 'Adiciona ao ecrã inicial a partir de qualquer browser, hoje mesmo.', pwa_how_btn: 'Como instalar →',
+    pwa_modal_title: 'Instalar como app', pwa_modal_sub: 'Sem loja de apps. Funciona em qualquer dispositivo.',
+    pwa_ios_steps: 'Abre read.cupof.news no Safari → toca em Partilhar → seleciona "Adicionar ao ecrã inicial" → toca em Adicionar.',
+    pwa_android_steps: 'Abre read.cupof.news no Chrome → toca no menu (⋮) → seleciona "Adicionar ao ecrã inicial" → toca em Adicionar.',
+    pwa_open_btn: 'Abrir read.cupof.news →',
+    app_modal_title: 'Ler Cup of News',
+    app_modal_ios_title: 'iPhone — App Store', app_modal_ios_sub: 'Em breve na App Store',
+    app_modal_android_title: 'Android — Google Play', app_modal_android_sub: 'Em breve no Play Store',
+    app_modal_web_title: 'App web', app_modal_oss_label: 'Ou usar a versão de código aberto', app_modal_oss_link: 'app.cupof.news — app web de código aberto',
+    premium_label: '⭐ Premium', premium_headline: 'Mais digests.<br>Mais profundidade editorial.',
+    premium_sub: 'Os utilizadores gratuitos têm 3 créditos de digest a pedido por mês. Premium desbloqueia 30 créditos, temas editoriais personalizados e acesso antecipado a novas funcionalidades.',
+    plan_monthly_label: 'Mensal', plan_monthly_sub: 'por mês · faturado mensalmente', plan_choose_btn: 'Escolher mensal',
+    plan_annual_label: 'Anual ⭐', plan_annual_billing: 'Faturado $39/ano', plan_best_badge: 'Melhor valor', plan_save_badge: 'Poupa 35 %', plan_annual_btn: 'Escolher anual →',
+    premium_includes_label: 'O que está incluído',
+    prem_feat1_title: '30 créditos de digest a pedido/mês', prem_feat1_sub: 'Gera um digest pessoal fresco a qualquer momento. Utilizadores gratuitos têm 3.',
+    prem_feat2_title: 'Mix editorial personalizado', prem_feat2_sub: 'Escolhe entre 24 categorias temáticas: Tecnologia, Mercados, Gastronomia, Desporto, e mais.',
+    prem_feat3_title: 'Acesso antecipado a novas funcionalidades', prem_feat3_sub: 'Sê o primeiro quando chegarem notificações push, widgets e mais.',
+    premium_note: '✦ Os digests públicos duas vezes por dia continuam gratuitos para todos, para sempre.',
+    premium_modal_title: 'Em breve', premium_modal_body: 'As subscrições Premium estão em desenvolvimento. Regista-te em read.cupof.news e serás o primeiro a saber quando lançar.',
+    premium_modal_cta: 'Ir para read.cupof.news →', premium_modal_dismiss: 'Talvez mais tarde',
     sources_label: 'Fontes RSS', sources_headline: '34+ meios de comunicação de confiança.\nSem chaves API.',
     sources_sub: 'O fallback RSS preenche as lacunas nos teus links submetidos. A lista de fontes é explícita, verificável e gratuita.',
     sources_note: '✦ Os teus links têm sempre prioridade · RSS preenche as lacunas · custo zero',
@@ -1403,7 +1829,7 @@ var TRANSLATIONS = {
     footer_brand_text: 'O teu digest de notícias matinal pessoal, impulsionado por IA. Auto-alojado, código aberto, uma chave API.',
     footer_product_title: 'Produto', footer_open_app: 'Abrir app', footer_admin: 'Painel admin', footer_editions: 'Idiomas',
     footer_oss_title: 'Código aberto', footer_github: 'Repositório GitHub', footer_releases: 'Versões', footer_install: 'Guia de instalação', footer_changelog: 'Registo de alterações', footer_issues: 'Problemas',
-    footer_copy: '© 2026 Cup of News · Licença MIT · v4.6.0',
+    footer_copy: '© 2026 Cup of News · Licença MIT · v5.1.0',
   },
 
   /* ── 中文 ─────────────────────────────────────────────────────────────── */
@@ -1411,11 +1837,11 @@ var TRANSLATIONS = {
     nav_features: '功能', nav_editions: '语言', nav_github: 'GitHub', nav_cta: '打开应用 →',
     hero_badge: '开源 · 自托管 · 一个 API 密钥',
     hero_h1_line1: '你的早间', hero_h1_line2: '资讯摘要，', hero_h1_line3: '用你的语言。',
-    hero_sub: '每天早上 6 点，20 条精选资讯。自托管、AI 驱动、开源。选择你的语言——摘要以原生语言生成，而非翻译。',
+    hero_sub: '每天两次，早上 6 点 &amp; 下午 4 点（GMT），20 条精选资讯。自托管、AI 驱动、开源。选择你的语言——摘要以原生语言生成，而非翻译。',
     hero_cta: '打开应用 →', hero_github: '在 GitHub 上查看 ↗',
-    badge_web_label: '在浏览器中打开', badge_web_name: '网页应用',
-    badge_pwa_label: '添加到主屏幕', badge_pwa_name: 'PWA（iOS/Android）',
-    badge_native_label: 'Capacitor 构建', badge_native_name: '原生应用',
+    badge_ios_label: '下载于', badge_ios_name: 'App Store',
+    badge_android_label: '获取于', badge_android_name: 'Google Play',
+    badge_pwa_label: '添加到主屏幕', badge_pwa_name: 'PWA — 免费',
     stat_stories: '每期文章数', stat_editions: '语言版本', stat_rss: 'RSS 来源', stat_cost: '每期费用',
     mockup_h2: '《经济学人》Espresso，\n但属于你。',
     mockup_p1: 'Cup of News 读起来像高端编辑产品。<strong>每屏一则故事。</strong>大字体。深度摘要。零干扰。',
@@ -1432,18 +1858,37 @@ var TRANSLATIONS = {
     feat8_title: '约 0.07 美元/期', feat8_text: '一个 OpenRouter API 密钥。一次结构化调用。一次处理 20 条新闻。按 Gemini 2.5 Pro 的费率，一杯星巴克拿铁够支撑三个月的每日摘要。',
     editions_label: '9 种语言', editions_headline: '一个应用。你的语言。',
     editions_sub: '每个版本独立生成，使用原生语言来源、目标语言 AI 指令和地区编辑优先级。原则：<strong style="color:#888;">1 个版本 = 1 种语言。</strong>',
-    editions_note: '✦ 9 种原生语言版本 · 各自独立生成 · v4.6.0',
-    how_label: '工作原理', how_headline: '流水线在早上 6 点启动，\n你醒来就有简报。',
+    editions_note: '✦ 9 种原生语言版本 · 各自独立生成 · v5.1.0',
+    how_label: '工作原理', how_headline: '流水线在 GMT 6:00 和 16:00 触发。<br>每天两次简报。',
     step1_title: '你提交链接', step1_text: '通过管理面板、API 或 Apple 快捷指令添加 URL。没有链接？RSS 备用来源会覆盖。',
-    step2_title: '流水线在早上 6 点启动', step2_text: 'Jina Reader 提取每个链接的全文——包括付费墙、YouTube、TikTok。然后 34+ RSS 来源填补空缺。',
+    step2_title: '流水线在 GMT 6:00 和 16:00 触发', step2_text: 'Jina Reader 提取每个链接的全文——包括付费墙、YouTube、TikTok。然后 34+ RSS 来源填补空缺。每天两次：早上 6 点 GMT 的晨间版和下午 4 点 GMT 的午后版——按你的时区换算。',
     step3_title: 'AI 策选 20 条故事', step3_text: '向 Gemini 2.5 Pro 发出一次结构化 API 调用，选出 20 条故事：无重复、必要多样性、结束引言。',
     step4_title: '你审阅并发布', step4_text: '摘要以草稿形式出现。编辑、交换、发布。或设置 AUTO_PUBLISH=true 实现全自动投递。',
     step5_title: '用任何语言阅读', step5_text: '用语言选择器切换版本。9 种语言同时生成。',
-    native_label: '原生应用', native_headline: 'App Store 就绪。\n零额外代码。',
-    native1_title: 'Capacitor（iOS）', native1_text: '运行 <code>npx cap add ios && npx cap sync</code> 并在 Xcode 中打开。提交到 App Store 或通过 TestFlight 分发。',
-    native2_title: 'Capacitor（Android）', native2_text: '运行 <code>npx cap add android && npx cap sync</code> 并在 Android Studio 中打开。签名、构建、上传到 Play Store。',
-    native3_title: 'PWA（无需应用商店）', native3_text: '在 Safari 中访问 <code>app.cupof.news</code> → 分享 → 添加到主屏幕。<strong>今天即可使用</strong>，无需应用商店。',
-    native4_title: 'Median / AppMySite', native4_text: '将 Median 指向 <code>https://app.cupof.news</code>。它将 URL 封装为原生应用。<strong>零代码改动。</strong>',
+    app_section_label: '移动应用', app_section_headline: 'iOS &amp; Android。<br>即将到达你的口袋。',
+    app_section_sub: 'Cup of News 即将登陆 App Store 和 Google Play。基于 Capacitor 构建——同一套代码库，原生性能。在 read.cupof.news 注册，第一时间获知上线消息。',
+    app_ios_title: 'iPhone', app_ios_sub: 'App Store · 即将推出', app_ios_btn: '通知我 →',
+    app_android_title: 'Android', app_android_sub: 'Google Play · 即将推出', app_android_btn: '通知我 →',
+    pwa_available_now: '现已可用：PWA', pwa_available_sub: '今天就从任何浏览器添加到主屏幕。', pwa_how_btn: '如何安装 →',
+    pwa_modal_title: '安装为应用', pwa_modal_sub: '无需应用商店。适用于任何设备。',
+    pwa_ios_steps: '在 Safari 中打开 read.cupof.news → 点击分享按钮 → 选择"添加到主屏幕" → 点击添加。',
+    pwa_android_steps: '在 Chrome 中打开 read.cupof.news → 点击菜单 (⋮) → 选择"添加到主屏幕" → 点击添加。',
+    pwa_open_btn: '打开 read.cupof.news →',
+    app_modal_title: '阅读 Cup of News',
+    app_modal_ios_title: 'iPhone — App Store', app_modal_ios_sub: '即将登陆 App Store',
+    app_modal_android_title: 'Android — Google Play', app_modal_android_sub: '即将登陆 Play Store',
+    app_modal_web_title: '网页应用', app_modal_oss_label: '或使用开源版本', app_modal_oss_link: 'app.cupof.news — 开源网页应用',
+    premium_label: '⭐ 高级版', premium_headline: '更多摘要。<br>更深的编辑深度。',
+    premium_sub: '免费用户每月可获得 3 个按需摘要积分。高级版解锁 30 个积分、个性化编辑主题，以及新功能的优先体验。',
+    plan_monthly_label: '月付', plan_monthly_sub: '每月 · 按月计费', plan_choose_btn: '选择月付',
+    plan_annual_label: '年付 ⭐', plan_annual_billing: '按 $39/年计费', plan_best_badge: '最优惠', plan_save_badge: '节省 35%', plan_annual_btn: '选择年付 →',
+    premium_includes_label: '包含内容',
+    prem_feat1_title: '每月 30 个按需摘要积分', prem_feat1_sub: '随时生成新鲜的个人摘要。免费用户有 3 个积分。',
+    prem_feat2_title: '个性化编辑组合', prem_feat2_sub: '从 24 个主题类别中选择：科技、市场、美食、体育等更多。',
+    prem_feat3_title: '新功能优先体验', prem_feat3_sub: '当推送通知、小组件等功能推出时，第一时间享用。',
+    premium_note: '✦ 每天两次的公开摘要对所有人永久免费。',
+    premium_modal_title: '即将推出', premium_modal_body: '高级版订阅正在开发中。在 read.cupof.news 注册，上线时第一时间通知你。',
+    premium_modal_cta: '前往 read.cupof.news →', premium_modal_dismiss: '稍后再说',
     sources_label: 'RSS 来源', sources_headline: '34+ 可信媒体。\n无需 API 密钥。',
     sources_sub: 'RSS 备用来源填补你提交链接的空缺。来源列表明确、可查、免费。',
     sources_note: '✦ 你的链接始终优先 · RSS 填补空缺 · 零成本',
@@ -1452,7 +1897,7 @@ var TRANSLATIONS = {
     footer_brand_text: '你的个人 AI 驱动早间新闻摘要。自托管，开源，一个 API 密钥。',
     footer_product_title: '产品', footer_open_app: '打开应用', footer_admin: '管理面板', footer_editions: '语言版本',
     footer_oss_title: '开源', footer_github: 'GitHub 仓库', footer_releases: '发布版本', footer_install: '安装指南', footer_changelog: '更新日志', footer_issues: '问题反馈',
-    footer_copy: '© 2026 Cup of News · MIT 许可证 · v4.6.0',
+    footer_copy: '© 2026 Cup of News · MIT 许可证 · v5.1.0',
   },
 
   /* ── Русский ──────────────────────────────────────────────────────────── */
@@ -1460,11 +1905,11 @@ var TRANSLATIONS = {
     nav_features: 'Функции', nav_editions: 'Языки', nav_github: 'GitHub', nav_cta: 'Открыть приложение →',
     hero_badge: 'Открытый код · Самохостинг · Один API-ключ',
     hero_h1_line1: 'Твой утренний', hero_h1_line2: 'дайджест,', hero_h1_line3: 'на твоём языке.',
-    hero_sub: '20 отобранных новостей. Каждое утро в 6:00. Самохостинг, ИИ-генерация, открытый код. Выбери язык — дайджест генерируется нативно, без перевода.',
+    hero_sub: '20 отобранных новостей. Дважды в день — в 6:00 и 16:00 GMT, по твоему часовому поясу. Самохостинг, ИИ-генерация, открытый код. Выбери язык — дайджест генерируется нативно, без перевода.',
     hero_cta: 'Открыть приложение →', hero_github: 'Смотреть на GitHub ↗',
-    badge_web_label: 'Открыть в браузере', badge_web_name: 'Веб-приложение',
-    badge_pwa_label: 'На главный экран', badge_pwa_name: 'PWA (iOS/Android)',
-    badge_native_label: 'Сборка Capacitor', badge_native_name: 'Нативное приложение',
+    badge_ios_label: 'Загрузить в', badge_ios_name: 'App Store',
+    badge_android_label: 'Доступно в', badge_android_name: 'Google Play',
+    badge_pwa_label: 'На главный экран', badge_pwa_name: 'PWA — бесплатно',
     stat_stories: 'Материалов на выпуск', stat_editions: 'Языков', stat_rss: 'RSS-источников', stat_cost: 'Стоимость выпуска',
     mockup_h2: 'Economist Espresso,\nно твой.',
     mockup_p1: 'Cup of News читается как премиальный редакционный продукт. <strong>Одна история на экран.</strong> Крупный шрифт. Глубокий пересказ. Без шума.',
@@ -1481,18 +1926,37 @@ var TRANSLATIONS = {
     feat8_title: '~0,07 $ за выпуск', feat8_text: 'Один API-ключ OpenRouter. Один структурированный запрос. 20 новостей за один вызов. По тарифам Gemini 2.5 Pro, один латте в Starbucks покрывает три месяца ежедневных дайджестов.',
     editions_label: '9 языков', editions_headline: 'Одно приложение. Твой язык.',
     editions_sub: 'Каждый выпуск генерируется независимо — с источниками на родном языке, инструкциями ИИ на целевом языке и региональными редакционными приоритетами. Принцип: <strong style="color:#888;">1 выпуск = 1 язык.</strong>',
-    editions_note: '✦ 9 выпусков на родных языках · каждый генерируется независимо · v4.6.0',
-    how_label: 'Как это работает', how_headline: 'Пайплайн запускается в 6:00.\nПросыпаешься с дайджестом.',
+    editions_note: '✦ 9 выпусков на родных языках · каждый генерируется независимо · v5.1.0',
+    how_label: 'Как это работает', how_headline: 'Pipeline запускается в 6:00 и 16:00 GMT.<br>Два дайджеста каждый день.',
     step1_title: 'Ты присылаешь ссылки', step1_text: 'Добавляй URL через панель администратора, API или Apple Shortcuts. Нет ссылок? RSS-резерв всё покроет.',
-    step2_title: 'Пайплайн в 6:00', step2_text: 'Jina Reader извлекает полный текст каждой ссылки — пейволы, YouTube, TikTok. Затем 34+ RSS-источника заполняют пробелы.',
+    step2_title: 'Pipeline запускается в 6:00 и 16:00 GMT', step2_text: 'Jina Reader извлекает полный текст каждой ссылки — пейволы, YouTube, TikTok. Затем 34+ RSS-источника заполняют пробелы. Дважды в день: утренний выпуск в 6:00 GMT, дневной в 16:00 GMT — с учётом твоего часового пояса.',
     step3_title: 'ИИ отбирает 20 историй', step3_text: 'Один структурированный запрос к Gemini 2.5 Pro выбирает 20 историй: без дублей, обязательное разнообразие, финальная цитата.',
     step4_title: 'Ты проверяешь и публикуешь', step4_text: 'Дайджест появляется как черновик. Редактируй, меняй, публикуй. Или установи AUTO_PUBLISH=true для полной автоматики.',
     step5_title: 'Читай на любом языке', step5_text: 'Переключай выпуск флаговым селектором. 9 языков генерируются одновременно.',
-    native_label: 'Нативное приложение', native_headline: 'Готово для App Store.\nНоль лишнего кода.',
-    native1_title: 'Capacitor (iOS)', native1_text: 'Запусти <code>npx cap add ios && npx cap sync</code> и открой в Xcode. Отправь в App Store или распространяй через TestFlight.',
-    native2_title: 'Capacitor (Android)', native2_text: 'Запусти <code>npx cap add android && npx cap sync</code> и открой в Android Studio. Подпиши, собери, загрузи в Play Store.',
-    native3_title: 'PWA (без магазина)', native3_text: 'Открой <code>app.cupof.news</code> в Safari → Поделиться → На экран «Домой». <strong>Доступно сегодня</strong> на любом устройстве.',
-    native4_title: 'Median / AppMySite', native4_text: 'Укажи Median на <code>https://app.cupof.news</code>. Он оборачивает URL в нативное приложение. <strong>Никаких изменений кода.</strong>',
+    app_section_label: 'Мобильное приложение', app_section_headline: 'iOS &amp; Android.<br>Скоро в твоём кармане.',
+    app_section_sub: 'Cup of News выходит в App Store и Google Play. Собрано на Capacitor — та же кодовая база, нативная производительность. Зарегистрируйся на read.cupof.news и узнай первым.',
+    app_ios_title: 'iPhone', app_ios_sub: 'App Store · Скоро', app_ios_btn: 'Уведомить меня →',
+    app_android_title: 'Android', app_android_sub: 'Google Play · Скоро', app_android_btn: 'Уведомить меня →',
+    pwa_available_now: 'Доступно сейчас: PWA', pwa_available_sub: 'Добавь на главный экран из любого браузера уже сегодня.', pwa_how_btn: 'Как установить →',
+    pwa_modal_title: 'Установить как приложение', pwa_modal_sub: 'Без магазина приложений. Работает на любом устройстве.',
+    pwa_ios_steps: 'Открой read.cupof.news в Safari → нажми "Поделиться" → выбери "На экран «Домой»" → нажми "Добавить".',
+    pwa_android_steps: 'Открой read.cupof.news в Chrome → нажми меню (⋮) → выбери "Добавить на главный экран" → нажми "Добавить".',
+    pwa_open_btn: 'Открыть read.cupof.news →',
+    app_modal_title: 'Читать Cup of News',
+    app_modal_ios_title: 'iPhone — App Store', app_modal_ios_sub: 'Скоро в App Store',
+    app_modal_android_title: 'Android — Google Play', app_modal_android_sub: 'Скоро в Play Store',
+    app_modal_web_title: 'Веб-приложение', app_modal_oss_label: 'Или открытая версия', app_modal_oss_link: 'app.cupof.news — веб-приложение с открытым кодом',
+    premium_label: '⭐ Премиум', premium_headline: 'Больше дайджестов.<br>Глубже редакция.',
+    premium_sub: 'Бесплатным пользователям доступно 3 on-demand кредита в месяц. Премиум открывает 30 кредитов, персональные темы и ранний доступ к новым функциям.',
+    plan_monthly_label: 'Ежемесячно', plan_monthly_sub: 'в месяц · ежемесячная оплата', plan_choose_btn: 'Выбрать месячный',
+    plan_annual_label: 'Ежегодно ⭐', plan_annual_billing: 'Оплата $39/год', plan_best_badge: 'Лучшая цена', plan_save_badge: 'Экономия 35 %', plan_annual_btn: 'Выбрать годовой →',
+    premium_includes_label: 'Что включено',
+    prem_feat1_title: '30 on-demand кредитов/месяц', prem_feat1_sub: 'Генерируй свежий персональный дайджест в любое время. Бесплатным — 3 кредита.',
+    prem_feat2_title: 'Персональный тематический микс', prem_feat2_sub: 'Выбирай из 24 категорий: технологии, рынки, гастрономия, спорт и другие.',
+    prem_feat3_title: 'Ранний доступ к новым функциям', prem_feat3_sub: 'Будь первым, когда появятся push-уведомления, виджеты и другое.',
+    premium_note: '✦ Дважды в день публичные дайджесты остаются бесплатными для всех — навсегда.',
+    premium_modal_title: 'Скоро', premium_modal_body: 'Премиум-подписки в разработке. Зарегистрируйся на read.cupof.news — сообщим первым при запуске.',
+    premium_modal_cta: 'Перейти на read.cupof.news →', premium_modal_dismiss: 'Позже',
     sources_label: 'RSS-источники', sources_headline: '34+ проверенных изданий.\nБез API-ключей.',
     sources_sub: 'RSS-резерв заполняет пробелы в присланных ссылках. Список источников прозрачный, проверяемый и бесплатный.',
     sources_note: '✦ Твои ссылки всегда в приоритете · RSS заполняет пробелы · ноль затрат',
@@ -1501,7 +1965,7 @@ var TRANSLATIONS = {
     footer_brand_text: 'Твой личный AI-дайджест новостей. Самохостинг, открытый код, один API-ключ.',
     footer_product_title: 'Продукт', footer_open_app: 'Открыть приложение', footer_admin: 'Панель администратора', footer_editions: 'Языки',
     footer_oss_title: 'Открытый код', footer_github: 'Репозиторий GitHub', footer_releases: 'Релизы', footer_install: 'Руководство по установке', footer_changelog: 'Список изменений', footer_issues: 'Проблемы',
-    footer_copy: '© 2026 Cup of News · Лицензия MIT · v4.6.0',
+    footer_copy: '© 2026 Cup of News · Лицензия MIT · v5.1.0',
   },
 
   /* ── Türkçe ───────────────────────────────────────────────────────────── */
@@ -1509,11 +1973,11 @@ var TRANSLATIONS = {
     nav_features: 'Özellikler', nav_editions: 'Diller', nav_github: 'GitHub', nav_cta: 'Uygulamayı Aç →',
     hero_badge: 'Açık kaynak · Kendi sunucunda · Tek API anahtarı',
     hero_h1_line1: 'Sabah', hero_h1_line2: 'bülteniniz,', hero_h1_line3: 'kendi dilinizde.',
-    hero_sub: 'Her sabah saat 06:00\'da 20 seçilmiş haber. Kendi sunucunda barındırılan, yapay zeka destekli, açık kaynaklı. Dilini seç — özet çevrilmez, doğrudan o dilde üretilir.',
+    hero_sub: 'Günde iki kez — GMT 06:00 ve 16:00\'da, kendi zaman diliminizde — 20 seçilmiş haber. Kendi sunucunda, yapay zeka destekli, açık kaynaklı. Dilini seç — özet çevrilmez, doğrudan o dilde üretilir.',
     hero_cta: 'Uygulamayı Aç →', hero_github: 'GitHub\'da Görüntüle ↗',
-    badge_web_label: 'Tarayıcıda aç', badge_web_name: 'Web Uygulaması',
-    badge_pwa_label: 'Ana Ekrana Ekle', badge_pwa_name: 'PWA (iOS/Android)',
-    badge_native_label: 'Capacitor yapısı', badge_native_name: 'Yerel Uygulama',
+    badge_ios_label: 'İndir:', badge_ios_name: 'App Store',
+    badge_android_label: 'Edinin:', badge_android_name: 'Google Play',
+    badge_pwa_label: 'Ana Ekrana Ekle', badge_pwa_name: 'PWA — Ücretsiz',
     stat_stories: 'Özet başına haber', stat_editions: 'Dil', stat_rss: 'RSS kaynağı', stat_cost: 'Özet başına maliyet',
     mockup_h2: 'Economist Espresso,\nama seninki.',
     mockup_p1: 'Cup of News, premium bir editoryal ürün gibi okunur. <strong>Ekran başına bir haber.</strong> Büyük yazı. Derinlemesine özet. Dağınıklık yok.',
@@ -1530,18 +1994,40 @@ var TRANSLATIONS = {
     feat8_title: 'Özet başına ~0,07 $', feat8_text: 'Bir OpenRouter API anahtarı. Tek bir yapılandırılmış çağrı. Bir seferde 20 haber. Gemini 2.5 Pro fiyatlarıyla, bir Starbucks latte üç aylık günlük özetleri karşılıyor.',
     editions_label: '9 Dil', editions_headline: 'Tek uygulama. Senin dilin.',
     editions_sub: 'Her baskı, yerel dilde kaynaklarla, hedef dilde yapay zeka talimatlarıyla ve bölgeye özgü editoryal önceliklerle bağımsız olarak üretilir. İlke: <strong style="color:#888;">1 baskı = 1 dil.</strong>',
-    editions_note: '✦ 9 yerel dil baskısı · her biri bağımsız üretilir · v4.6.0',
-    how_label: 'Nasıl çalışır', how_headline: 'Boru hattı saat 06:00\'da başlar,\nsiz bir bültenle uyanırsınız.',
+    editions_note: '✦ 9 yerel dil baskısı · her biri bağımsız üretilir · v5.1.0',
+    how_label: 'Nasıl çalışır', how_headline: 'Pipeline GMT 06:00 ve 16:00\'da çalışır.\nGünde iki briefing.',
     step1_title: 'Bağlantı gönderirsiniz', step1_text: 'Yönetici paneli, API veya Apple Kısayolları aracılığıyla URL ekleyin. Bağlantı yok mu? RSS yedekleme her şeyi kapsar.',
-    step2_title: 'Boru hattı saat 06:00\'da', step2_text: 'Jina Reader her bağlantının tam metnini çıkarır — ücretli duvarlar, YouTube, TikTok dahil. Ardından 34+ RSS kaynağı boşlukları doldurur.',
+    step2_title: 'Pipeline GMT 06:00 ve 16:00\'da çalışır', step2_text: 'Jina Reader her bağlantının tam metnini çıkarır — ücretli duvarlar, YouTube, TikTok. Ardından 34+ RSS kaynağı boşlukları doldurur. Günde iki kez: sabah bülteni GMT 06:00, öğleden sonra bülteni GMT 16:00 — kendi saat diliminizde.',
     step3_title: 'Yapay Zeka 20 haber seçer', step3_text: 'Gemini 2.5 Pro\'ya yapılandırılmış tek bir API çağrısı: tekrarsız 20 haber, zorunlu çeşitlilik, kapanış alıntısı dahil.',
     step4_title: 'İnceleyip yayınlarsınız', step4_text: 'Özet taslak olarak gelir. Düzenle, değiştir, yayınla. Ya da tam otomatik teslimat için AUTO_PUBLISH=true ayarla.',
     step5_title: 'Herhangi bir dilde okuyun', step5_text: 'Dil seçiciyle baskı değiştirin. 9 dil aynı anda üretilir.',
-    native_label: 'Yerel Uygulama', native_headline: 'App Store\'a hazır.\nEkstra kod yok.',
-    native1_title: 'Capacitor (iOS)', native1_text: '<code>npx cap add ios && npx cap sync</code> çalıştırın ve Xcode\'da açın. App Store\'a gönderin veya TestFlight ile dağıtın.',
-    native2_title: 'Capacitor (Android)', native2_text: '<code>npx cap add android && npx cap sync</code> çalıştırın ve Android Studio\'da açın. İmzalayın, derleyin, Play Store\'a yükleyin.',
-    native3_title: 'PWA (mağazasız)', native3_text: 'Safari\'de <code>app.cupof.news</code>\'u ziyaret edin → Paylaş → Ana Ekrana Ekle. <strong>Bugün mevcut</strong>, her cihazda.',
-    native4_title: 'Median / AppMySite', native4_text: 'Median\'ı <code>https://app.cupof.news</code>\'e yönlendirin. URL\'yi yerel uygulamaya dönüştürür. <strong>Sıfır kod değişikliği.</strong>',
+    app_section_label: 'Mobil Uygulama',
+    app_section_headline: 'iOS ve Android.\nCebinize geliyor.',
+    app_section_sub: 'Cup of News yakında App Store ve Google Play\'de. Capacitor ile geliştirildi — aynı kod tabanı, yerel performans. read.cupof.news\'e kaydolun, ilk siz haberdar olun.',
+    app_ios_title: 'iPhone', app_ios_sub: 'App Store · Yakında', app_ios_btn: 'Beni haberdar et →',
+    app_android_title: 'Android', app_android_sub: 'Google Play · Yakında', app_android_btn: 'Beni haberdar et →',
+    pwa_available_now: 'Şimdi mevcut: PWA', pwa_available_sub: 'Bugün herhangi bir tarayıcıdan ana ekranınıza ekleyin.',
+    pwa_how_btn: 'Nasıl kurulur →',
+    pwa_modal_title: 'Uygulama olarak yükle', pwa_modal_sub: 'Uygulama mağazası gerekmez. Her cihazda çalışır.',
+    pwa_ios_steps: 'Safari\'de read.cupof.news\'i açın → Paylaş düğmesine dokunun → "Ana Ekrana Ekle"yi seçin → Ekle\'ye dokunun.',
+    pwa_android_steps: 'Chrome\'da read.cupof.news\'i açın → menüye dokunun (⋮) → "Ana ekrana ekle"yi seçin → Ekle\'ye dokunun.',
+    pwa_open_btn: 'read.cupof.news\'i Aç →',
+    app_modal_title: 'Cup of News\'i Oku', app_modal_ios_title: 'iPhone — App Store', app_modal_ios_sub: 'Yakında App Store\'da',
+    app_modal_android_title: 'Android — Google Play', app_modal_android_sub: 'Yakında Play Store\'da',
+    app_modal_web_title: 'Web Uygulaması', app_modal_oss_label: 'Ya da açık kaynak sürümü kullanın',
+    app_modal_oss_link: 'app.cupof.news — açık kaynak web uygulaması',
+    premium_label: '⭐ Premium', premium_headline: 'Daha fazla özet.\nDaha fazla editoryal derinlik.',
+    premium_sub: 'Ücretsiz kullanıcılar ayda 3 istek kredisi alır. Premium 30 kredi, kişiselleştirilmiş editoryal konular ve yeni özelliklere erken erişim sunar.',
+    plan_monthly_label: 'Aylık', plan_monthly_sub: 'ay başına · aylık faturalandırılır', plan_choose_btn: 'Aylık Seç',
+    plan_annual_label: 'Yıllık ⭐', plan_annual_billing: '39 $/yıl faturalandırılır',
+    plan_best_badge: 'En iyi değer', plan_save_badge: '%35 tasarruf', plan_annual_btn: 'Yıllık Seç →',
+    premium_includes_label: 'Neler dahil',
+    prem_feat1_title: 'Ayda 30 isteğe bağlı özet kredisi', prem_feat1_sub: 'İstediğiniz zaman kişisel özet oluşturun. Ücretsiz kullanıcılar 3 kredi alır.',
+    prem_feat2_title: 'Kişiselleştirilmiş editoryal karışım', prem_feat2_sub: '24 konu kategorisinden seçin: Teknoloji, Piyasalar, Yemek, Spor ve daha fazlası.',
+    prem_feat3_title: 'Yeni özelliklere erken erişim', prem_feat3_sub: 'Anlık bildirimler, widget\'lar ve daha fazlası geldiğinde ilk siz olun.',
+    premium_note: '✦ Günde iki kez herkese açık özetler sonsuza dek ücretsiz kalacak.',
+    premium_modal_title: 'Yakında', premium_modal_body: 'Premium abonelikler geliştirme aşamasında. read.cupof.news\'e kaydolun — başladığında ilk siz öğrenin.',
+    premium_modal_cta: 'read.cupof.news\'e git →', premium_modal_dismiss: 'Belki daha sonra',
     sources_label: 'RSS Kaynakları', sources_headline: '34+ güvenilir kaynak.\nAPI anahtarı yok.',
     sources_sub: 'RSS yedeklemesi, gönderilen bağlantılardaki boşlukları doldurur. Kaynak listesi açık, denetlenebilir ve ücretsizdir.',
     sources_note: '✦ Bağlantılarınız her zaman önceliklidir · RSS boşlukları doldurur · sıfır maliyet',
@@ -1550,7 +2036,7 @@ var TRANSLATIONS = {
     footer_brand_text: 'Kişisel yapay zeka destekli sabah haber özetiniz. Kendi sunucunda barındırılan, açık kaynaklı, tek API anahtarı.',
     footer_product_title: 'Ürün', footer_open_app: 'Uygulamayı Aç', footer_admin: 'Yönetici Paneli', footer_editions: 'Diller',
     footer_oss_title: 'Açık Kaynak', footer_github: 'GitHub Deposu', footer_releases: 'Sürümler', footer_install: 'Kurulum Kılavuzu', footer_changelog: 'Değişiklik Günlüğü', footer_issues: 'Sorunlar',
-    footer_copy: '© 2026 Cup of News · MIT Lisansı · v4.6.0',
+    footer_copy: '© 2026 Cup of News · MIT Lisansı · v5.1.0',
   },
 
   /* ── Italiano ─────────────────────────────────────────────────────────── */
@@ -1558,11 +2044,11 @@ var TRANSLATIONS = {
     nav_features: 'Funzionalità', nav_editions: 'Lingue', nav_github: 'GitHub', nav_cta: 'Apri l\'app →',
     hero_badge: 'Open source · Self-hosted · Una sola chiave API',
     hero_h1_line1: 'Il tuo briefing', hero_h1_line2: 'mattutino,', hero_h1_line3: 'nella tua lingua.',
-    hero_sub: '20 notizie selezionate. Ogni mattina alle 6. Self-hosted, potenziato dall\'IA, open source. Scegli la tua lingua — il digest viene generato nativamente, non tradotto.',
+    hero_sub: '20 notizie selezionate. Due volte al giorno — 6:00 e 16:00 GMT, nel tuo fuso orario. Self-hosted, potenziato dall\'IA, open source.',
     hero_cta: 'Apri l\'app →', hero_github: 'Vedi su GitHub ↗',
-    badge_web_label: 'Apri nel browser', badge_web_name: 'App Web',
-    badge_pwa_label: 'Aggiungi alla schermata iniziale', badge_pwa_name: 'PWA (iOS/Android)',
-    badge_native_label: 'Build Capacitor', badge_native_name: 'App Nativa',
+    badge_ios_label: 'Scarica su', badge_ios_name: 'App Store',
+    badge_android_label: 'Disponibile su', badge_android_name: 'Google Play',
+    badge_pwa_label: 'Aggiungi alla schermata iniziale', badge_pwa_name: 'PWA — Gratuita',
     stat_stories: 'Notizie per digest', stat_editions: 'Lingue', stat_rss: 'Fonti RSS', stat_cost: 'Costo per digest',
     mockup_h2: 'L\'Economist Espresso,\nma tuo.',
     mockup_p1: 'Cup of News si legge come un prodotto editoriale premium. <strong>Una notizia per schermata.</strong> Caratteri grandi. Sintesi approfondita. Nessuna distrazione.',
@@ -1579,18 +2065,40 @@ var TRANSLATIONS = {
     feat8_title: '~0,07 $ per digest', feat8_text: 'Una chiave API OpenRouter. Una chiamata strutturata. 20 notizie in un colpo solo. Con le tariffe di Gemini 2.5 Pro, un caffè da Starbucks ti copre tre mesi di digest quotidiani.',
     editions_label: '9 Lingue', editions_headline: 'Un\'app. La tua lingua.',
     editions_sub: 'Ogni edizione viene generata indipendentemente con fonti in lingua nativa, istruzioni IA nella lingua target e priorità editoriali regionali. Principio: <strong style="color:#888;">1 edizione = 1 lingua.</strong>',
-    editions_note: '✦ 9 edizioni in lingua nativa · ognuna genera indipendentemente · v4.6.0',
-    how_label: 'Come funziona', how_headline: 'Il pipeline scatta alle 6.\nTi svegli con un briefing.',
+    editions_note: '✦ 9 edizioni in lingua nativa · ognuna genera indipendentemente · v5.1.0',
+    how_label: 'Come funziona', how_headline: 'Il pipeline si avvia alle 6:00 e 16:00 GMT.\nDue briefing, ogni giorno.',
     step1_title: 'Invii i link', step1_text: 'Aggiungi URL dal pannello admin, API o Comandi rapidi Apple. Nessun link? Il fallback RSS copre tutto.',
-    step2_title: 'Pipeline alle 6', step2_text: 'Jina Reader estrae il testo completo da ogni link — paywall, YouTube, TikTok. Poi 34+ fonti RSS colmano le lacune.',
+    step2_title: 'Pipeline si avvia alle 6:00 e 16:00 GMT', step2_text: 'Jina Reader estrae il testo completo da ogni link — paywall, YouTube, TikTok. Poi 34+ fonti RSS colmano le lacune. Due volte al giorno: edizione mattutina alle 6:00 GMT, edizione pomeridiana alle 16:00 GMT — nel tuo fuso orario.',
     step3_title: 'L\'IA seleziona 20 notizie', step3_text: 'Una chiamata strutturata a Gemini 2.5 Pro seleziona 20 notizie: nessun duplicato, diversità obbligatoria, citazione finale inclusa.',
     step4_title: 'Revisioni e pubblichi', step4_text: 'Il digest arriva come bozza. Modifica, scambia, pubblica. O imposta AUTO_PUBLISH=true per la consegna automatica.',
     step5_title: 'Leggi in qualsiasi lingua', step5_text: 'Cambia edizione con il selettore di lingua. 9 lingue generano simultaneamente.',
-    native_label: 'App Nativa', native_headline: 'Pronta per l\'App Store.\nZero codice extra.',
-    native1_title: 'Capacitor (iOS)', native1_text: 'Esegui <code>npx cap add ios && npx cap sync</code> e apri in Xcode. Invia all\'App Store o distribuisci via TestFlight.',
-    native2_title: 'Capacitor (Android)', native2_text: 'Esegui <code>npx cap add android && npx cap sync</code> e apri in Android Studio. Firma, compila, carica nel Play Store.',
-    native3_title: 'PWA (senza store)', native3_text: 'Visita <code>app.cupof.news</code> in Safari → Condividi → Aggiungi a schermata iniziale. <strong>Disponibile oggi</strong> su qualsiasi dispositivo.',
-    native4_title: 'Median / AppMySite', native4_text: 'Punta Median su <code>https://app.cupof.news</code>. Trasforma l\'URL in un\'app nativa. <strong>Zero modifiche al codice.</strong>',
+    app_section_label: 'App Mobile',
+    app_section_headline: 'iOS e Android.\nIn arrivo.',
+    app_section_sub: 'Cup of News arriva su App Store e Google Play. Sviluppato con Capacitor — stesso codice, prestazioni native. Iscriviti su read.cupof.news e sii il primo a saperlo.',
+    app_ios_title: 'iPhone', app_ios_sub: 'App Store · Prossimamente', app_ios_btn: 'Notificami →',
+    app_android_title: 'Android', app_android_sub: 'Google Play · Prossimamente', app_android_btn: 'Notificami →',
+    pwa_available_now: 'Disponibile ora: PWA', pwa_available_sub: 'Aggiungila alla schermata iniziale da qualsiasi browser, oggi.',
+    pwa_how_btn: 'Come installare →',
+    pwa_modal_title: 'Installa come app', pwa_modal_sub: 'Nessun app store necessario. Funziona su qualsiasi dispositivo.',
+    pwa_ios_steps: 'Apri read.cupof.news in Safari → tocca il pulsante Condividi → seleziona "Aggiungi a schermata Home" → tocca Aggiungi.',
+    pwa_android_steps: 'Apri read.cupof.news in Chrome → tocca il menu (⋮) → seleziona "Aggiungi a schermata Home" → tocca Aggiungi.',
+    pwa_open_btn: 'Apri read.cupof.news →',
+    app_modal_title: 'Leggi Cup of News', app_modal_ios_title: 'iPhone — App Store', app_modal_ios_sub: 'Prossimamente su App Store',
+    app_modal_android_title: 'Android — Google Play', app_modal_android_sub: 'Prossimamente su Play Store',
+    app_modal_web_title: 'App Web', app_modal_oss_label: 'Oppure usa la versione open source',
+    app_modal_oss_link: 'app.cupof.news — app web open source',
+    premium_label: '⭐ Premium', premium_headline: 'Più digest.\nMaggiore profondità editoriale.',
+    premium_sub: 'Gli utenti gratuiti ricevono 3 crediti digest su richiesta al mese. Premium sblocca 30 crediti, argomenti editoriali personalizzati e accesso anticipato alle nuove funzionalità.',
+    plan_monthly_label: 'Mensile', plan_monthly_sub: 'al mese · fatturazione mensile', plan_choose_btn: 'Scegli Mensile',
+    plan_annual_label: 'Annuale ⭐', plan_annual_billing: 'Fatturato 39 $/anno',
+    plan_best_badge: 'Miglior valore', plan_save_badge: 'Risparmia 35%', plan_annual_btn: 'Scegli Annuale →',
+    premium_includes_label: 'Cosa è incluso',
+    prem_feat1_title: '30 crediti digest su richiesta/mese', prem_feat1_sub: 'Genera un digest personale aggiornato in qualsiasi momento. Gli utenti gratuiti ne ricevono 3.',
+    prem_feat2_title: 'Mix editoriale personalizzato', prem_feat2_sub: 'Scegli tra 24 categorie tematiche: Tecnologia, Mercati, Cucina, Sport e altro.',
+    prem_feat3_title: 'Accesso anticipato alle nuove funzionalità', prem_feat3_sub: 'Sii il primo quando arrivano notifiche push, widget e altro.',
+    premium_note: '✦ I digest pubblici due volte al giorno rimangono gratuiti per sempre.',
+    premium_modal_title: 'Prossimamente', premium_modal_body: 'Gli abbonamenti Premium sono in sviluppo. Iscriviti su read.cupof.news e sarai il primo a saperlo quando viene lanciato.',
+    premium_modal_cta: 'Vai a read.cupof.news →', premium_modal_dismiss: 'Forse dopo',
     sources_label: 'Fonti RSS', sources_headline: '34+ testate affidabili.\nZero chiavi API.',
     sources_sub: 'Il fallback RSS colma le lacune nei link inviati. L\'elenco delle fonti è esplicito, verificabile e gratuito.',
     sources_note: '✦ I tuoi link hanno sempre la priorità · RSS colma le lacune · costo zero',
@@ -1599,7 +2107,7 @@ var TRANSLATIONS = {
     footer_brand_text: 'Il tuo digest personale di notizie mattutine, potenziato dall\'IA. Self-hosted, open source, una chiave API.',
     footer_product_title: 'Prodotto', footer_open_app: 'Apri app', footer_admin: 'Pannello admin', footer_editions: 'Lingue',
     footer_oss_title: 'Open Source', footer_github: 'Repository GitHub', footer_releases: 'Versioni', footer_install: 'Guida all\'installazione', footer_changelog: 'Registro delle modifiche', footer_issues: 'Segnalazioni',
-    footer_copy: '© 2026 Cup of News · Licenza MIT · v4.6.0',
+    footer_copy: '© 2026 Cup of News · Licenza MIT · v5.1.0',
   },
 };
 
@@ -1607,15 +2115,6 @@ var TRANSLATIONS = {
 
 var LANG_STORAGE_KEY = 'cup_landing_lang';
 
-/**
- * Applies a language to all data-lang-key elements in the DOM.
- * Falls back to English for missing keys.
- * Persists the selection in localStorage.
- */
-/**
- * Edition data for the custom dropdown trigger display.
- * Mirrors the EDITIONS array in shared/editions.ts.
- */
 var EDITION_META = {
   en: { flag: '🌐', code: 'EN' },
   fr: { flag: '🇫🇷', code: 'FR' },
@@ -1628,18 +2127,9 @@ var EDITION_META = {
   it: { flag: '🇮🇹', code: 'IT' },
 };
 
-/**
- * Applies a language to all data-lang-key elements in the DOM,
- * updates the custom dropdown trigger display, and marks the active row.
- * Falls back to English for missing keys.
- * Persists the selection in localStorage under LANG_STORAGE_KEY.
- *
- * @param {string} lang — BCP-47 primary subtag: en/fr/de/es/pt/zh/ru/tr/it
- */
 function setLang(lang) {
   var dict = TRANSLATIONS[lang] || TRANSLATIONS['en'];
 
-  // Apply translations to all marked elements
   document.querySelectorAll('[data-lang-key]').forEach(function(el) {
     var key = el.getAttribute('data-lang-key');
     if (dict[key] !== undefined) {
@@ -1647,30 +2137,22 @@ function setLang(lang) {
     }
   });
 
-  // Update <html lang> attribute for accessibility / screen readers
   document.documentElement.lang = lang;
 
-  // Update the custom dropdown trigger (flag + code)
   var meta = EDITION_META[lang] || EDITION_META['en'];
   var flagEl = document.getElementById('triggerFlag');
   var codeEl = document.getElementById('triggerCode');
   if (flagEl) flagEl.textContent = meta.flag;
   if (codeEl) codeEl.textContent = meta.code;
 
-  // Mark the active row in the dropdown panel
   document.querySelectorAll('.lang-option').forEach(function(btn) {
     var isActive = btn.getAttribute('data-lang') === lang;
     btn.classList.toggle('active', isActive);
   });
 
-  // Persist
   try { localStorage.setItem(LANG_STORAGE_KEY, lang); } catch(e) {}
 }
 
-/**
- * Toggle the custom language dropdown open/closed.
- * Updates aria-expanded on the trigger button.
- */
 function toggleLangDropdown() {
   var dd = document.getElementById('langDropdown');
   var trigger = document.getElementById('langTrigger');
@@ -1679,9 +2161,6 @@ function toggleLangDropdown() {
   if (trigger) trigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
 }
 
-/**
- * Close the language dropdown.
- */
 function closeLangDropdown() {
   var dd = document.getElementById('langDropdown');
   var trigger = document.getElementById('langTrigger');
@@ -1689,22 +2168,15 @@ function closeLangDropdown() {
   if (trigger) trigger.setAttribute('aria-expanded', 'false');
 }
 
-// Close on click outside the dropdown
 document.addEventListener('mousedown', function(e) {
   var dd = document.getElementById('langDropdown');
   if (dd && !dd.contains(e.target)) closeLangDropdown();
 });
 
-// Close on Escape key
 document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') closeLangDropdown();
+  if (e.key === 'Escape') { closeLangDropdown(); }
 });
 
-/**
- * On page load: restore the saved language preference.
- * Defaults to browser language if available and supported,
- * otherwise falls back to English.
- */
 (function init() {
   var saved = null;
   try { saved = localStorage.getItem(LANG_STORAGE_KEY); } catch(e) {}
@@ -1714,50 +2186,43 @@ document.addEventListener('keydown', function(e) {
     return;
   }
 
-  // Try navigator language (e.g. "fr-FR" → "fr")
   var navLang = (navigator.language || 'en').split('-')[0].toLowerCase();
   if (TRANSLATIONS[navLang]) {
     setLang(navLang);
   }
-  // else: HTML is already in English, nothing needed
 })();
 
-// Expose setLang on window so inline onchange="setLang(...)" always works
 window.setLang = setLang;
 
-/**
- * openApp — navigate to app.cupof.news, carrying the current landing language
- * into the app's edition localStorage key.
- *
- * The app reads its edition from localStorage key "cup_edition_v3".
- * The landing stores its language in "cup_landing_lang".
- * Both use the same BCP-47 primary subtag codes (en/fr/de/es/pt/zh/ru/tr/it).
- *
- * On click:
- *   1. Read the current landing language from localStorage.
- *   2. Write it to "cup_edition_v3" so the app opens in the same language.
- *   3. Navigate to app.cupof.news.
- *
- * Why write to the app's key directly (not a query param):
- *   The app is a React SPA on a different domain. We can't set its state
- *   from outside. But localStorage is origin-scoped, so writing from
- *   app.cupof.news's origin is not possible from the landing page.
- *
- *   Solution: append the lang as a hash param (?lang=fr) and let the app
- *   read it on boot, write to cup_edition_v3, then clean the URL.
- *   This works across origins with zero server changes.
- *
- * @param {MouseEvent} e
- */
-function openApp(e) {
-  e.preventDefault();
-  var lang = 'en';
-  try { lang = localStorage.getItem('cup_landing_lang') || 'en'; } catch(err) {}
-  // Supported edition IDs in the app — guard against unknown codes
-  var supported = ['en','fr','de','es','pt','zh','ru','tr','it'];
-  if (supported.indexOf(lang) === -1) lang = 'en';
-  // Navigate with lang as hash query param — app reads it on boot
-  window.location.href = 'https://app.cupof.news/?lang=' + lang + '#/';
+// ── Landing page theme toggle ───────────────────────────────────────────
+var landingTheme = 'dark';
+try { landingTheme = localStorage.getItem('cup_landing_theme') || 'dark'; } catch(e) {}
+function applyLandingTheme(t) {
+  document.body.classList.toggle('light', t === 'light');
+  var btn = document.getElementById('themeToggle');
+  if (btn) btn.textContent = t === 'light' ? '🌙' : '☀️';
+  try { localStorage.setItem('cup_landing_theme', t); } catch(e) {}
+  landingTheme = t;
+}
+function toggleLandingTheme() { applyLandingTheme(landingTheme === 'dark' ? 'light' : 'dark'); }
+document.addEventListener('DOMContentLoaded', function() { applyLandingTheme(landingTheme); });
+
+// ── openApp — now opens app modal ───────────────────────────────────────
+function openApp(e) { if(e) e.preventDefault(); document.getElementById('appModal').style.display='flex'; }
+function openAppModal(e) { if(e) e.preventDefault(); document.getElementById('appModal').style.display='flex'; }
+function closeAppModal(e) {
+  if(e && e.target !== document.getElementById('appModal')) return;
+  document.getElementById('appModal').style.display='none';
+}
+function openPwaModal(e) { if(e) e.preventDefault(); document.getElementById('pwaModal').style.display='flex'; }
+function closePwaModal(e) {
+  if(e && e.target !== document.getElementById('pwaModal')) return;
+  document.getElementById('pwaModal').style.display='none';
+}
+function openPremiumModal(e) { if(e) e.preventDefault(); document.getElementById('premiumModal').style.display='flex'; }
+function closePremiumModal(e) {
+  if(e && e.target !== document.getElementById('premiumModal')) return;
+  document.getElementById('premiumModal').style.display='none';
 }
 </script>
 
