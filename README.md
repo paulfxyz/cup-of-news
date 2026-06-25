@@ -27,6 +27,37 @@
 
 ---
 
+## Branding / Icon
+
+Cup of News uses a geometric origami dove emerging from a coffee cup as its icon — symbolising the daily flow of curated news taking flight each morning.
+
+### Icon design
+- **Style**: Flat 2D vector, origami/geometric, optimised for small sizes (16×16 to 1024×1024)
+- **Colours**: Brand red `#E3120B` background, pure white icon
+- **Concept**: A coffee cup with steam rising into an origami dove in flight
+
+### Asset files
+| Asset | Size | File |
+|-------|------|------|
+| Master logo | 1080×1080 | `assets/logo_v5_red.png` |
+| Favicon SVG | Vector | `assets/favicon.svg` |
+| Favicon ICO | 16/32/48px | `assets/favicon.ico` |
+| Apple Touch Icon | 180×180 | `assets/apple_touch_180.png` |
+| App Icon | 192×192 | `assets/app_icon_192.png` |
+| App Icon | 512×512 | `assets/app_icon_512.png` |
+| App Icon | 1024×1024 | `assets/app_icon_1024.png` |
+| OG Social Image | 1200×630 | `assets/og_1200x630.png` |
+
+### Usage
+- **Website favicon**: `favicon.svg` + `favicon.ico` at root
+- **Apple touch icon**: `apple_touch_180.png` → `<link rel="apple-touch-icon">`
+- **OG/Twitter cards**: `og_1200x630.png`
+- **App stores**: `app_icon_512.png` (iOS), `app_icon_192.png` (Android/PWA)
+
+> Generated with Perplexity Computer — AI-assisted design, June 2026
+
+---
+
 ## 👨‍💻 The Story
 
 I'm **Paul Fleury** — a French internet entrepreneur living in Lisbon. I read Reuters, FT, tech blogs, Substack, YouTube. By the time I've finished my first coffee I've usually spent 30 minutes just *finding* what's worth reading, and another 30 reading things that weren't.
