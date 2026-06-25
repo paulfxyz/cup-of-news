@@ -2,7 +2,11 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-4.6.0-red?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-4.6.0-red?style=for-the-badge) ![Status](https://img.shields.io/badge/status-frozen%20open%20source-blue?style=for-the-badge) ![Fork](https://img.shields.io/badge/mobile%20fork-cofn--app%20%28private%29-purple?style=for-the-badge)
+
+> **📌 Open source core — frozen at v4.6.0.**
+> Active mobile app development has moved to a private repository (`cofn-app`).
+> This repo remains fully functional and MIT-licensed. [Why the fork?](./FORK.md)
 ![Status](https://img.shields.io/badge/status-stable-brightgreen?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
 ![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
