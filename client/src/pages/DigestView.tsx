@@ -364,12 +364,7 @@ export default function DigestView() {
                   <RefreshCw size={14} className="text-white animate-spin" />
                 </div>
               ) : (
-                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 rounded-sm">
-                  <rect width="100" height="100" rx="14" fill="#E3120B"/>
-                  <rect x="21" y="30" width="58" height="6" rx="3" fill="white"/>
-                  <path d="M24 36 L29 70 L71 70 L76 36 Z" fill="white"/>
-                  <path d="M76 44 Q90 44 90 56 Q90 68 76 68" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round"/>
-                </svg>
+                <img src="/logo.png" alt="Cup of News" className="w-8 h-8 rounded-sm object-cover" />
               )}
             </div>
           </button>
