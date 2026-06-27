@@ -18,10 +18,14 @@
 ![Capacitor](https://img.shields.io/badge/Capacitor-ready-119EFF?style=for-the-badge)
 ![OpenRouter](https://img.shields.io/badge/AI-OpenRouter-FF6B35?style=for-the-badge)
 
-**Your personal AI-powered morning news digest.**
-**Self-hosted. One API key. 20 curated stories. Every morning at 6 AM.**
+<img src="docs/readme-logo.png" alt="Cup of News" width="100%">
 
-🔴 **App:** [app.cupof.news](https://app.cupof.news) · **Landing:** [cupof.news](https://cupof.news)
+**AI-powered daily news digest · 9 native languages · self-hostable · MIT licensed**
+
+**Free to read at [app.cupof.news](https://app.cupof.news)** — or self-host with one OpenRouter API key.
+**Landing:** [cupof.news](https://cupof.news)
+
+<img src="docs/readme-screenshot.png" alt="App screenshot" width="100%">
 
 </div>
 
