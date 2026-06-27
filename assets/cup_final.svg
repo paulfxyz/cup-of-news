@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" rx="22" fill="#E3120B"/>
+  <!-- Cup body: bold trapezoid, wider at top -->
+  <path d="M18 76 L25 46 L68 46 L75 76 Z" fill="white"/>
+  <!-- Cup rim -->
+  <rect x="22" y="42" width="52" height="6" rx="3" fill="white"/>
+  <!-- Handle: D-shape right side -->
+  <path d="M72 54 Q88 54 88 63 Q88 72 72 72"
+        fill="none" stroke="white" stroke-width="5.5"
+        stroke-linecap="round"/>
+</svg>
