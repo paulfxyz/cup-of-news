@@ -1,7 +1,7 @@
 /**
  * @file client/src/pages/DigestView.tsx
  * @author Paul Fleury <hello@paulfleury.com>
- * @version 4.6.0
+ * @version 5.1.0
  *
  * Cup of News — Public Digest Reader
  *
@@ -69,6 +69,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import { EditionSelector, useEdition } from "@/components/EditionSelector";
+import { useAuth } from "@/context/AuthContext";
 import type { DigestStory } from "@shared/schema";
 
 interface DigestResponse {
@@ -98,6 +99,11 @@ export default function DigestView() {
   const [cardIndex, setCardIndex] = useState(0);
   const [showGrid, setShowGrid] = useState(false);
   const { edition, setEdition } = useEdition();
+
+  // ── User identity (v5.1.0 — private fork) ──────────────────────────────────
+  // The account sheet opens from the user icon on the LEFT of the header.
+  // Signing out clears localStorage; AuthContext then re-shows onboarding.
+  const { user, isGuest, isAuthenticated, generatePersonalDigest } = useAuth();
 
   // ── Card slide animation (v3.2.2) ─────────────────────────────────────────
   // On every card navigation (next/prev/keyboard/swipe/dot/grid), we:
@@ -156,41 +162,41 @@ export default function DigestView() {
   // const RESUME_DATE = "TBD";
   // const [showMaintenanceBanner, setShowMaintenanceBanner] = useState(true);
 
-  const [logoSpinning,  setLogoSpinning]  = useState(false);
-  const [showPinModal,  setShowPinModal]  = useState(false);
-  const logoClickCount  = useRef(0);
-  const logoClickTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [logoSpinning, setLogoSpinning] = useState(false);
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
   const handleLogoClick = useCallback(() => {
-    if (logoSpinning || showPinModal) return;
-
-    logoClickCount.current += 1;
-    if (logoClickTimer.current) clearTimeout(logoClickTimer.current);
-
-    if (logoClickCount.current >= 3) {
-      logoClickCount.current = 0;
-      setShowPinModal(true);          // open PIN keypad
-    } else {
-      logoClickTimer.current = setTimeout(() => {
-        if (logoClickCount.current < 3) {
-          logoClickCount.current = 0;
-          setLogoSpinning(true);
-          setTimeout(() => window.location.reload(), 1250);
-        }
-      }, 500);
-    }
-  }, [logoSpinning, showPinModal]);
-
-  // Clean up on unmount
-  useEffect(() => {
-    return () => { if (logoClickTimer.current) clearTimeout(logoClickTimer.current); };
-  }, []);
+    if (logoSpinning) return;
+    setLogoSpinning(true);
+    setTimeout(() => window.location.reload(), 1250);
+  }, [logoSpinning]);
 
   // When the edition changes, reset to first card
   const handleEditionChange = (e: typeof edition) => {
     setEdition(e);
     setCardIndex(0);
     setShowGrid(false);
+  };
+
+  const handleGeneratePersonal = async () => {
+    setGenerating(true);
+    try {
+      const result = await generatePersonalDigest(edition.id);
+      setShowGenerateModal(false);
+      const pollInterval = setInterval(async () => {
+        const status = await fetch(`/api/digest/job/${result.jobId}/status`).then(r => r.json());
+        if (status.status === "done") {
+          clearInterval(pollInterval);
+          window.location.reload();
+        } else if (status.status === "error") {
+          clearInterval(pollInterval);
+          setGenerating(false);
+        }
+      }, 3000);
+    } catch {
+      setGenerating(false);
+    }
   };
 
   const { data: digest, isLoading, refetch } = useQuery<DigestResponse | null>({
@@ -350,16 +356,20 @@ export default function DigestView() {
             className="group flex items-center gap-2 flex-shrink-0 transition-opacity"
             aria-label="Click to refresh · Triple-click to generate new digest"
             title="Click to refresh · Triple-click to generate new digest"
-            disabled={logoSpinning || showPinModal}
+            disabled={logoSpinning}
           >
-            <div className="w-8 h-8 bg-[#E3120B] flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110">
+            <div className="w-8 h-8 flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110">
               {logoSpinning ? (
-                <RefreshCw size={14} className="text-white animate-spin" />
+                <div className="w-8 h-8 bg-[#E3120B] rounded-sm flex items-center justify-center">
+                  <RefreshCw size={14} className="text-white animate-spin" />
+                </div>
               ) : (
-                <>
-                  <span className="block group-hover:hidden text-white font-black text-sm font-display tracking-tight">C</span>
-                  <RefreshCw size={14} className="hidden group-hover:block text-white" />
-                </>
+                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 rounded-sm">
+                  <rect width="100" height="100" rx="14" fill="#E3120B"/>
+                  <rect x="21" y="30" width="58" height="6" rx="3" fill="white"/>
+                  <path d="M24 36 L29 70 L71 70 L76 36 Z" fill="white"/>
+                  <path d="M76 44 Q90 44 90 56 Q90 68 76 68" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round"/>
+                </svg>
               )}
             </div>
           </button>
@@ -410,6 +420,27 @@ export default function DigestView() {
             >
               {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
             </button>
+
+            {/* User icon — v5.1.0 — far right, after theme toggle */}
+            <button
+              onClick={() => { window.location.hash = '/account'; }}
+              className="w-9 h-9 flex items-center justify-center flex-shrink-0 rounded-full hover:bg-accent transition-colors"
+              aria-label="Account"
+              title="Account"
+            >
+              {!isGuest && user?.identifier ? (
+                <span className="w-7 h-7 rounded-full bg-[#E3120B] text-white flex items-center justify-center text-xs font-black font-display uppercase">
+                  {user.identifier.trim().charAt(0)}
+                </span>
+              ) : (
+                <span className="w-7 h-7 rounded-full border border-muted-foreground/60 text-muted-foreground flex items-center justify-center">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                </span>
+              )}
+            </button>
           </div>
         </div>
       </header>
@@ -425,16 +456,49 @@ export default function DigestView() {
         />
       )}
 
-      {/* ── PIN Keypad Modal (v3.2.7) ────────────────────────────────────────
-           Opens on triple-click of the logo. User enters a 4-8 digit PIN.
-           Server verifies at /api/admin/verify-pin (no admin key needed).
-           On success: POST /api/digest/generate with admin key from localStorage,
-           or fallback: redirect to /#/admin if no key is saved. */}
-      {showPinModal && (
-        <PinKeypad
-          edition={edition}
-          onClose={() => setShowPinModal(false)}
-        />
+      {/* PinKeypad removed in v5.1.0 — digest generation moved to GenerateModal */}
+
+      {/* AccountSettings replaced by full AccountPage at /#/account (v5.1.0) */}
+      {/* ── Generate Personal Digest Modal (v5.1.0) ─────────────────────────── */}
+      {showGenerateModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm px-4 pb-4 sm:pb-0">
+          <div className="bg-background border border-border rounded-2xl w-full max-w-sm p-6">
+            {!isAuthenticated || isGuest ? (
+              <>
+                <p className="text-base font-semibold mb-2">Create an account</p>
+                <p className="text-sm text-foreground/60 mb-5">Get 3 credits/month and generate personal digests on demand.</p>
+                <div className="flex gap-3">
+                  <button onClick={() => setShowGenerateModal(false)} className="flex-1 py-2.5 rounded-xl border border-border text-sm font-semibold">Cancel</button>
+                  <button onClick={() => { setShowGenerateModal(false); window.location.hash = '/account'; }} className="flex-1 py-2.5 rounded-xl bg-[#E3120B] text-white text-sm font-semibold">Sign in</button>
+                </div>
+              </>
+            ) : (user?.credits ?? 0) < 1 ? (
+              <>
+                <p className="text-base font-semibold mb-2">No credits remaining</p>
+                <p className="text-sm text-foreground/60 mb-5">Your credits refill on the 1st of next month. Upgrade to Premium for 30 credits/month.</p>
+                <div className="flex gap-3">
+                  <button onClick={() => setShowGenerateModal(false)} className="flex-1 py-2.5 rounded-xl border border-border text-sm font-semibold">OK</button>
+                  <button onClick={() => { setShowGenerateModal(false); window.location.hash = '/account'; }} className="flex-1 py-2.5 rounded-xl bg-[#E3120B] text-white text-sm font-semibold">⭐ Upgrade</button>
+                </div>
+              </>
+            ) : generating ? (
+              <div className="text-center py-4">
+                <div className="inline-block w-6 h-6 border-2 border-[#E3120B] border-t-transparent rounded-full animate-spin mb-3" />
+                <p className="text-sm text-foreground/60">Generating your digest…</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-base font-semibold mb-1">☕ Generate a new digest</p>
+                <p className="text-sm text-foreground/60 mb-1">Fresh news, just for you.</p>
+                <p className="text-sm text-foreground/50 mb-5">Cost: <strong className="text-foreground">1 credit</strong> · You have <strong className="text-foreground">{user?.credits ?? 0}</strong> remaining</p>
+                <div className="flex gap-3">
+                  <button onClick={() => setShowGenerateModal(false)} className="flex-1 py-2.5 rounded-xl border border-border text-sm font-semibold">Cancel</button>
+                  <button onClick={handleGeneratePersonal} className="flex-1 py-2.5 rounded-xl bg-[#E3120B] text-white text-sm font-semibold">Generate → 1 credit</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       )}
 
       {/* ── Card area ───────────────────────────────────────────────────────── */}
@@ -462,7 +526,22 @@ export default function DigestView() {
           className={slideDir === "left" ? "card-slide-left" : slideDir === "right" ? "card-slide-right" : undefined}
         >
           {isQuoteCard
-            ? <QuoteCard quote={digest.closingQuote} author={digest.closingQuoteAuthor} date={digest.date} label={edition.ui.closingThought} refreshLabel={edition.ui.refreshDigest} morningComplete={edition.ui.morningComplete} onRefresh={() => { triggerSlide("left"); refetch(); setCardIndex(0); }} />
+            ? (
+              <>
+                <QuoteCard quote={digest.closingQuote} author={digest.closingQuoteAuthor} date={digest.date} label={edition.ui.closingThought} refreshLabel={edition.ui.refreshDigest} morningComplete={edition.ui.morningComplete} onRefresh={() => { triggerSlide("left"); refetch(); setCardIndex(0); }} />
+                <div className="flex flex-col items-center gap-3 mt-8 px-4 pb-16">
+                  <p className="text-xs text-foreground/40 uppercase tracking-widest font-ui">Want more?</p>
+                  <button
+                    onClick={() => setShowGenerateModal(true)}
+                    className="flex items-center gap-2 px-5 py-3 rounded-xl border border-border hover:border-[#E3120B]/60 hover:bg-[#E3120B]/5 transition-all text-sm font-semibold text-foreground/70 hover:text-foreground"
+                  >
+                    <span>☕</span>
+                    <span>Generate new digest</span>
+                    <span className="text-foreground/30 font-normal">· 1 credit</span>
+                  </button>
+                </div>
+              </>
+            )
             : story
             ? <StoryCard story={story} index={cardIndex} total={digest.stories.length} edition={edition} />
             : null
