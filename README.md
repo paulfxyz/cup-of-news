@@ -2,11 +2,11 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-4.6.0-red?style=for-the-badge) ![Status](https://img.shields.io/badge/status-frozen%20open%20source-blue?style=for-the-badge) ![Fork](https://img.shields.io/badge/mobile%20fork-cofn--app%20%28private%29-purple?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-4.6.0-red?style=for-the-badge) ![Status](https://img.shields.io/badge/status-frozen%20open%20source-blue?style=for-the-badge) ![Fork](https://img.shields.io/badge/commercial%20fork-read.cupof.news-E3120B?style=for-the-badge)
 
 > **📌 Open source core — frozen at v4.6.0.**
-> Active mobile app development has moved to a private repository (`cofn-app`).
-> This repo remains fully functional and MIT-licensed. [Why the fork?](./FORK.md)
+> Active development has moved to a commercial product at [read.cupof.news](https://read.cupof.news).
+> This repo remains fully functional and MIT-licensed.
 ![Status](https://img.shields.io/badge/status-stable-brightgreen?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
 ![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
@@ -22,12 +22,15 @@
 
 **AI-powered daily news digest · 9 native languages · self-hostable · MIT licensed**
 
-**Free to read at [app.cupof.news](https://app.cupof.news)** — or self-host with one OpenRouter API key.
-**Landing:** [cupof.news](https://cupof.news)
+**Commercial app:** [read.cupof.news](https://read.cupof.news) · **Landing:** [cupof.news](https://cupof.news)
 
 <img src="docs/readme-screenshot.png" alt="App screenshot" width="100%">
 
 </div>
+
+---
+
+> **Contributing to the open-source core?** Read [CONTRIBUTING-OSS.md](./CONTRIBUTING-OSS.md) for the contribution guide, backport policy, and how the OSS/commercial relationship works.
 
 ---
 
@@ -69,6 +72,28 @@ I'm **Paul Fleury** — a French internet entrepreneur living in Lisbon. I read 
 I wanted something like **The Economist Espresso app** — compact, curated, authoritative — but fed by *my own* content diet. Something I throw links into all week and wake up to a proper briefing, beautifully presented on any device.
 
 This project was designed and built entirely in collaboration with **[Perplexity Computer](https://www.perplexity.ai/computer)** — from architecture through every line of code, across a full live development session covering 15+ versions, dozens of bugs, and real-world deployment on Fly.io.
+
+---
+
+## 🚀 From Weekend Project to Commercial Product
+
+It started the way a lot of useful things start: one script, one API key, one person who wanted a better morning.
+
+The first version was embarrassingly simple — a Python script that hit OpenRouter, pulled from a handful of RSS feeds, and dropped a digest into a file. No UI, no images, no multiple languages. Just the thing I actually wanted: a compact, curated briefing before my second coffee.
+
+Over the months that followed, it grew organically. More languages because I had French and Portuguese friends who asked. A better image pipeline because SVG placeholders felt like a concession. More RSS sources because the geographic diversity of the digest directly affected its quality. Editorial prompts because "a French entrepreneur in Lisbon" produces a different digest than "a generic internet user." None of this was planned — it was just the natural response to using the thing every day.
+
+At some point I hit a ceiling that a personal tool can't clear. Auth, personalisation, mobile apps, premium subscriptions — these aren't features you bolt onto a self-hosted script. They require a product, which requires infrastructure, which requires sustainable economics.
+
+So in mid-2026, I forked Cup of News into a commercial product: [read.cupof.news](https://read.cupof.news). It adds accounts, credits, a premium tier, and personalisation (24 editorial categories, custom RSS sources) on top of the open-source pipeline engine. iOS and Android native apps are in progress via Capacitor.
+
+**What "open source core" means in practice:**
+
+The digest pipeline — RSS crawling, Jina extraction, AI curation, multi-language generation, the image pipeline, the SQLite storage, the React reader — stays MIT, always. That's the engine. The commercial layer (auth, credits, premium, user personalisation) is private. That's the product.
+
+This model makes sense to me. Good software needs sustainable economics. Premium subscriptions fund continued development of the open-source engine. Every improvement to the AI prompts, the RSS source diversity, the image pipeline, the language editions — anything that doesn't touch auth or credits — gets backported to this repo. The engine stays public. The business layer stays private.
+
+**This repo is frozen at v4.6.0.** It works. It's production-grade. It's yours to use, self-host, fork, and improve. If you submit a pipeline improvement, it has a real path back into the commercial product via the backport process in [CONTRIBUTING-OSS.md](./CONTRIBUTING-OSS.md).
 
 ---
 
@@ -139,7 +164,7 @@ You submit links all week (API, admin panel, Safari Share Sheet)
                Admin review → Publish
                               │
                               ▼
-               Public reader at app.cupof.news
+               Public reader at read.cupof.news
 ```
 
 ### v3.0.0 Multi-Language Architecture
@@ -421,78 +446,6 @@ The strategy: describe the **setting and profession**, not the event. This produ
 
 **Result:** Coverage across all 9 language editions reached 20/20 stories with AI-generated images.
 
-#### Generation 8: Flipping to AI-first (v4.0.0) — the pivot that actually worked
-
-**The insight we'd been avoiding:** Wikimedia Commons is not a news photo archive. After 7 generations of improving how we *searched* Wikimedia, the core problem remained: the images weren't *editorial*. A story about a Chinese tech company got a photo of a rice paddy. A story about a new Daft Punk album got a Wikipedia thumbnail of Thomas Bangalter from 2007. The search quality improved, but the source pool was wrong.
-
-The correct question wasn't "how do we find better images?" — it was "do we even need to *find* images at all?"
-
-**The switch:** Replace the entire multi-tier scraping pipeline with a single AI image generation call as the *primary* method. Gemini 2.5 Flash Image via OpenRouter generates a photorealistic editorial photo from the story context alone. Cost: ~$0.04/image. Latency: ~3 seconds. Quality: newspaper front-page standard.
-
-The new tier order:
-1. **Gemini 2.5 Flash Image** — generate a contextually accurate photo
-2. **OG image from article source** — fallback if AI fails (breaking news often has real Reuters/AP photos)
-3. **SVG category placeholder** — guaranteed fallback
-
-Everything else (Wikimedia, Unsplash, Jina OG multi-pass) was removed. Simpler code, better results.
-
-**Result:** EN/FR digests went from ~80% editorial images (after 7 generations of optimization) to **19–20/20 AI-generated WebP** in the first run.
-
-#### Generation 9: Text overlay problem (v4.1.0)
-
-**The bug:** Gemini adds news-style text headlines to images when the story is in a non-English language. A French story titled "Des frappes américaines ciblent des infrastructures" would generate an image with garbled French text in a headline banner at the top. The same story in German generated images with German text overlays. The model was interpreting "editorial news photograph" as "add a newspaper-style header."
-
-**Two fixes in parallel:**
-
-1. **Always English prompt:** The story summary is always passed to Gemini in English regardless of the digest language. French/German/Spanish summaries cause Gemini to add text in that language. The visual content is language-neutral — only the English prompt matters. The story's original English RSS title is used as context even for non-English editions.
-
-2. **Post-generation text detection gate:** After every image is generated and converted to WebP, a cheap vision model (Gemini 2.0 Flash Lite, ~$0.00003/call) inspects the output. The question: "Does this image contain any visible text, letters, words, readable signs, or readable characters anywhere?" If YES → reject, fall through to OG source. If NO → accept.
-
-This adds ~300ms and ~$0.00003 per story but eliminates the text overlay problem entirely.
-
-**Lesson:** Prompts alone are not sufficient to prevent model misbehavior. When a model consistently violates an instruction, the reliable fix is a *separate validation step* that checks the output, not a better version of the original instruction.
-
-#### Generation 10: Safety filter refusals (v4.2.0)
-
-**The bug:** Gemini 2.5 Flash Image silently returns 0 images for stories about death, military strikes, bombings, and conflict — even when described purely in journalistic terms. No error code. No warning. Just an empty `images` array. The pipeline fell through to OG source (often also unavailable for conflict stories) and then to SVG placeholder.
-
-The affected stories were the ones that most *need* a good image: Lebanese journalists killed in an airstrike, US strikes on Iranian nuclear infrastructure, political assassinations. These are the lead stories of any digest.
-
-**The fix: `sanitizeForImagePrompt()`** — a function that runs before every Gemini call and rewrites the prompt subject when conflict/death keywords are detected:
-
-```
-"Airstrikes hit non-military infrastructure sites across Iran"
-  → "Wide aerial view of an urban landscape with a river crossing. 
-     City blocks, roads, and bridges visible from above."
-
-"Three Lebanese journalists killed in Israeli strike near border"  
-  → "Press journalists with camera equipment and tripods working at 
-     a border area. White SUVs marked PRESS parked on a dusty road."
-
-"Jürgen Habermas, titan of philosophy, dies at 96"
-  → "A grand university lecture hall or library interior, rows of 
-     empty wooden seats, tall arched windows with warm afternoon light."
-```
-
-The strategy: describe the **setting and profession**, not the event. This produces better editorial images *and* avoids safety refusals — a forced constraint that improved the output quality.
-
-#### Generation 11: Multi-language safety gaps (v4.3.0)
-
-**The bug:** `sanitizeForImagePrompt()` in v4.2.0 was written with English-only regex. Non-English digests still failed:
-- French: *"Des frappes américaines"* → `frappes` not in the English `airstrike` regex
-- German: *"Die Welt nimmt Abschied von Jürgen Habermas"* → `Abschied` (farewell/death) not matched  
-- Spanish: *"Ataques aéreos"* → `ataques aéreos` (airstrikes) not matched
-- Artemis II moon mission → Gemini refuses astronaut/spacecraft topics as potential disaster imagery
-
-**Three fixes:**
-1. **Dual-language matching:** The sanitizer now receives BOTH the story summary (in the digest language) AND the original English source title. It concatenates them and runs one regex across both. A French summary mentioning `frappes` matches the pattern; the English title mentioning `airstrikes` also matches.
-
-2. **Expanded vocabulary:** Added multi-language death/conflict terms: `frappes`, `frappe`, `ataques aéreos`, `Luftangriff`, `gestorben`, `Abschied`, `fallece`, `morreu`, `bombardment`, `shelling`, `drone strike`.
-
-3. **New pattern classes:** Space missions (Gemini refuses astronaut imagery), political firings (`fired`, `removed`, `dismissed`, `abruptly`, `attorney general`), plus retry-on-empty logic: if Gemini returns 0 images after sanitization, auto-retry once with a bare category-level scene description.
-
-**Result:** Coverage across all 9 language editions reached 20/20 stories with AI-generated images.
-
 #### Current summary table
 
 | Version | Method | Success Rate | Notes |
@@ -629,21 +582,6 @@ The CSS is implemented with `data-theme` attribute on `<html>`, not with `prefer
 
 **Poll until done, not `--max-time`.** The original workflow used `curl --max-time 300` on the generation endpoint. On slow digests (non-EN editions with complex image pipelines), the 5-minute limit was regularly hit. The fix: `POST /api/digest/start-job` returns a `jobId` in ~50ms; the workflow then polls `GET /api/digest/job/:id/status` every 10 seconds for up to 15 minutes. Each poll is a fresh 15-second HTTP request — no cumulative timeout accumulates. This scales to any pipeline duration.
 
-
-### v4.x: Fly.io Deployment Lessons
-
-**The OpenRouter key lives in SQLite, not just the env var.** When the OpenRouter key expired, the fix of running `flyctl secrets set OPENROUTER_KEY=...` and restarting the machine had no effect. The pipeline reads the key from `storage.getConfig("openrouter_key")` — a SQLite row — not from `process.env.OPENROUTER_KEY`. The env var seeds the DB on first boot only; after that, the DB value takes precedence. Updating the key requires calling `POST /api/setup` with the new key, not just updating the Fly.io secret.
-
-**`--local-only` build flag is critical.** `flyctl deploy --remote-only` builds the Docker image in Fly's depot registry. Intermittently, the depot registry returns `connection refused` on port 5000 during the push step — a Fly.io infrastructure issue that has no user-side fix. `--local-only` builds the image on the local machine and pushes the finished image to Fly. Slower (3–4 min vs 1–2 min), but 100% reliable.
-
-**512MB RAM is enough — if you rate-limit the image pipeline.** The reprocess queue has a hard limit of 2 digests/hour. Without this, running all 9 editions' image reprocessing concurrently (`sharp` + multiple OpenRouter calls) consumed ~380MB and triggered OOM kills on the Fly.io machine mid-job. The rate limit converts what would be a memory spike into a 4.5-hour background queue. For users, this is invisible — they trigger reprocessing, get `{ queued: true }`, and the images appear gradually.
-
-### v4.x: GitHub Actions Workflow Reliability
-
-**`exit 0` on timeout, not `exit 1`.** The daily digest workflow runs 9 editions sequentially (`max-parallel: 1`). If any edition's job step exits with code 1 (timeout, API error, pipeline failure), GitHub Actions cancels all remaining queued matrix jobs. The fix: all failure paths in the workflow step `exit 0` with a warning message. The pipeline may have succeeded on the server — the client-side timeout doesn't mean failure. Let the next step handle verification.
-
-**Poll until done, not `--max-time`.** The original workflow used `curl --max-time 300` on the generation endpoint. On slow digests (non-EN editions with complex image pipelines), the 5-minute limit was regularly hit. The fix: `POST /api/digest/start-job` returns a `jobId` in ~50ms; the workflow then polls `GET /api/digest/job/:id/status` every 10 seconds for up to 15 minutes. Each poll is a fresh 15-second HTTP request — no cumulative timeout accumulates. This scales to any pipeline duration.
-
 ### v3.2.0: Turkish and Italian RSS Landscape
 
 Adding Turkish required navigating a politically complex media landscape. Post-2016, many independent Turkish outlets moved to online-only distribution with no stable RSS. TRT Haber (state broadcaster) publishes reliable RSS but offers a single editorial voice. The solution: anchor on international public broadcasters (BBC Türkçe, DW Türkçe) as the independent spine, then layer domestic outlets (Cumhuriyet, Bianet, NTV) for local texture. Bianet is the de-facto standard for independent Turkish investigative journalism.
@@ -749,7 +687,7 @@ Analysis of the French edition's source URLs showed 38% overlap with the English
 
 Cup of News has two separate deployments that look like one product to users:
 - `cupof.news` — static HTML landing page on Siteground
-- `app.cupof.news` — Node.js application on Fly.io
+- `read.cupof.news` — Node.js application on Fly.io
 
 This architecture is simple and cheap (Siteground shared hosting + Fly.io hobby plan), but it creates a recurring deployment problem: every version bump requires two separate deployments. Forgetting one means the version shown on the landing page (`v3.2.0`) doesn't match the app (`v3.4.6`). We went through this multiple times.
 
@@ -772,12 +710,12 @@ The cupof.news landing page is a single 122KB HTML file served from Siteground s
 **The ownership chain:**
 - Domain registered at: Namecheap
 - DNS controlled by: (originally) Siteground nameservers
-- Hosting: Siteground shared (cupof.news) + Fly.io (app.cupof.news)
+- Hosting: Siteground shared (cupof.news) + Fly.io (read.cupof.news)
 
 Cloudflare works by replacing the nameservers. You add the domain to Cloudflare, it scans existing DNS records, then you update the nameservers at the registrar (Namecheap) to point to Cloudflare's servers.
 
 **The key mistake to avoid:** Cloudflare's automatic DNS scan sets all A records to "Proxied" (orange cloud) by default. This breaks:
-- `app.cupof.news` → must be DNS Only (grey cloud) — Fly.io handles its own TLS and certificate. Proxying through Cloudflare breaks Fly's health checks and certificate validation.
+- `read.cupof.news` → must be DNS Only (grey cloud) — Fly.io handles its own TLS and certificate. Proxying through Cloudflare breaks Fly's health checks and certificate validation.
 - `ftp.cupof.news` → must be DNS Only — FTP is not HTTP; Cloudflare can't proxy it.
 - `mail.cupof.news`, `ssh.cupof.news` → DNS Only — same reason.
 - `autoconfig`, `autodiscover` → DNS Only — email client autoconfiguration must resolve directly.
@@ -836,7 +774,7 @@ A complete log of real problems found during development. Useful if you fork thi
 | 3.4.2 | GitHub Actions secrets silent failure | All 9 cron editions cancelled or failed in 2s | `ESPRESSO_ADMIN_KEY` secret never set; GitHub passes empty string, not error | Set secrets in Actions settings; rewrite cron to use start-job + polling |
 | 3.4.2 | Cron max-time 120s too short | Curl timed out before pipeline finished | Pipeline takes 30–250s; curl `--max-time 120` killed it midway | Raised to 300s; switched to job polling (no HTTP timeout risk) |
 | 3.4.3 | Image container not full-bleed | Visible padding left/right of images | `max-w-2xl px-4` article constrained image to 672px | Negative margin breakout: `-mx-4 sm:-mx-8 lg:-mx-12` |
-| 3.4.4 | Cloudflare breaks app.cupof.news | App went offline after Cloudflare setup | All A records set to Proxied; Fly.io TLS breaks behind Cloudflare proxy | Set app.cupof.news to DNS Only (grey cloud); only root + www proxied |
+| 3.4.4 | Cloudflare breaks read.cupof.news | App went offline after Cloudflare setup | All A records set to Proxied; Fly.io TLS breaks behind Cloudflare proxy | Set read.cupof.news to DNS Only (grey cloud); only root + www proxied |
 
 ---
 
@@ -902,13 +840,13 @@ All write endpoints require `x-admin-key: your-password` header.
 
 ```bash
 # Submit a link
-curl -X POST https://app.cupof.news/api/links \
+curl -X POST https://read.cupof.news/api/links \
   -H "Content-Type: application/json" \
   -H "x-admin-key: your-password" \
   -d '{"url": "https://example.com/article"}'
 
 # Multiple links
-curl -X POST https://app.cupof.news/api/links \
+curl -X POST https://read.cupof.news/api/links \
   -H "Content-Type: application/json" \
   -H "x-admin-key: your-password" \
   -d '{"urls": ["https://...", "https://..."]}'
@@ -918,7 +856,7 @@ curl -X POST https://app.cupof.news/api/links \
 
 **Bookmarklet:**
 ```javascript
-javascript:(function(){fetch('https://app.cupof.news/api/links',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':'your-password'},body:JSON.stringify({url:location.href})}).then(()=>alert('☕ Saved!'));})();
+javascript:(function(){fetch('https://read.cupof.news/api/links',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':'your-password'},body:JSON.stringify({url:location.href})}).then(()=>alert('☕ Saved!'));})();
 ```
 
 ---
@@ -929,7 +867,7 @@ GitHub Actions is included (`.github/workflows/daily-digest.yml`). Add two repo 
 
 | Secret | Value |
 |--------|-------|
-| `ESPRESSO_URL` | `https://app.cupof.news` |
+| `ESPRESSO_URL` | `https://read.cupof.news` |
 | `ESPRESSO_ADMIN_KEY` | Your admin password |
 
 Optional repo variable: `AUTO_PUBLISH=true` skips manual review.
@@ -998,6 +936,7 @@ cup-of-news/
 ├── Dockerfile                  # Multi-stage Node.js build
 ├── NATIVE.md                   # iOS/Android build guide
 ├── INSTALL.md                  # Full deployment guide
+├── CONTRIBUTING-OSS.md         # OSS/commercial relationship + backport guide
 └── CHANGELOG.md                # Complete version history with engineering narrative
 ```
 
@@ -1057,7 +996,7 @@ Full history with engineering narrative: **[CHANGELOG.md](./CHANGELOG.md)**
 | 1.5.0 | 2026-03-23 | Per-story sources modal, paragraph spacing, mandatory Sport/Culture/geographic coverage |
 | 1.4.x | 2026-03-23 | Smart images, diversity rules, editorial SVG fallbacks, sources modal |
 | 1.3.0 | 2026-03-23 | Editorial prompt — AI personalisation layer |
-| 1.2.0 | 2026-03-23 | Renamed to Cup of News, PWA/Capacitor, app.cupof.news |
+| 1.2.0 | 2026-03-23 | Renamed to Cup of News, PWA/Capacitor, read.cupof.news |
 | 1.1.0 | 2026-03-23 | 20 stories per digest, full docs, line height improvements |
 | 1.0.x | 2026-03-22 | Various fixes and polish |
 | 0.2.0 | 2026-03-22 | Full audit — 10 bugs fixed, all code documented |
@@ -1067,75 +1006,58 @@ Full history with engineering narrative: **[CHANGELOG.md](./CHANGELOG.md)**
 
 ## 🗺️ Roadmap
 
-**Current stable: v4.6.0** — AI-first image pipeline, 9 language editions, 20/20 AI-generated images across all editions, automated twice-daily generation.
+**Current stable: v4.6.0** — AI-first image pipeline, 9 language editions, 20/20 AI-generated images across all editions, automated twice-daily generation. **Open-source core frozen here.**
 
 ---
 
-### v4.4 — Delivery & Reach
-*The digest is great. It should come to you, not the other way around.*
+### v5.x (current) — Commercial product: shipped ✅
 
-- 📧 **Email delivery** — digest in your inbox at 6 AM via Postmark / Resend. HTML template matching the app's dark aesthetic.
-- 🔔 **Push notifications** — Capacitor already integrated. Native 6 AM alert: "Your morning digest is ready."
-- 📲 **Telegram bot** — `/add <url>` to submit a link, `/digest` to get today's briefing inline.
-- 🌐 **Browser extension** — one-click "Add to Cup" from any tab. Replaces the copy-paste workflow.
-- 🔖 **Readwise / Pocket sync** — auto-pull saved articles into the link pool nightly.
+The commercial fork ([read.cupof.news](https://read.cupof.news)) has launched with:
 
----
-
-### v4.5 — Personalisation & Quality
-*The digest should feel like it was written for you, not for everyone.*
-
-- ✏️ **Editorial prompt onboarding** — first-run wizard to set your interest profile. Currently buried in the admin panel; should be the first thing new users see.
-- 🔄 **Per-story regeneration** — tap a story to regenerate its summary or swap it out from the link pool. Already partially built (`/api/digest/:id/story/:storyId/swap`); needs a reader-facing UI.
-- 📊 **Reading analytics** — track which categories you read most, which you skip. Feed this back into the editorial prompt automatically.
-- 🗂️ **Multiple digest channels** — separate Tech / World / Finance digests, each with its own RSS pool and editorial prompt. One subscription, multiple lenses.
-- 🛡️ **Rate limiting** — protect the public API from abuse. Currently open; fine for personal use, needed before sharing with others.
+- **Auth** — magic link + OTP 6-digit PIN (Resend email), persistent sessions, guest mode
+- **Credits** — free tier: 3/month, premium tier: 30/month, monthly refill
+- **On-demand digest** — spend 1 credit to generate a personal digest right now
+- **Account page** — 4-tab design: Account / Editorials / Sources / Billing
+- **Editorials** — 24 topic categories for personalised AI curation
+- **Sources** — keyword/URL search, add RSS feeds to your personal pool
+- **Premium waitlist** — pricing page → waitlist capture → email notification
+- **Full i18n** — 68 UI string keys × 9 languages (EN/FR/DE/ES/PT/ZH/RU/TR/IT)
+- **Mobile-first redesign** — fullscreen menu, flush hero images, scroll-on-story-change
 
 ---
 
-### v5.0 — Native Mobile Apps 📱
-*Cup of News on the App Store and Google Play. The full native experience.*
+### v5.5 — Native iOS & Android apps
 
-The app is already a PWA and the codebase already includes `capacitor.config.ts`. The React SPA compiles to a native iOS and Android app via Capacitor with minimal changes. The path to v5.0:
-
-| Step | What's needed |
-|------|---------------|
-| **iOS App Store** | Apple Developer account ($99/yr), App Store Connect listing, App Review (1–3 days) |
-| **Google Play** | Google Play Console account ($25 one-time), internal → production track |
-| **Build pipeline** | Codemagic CI/CD (free tier: 500 min/month on M2 Mac — enough for releases) |
-| **Push notifications** | Firebase Cloud Messaging (Android) + APNs (iOS) via Capacitor Push plugin |
-| **Share Sheet** | iOS/Android native share → "Add to Cup" deep link |
-| **Offline reading** | Cache last digest in SQLite on-device for offline access |
-| **Haptic feedback** | Native swipe gestures between stories with haptic response |
-| **Widget** | iOS home screen widget showing today's top story |
-
-The Capacitor wrapper (`capacitor.config.ts`) is already configured with:
-- App ID: `news.cupof.app`
-- App name: `Cup of News`
-- Web dir: `dist/public`
-
-What's missing is the CI/CD setup (Codemagic YAML), push notification integration, and store listings. No new feature code required — the full app already works in a WebView.
-
-**Recommended CI/CD:** [Codemagic](https://codemagic.io) — built specifically for Capacitor apps. Free tier covers personal releases. Push to main → iOS IPA + Android AAB → TestFlight + Play internal track automatically.
+- Capacitor wrapper (already configured in codebase)
+- TestFlight + Google Play internal track
+- Push notifications (6 AM daily digest alert)
+- iOS home screen widget: today's top story
 
 ---
 
-### v6.0 — Trust & Verification Platform
-*The long-term mission: not just a personal digest, but a tool that actively fights disinformation.*
+### v6.0 — Premium subscriptions live
 
-| Feature | Description |
-|---------|-------------|
-| **3-source validation** | Every story surfaces the number of distinct sources confirming it. Enforced in the pipeline. |
-| **Provenance timeline** | "This story appeared in Source A at T1, Source B at T2" — full content lineage visible to the reader. |
-| **Multi-model ensemble** | Run story selection across Claude + GPT-4o + Gemini in parallel. Surface stories where models disagree. |
-| **Source credibility layer** | Internal scores: correction rate, historical accuracy, cross-reference validation against known reliable outlets. |
-| **Counter-perspectives** | Auto-fetch the strongest counterpoint to each story from a different publication or political tradition. |
-| **Friend network** | Share your Cup configuration with trusted contacts. See where your editorial lens differs from theirs. |
-| **Multi-user** | Teams, shared digests, collaborative editorial prompts. Each member's reading history informs the shared pool. |
+- **$4.99/month · $39/year**
+- Premium gates lift: unlimited sources, all 24 editorial categories, 30 credits/month
+- In-app billing (Stripe or RevenueCat)
+
+---
+
+### Open source (ongoing)
+
+This repo continues accepting:
+- Pipeline improvements (AI prompt improvements, RSS source additions, bug fixes)
+- New language editions (adding a 10th language)
+- Image pipeline improvements
+- DigestView UI improvements
+
+See [CONTRIBUTING-OSS.md](./CONTRIBUTING-OSS.md) for the backport guide.
 
 ---
 
 ## 🤝 Contributing
+
+See [CONTRIBUTING-OSS.md](./CONTRIBUTING-OSS.md) for the full guide on what's backportable and how to submit improvements.
 
 ```bash
 git checkout -b feature/my-thing
