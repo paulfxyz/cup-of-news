@@ -14,6 +14,7 @@
 ![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+
 ![SQLite](https://img.shields.io/badge/SQLite-3-07405E?style=for-the-badge&logo=sqlite&logoColor=white)
 ![Fly.io](https://img.shields.io/badge/Deployed-Fly.io-7C3AED?style=for-the-badge)
 ![PWA](https://img.shields.io/badge/PWA-ready-5A0FC8?style=for-the-badge)
