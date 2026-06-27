@@ -6,7 +6,9 @@
 
 > **📌 Open source core — frozen at v4.6.0.**
 > Active development has moved to a commercial product at [read.cupof.news](https://read.cupof.news).
+
 > This repo remains fully functional and MIT-licensed.
+
 ![Status](https://img.shields.io/badge/status-stable-brightgreen?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
 ![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
