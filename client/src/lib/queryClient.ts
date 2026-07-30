@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { getSessionToken } from "@/context/AuthContext";
 
 const API_BASE = "__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__";
 
@@ -20,6 +21,7 @@ export async function apiRequest(
   if (extraHeaders) Object.assign(headers, extraHeaders);
 
   const res = await fetch(`${API_BASE}${url}`, {
+    credentials: "include",
     method,
     headers,
     body: data ? JSON.stringify(data) : undefined,
@@ -36,7 +38,11 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(`${API_BASE}${queryKey.join("/")}`);
+    const _t = getSessionToken();
+    const res = await fetch(`${API_BASE}${queryKey.join("/")}`, {
+      credentials: "include",
+      headers: _t ? { Authorization: `Bearer ${_t}` } : {},
+    });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
       return null;
