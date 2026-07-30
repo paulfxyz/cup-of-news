@@ -20,6 +20,8 @@
 ![PWA](https://img.shields.io/badge/PWA-ready-5A0FC8?style=for-the-badge)
 ![Capacitor](https://img.shields.io/badge/Capacitor-ready-119EFF?style=for-the-badge)
 ![OpenRouter](https://img.shields.io/badge/AI-OpenRouter-FF6B35?style=for-the-badge)
+[![Docker](https://img.shields.io/badge/Docker-ghcr.io-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://github.com/paulfxyz/cup-of-news/pkgs/container/cup-of-news)
+[![Deploy to Fly.io](https://img.shields.io/badge/Deploy-Fly.io-7C3AED?style=for-the-badge&logo=fly.io&logoColor=white)](https://fly.io/docs/flyctl/launch/)
 
 <img src="docs/readme-logo.png" alt="Cup of News" width="100%">
 
@@ -30,6 +32,32 @@
 <img src="docs/readme-screenshot.png" alt="App screenshot" width="100%">
 
 </div>
+
+---
+
+## 🚀 Quick Deploy
+
+**Docker (recommended)**
+```bash
+docker pull ghcr.io/paulfxyz/cup-of-news:latest
+docker run -p 5000:5000 -v $(pwd)/data:/data \
+  -e OPENROUTER_API_KEY=sk-or-... \
+  ghcr.io/paulfxyz/cup-of-news:latest
+```
+Open [http://localhost:5000](http://localhost:5000), then go to **Settings → Add OpenRouter key**.
+
+**Fly.io one-command**
+```bash
+fly launch --image ghcr.io/paulfxyz/cup-of-news:latest
+```
+
+**From source**
+```bash
+git clone https://github.com/paulfxyz/cup-of-news && cd cup-of-news
+npm install && npm run build && npm start
+```
+
+Full setup guide: [INSTALL.md](./INSTALL.md)
 
 ---
 
