@@ -5,6 +5,7 @@ import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { AdminAuthGate } from "./components/AdminAuth";
+import { StaticPreviewNotice } from "./components/StaticPreviewNotice";
 import DigestView from "./pages/DigestView";
 import AdminPage from "./pages/AdminPage";
 import SetupPage from "./pages/SetupPage";
@@ -27,6 +28,7 @@ export default function App() {
           </Switch>
         </Router>
         <Toaster />
+        <StaticPreviewNotice />
       </ThemeProvider>
     </QueryClientProvider>
   );
