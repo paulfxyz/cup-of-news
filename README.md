@@ -1135,7 +1135,7 @@ Vibe coding is not a replacement for engineering depth. It is a way for people w
 
 ## 👤 Author
 
-Made with ❤️ by **Paul Fleury** — built with **[Perplexity Computer](https://www.perplexity.ai/computer)**
+Made with ❤️ by **Paul Fleury** — built AI
 
 [![Website](https://img.shields.io/badge/paulfleury.com-000?style=flat-square)](https://paulfleury.com)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-paulfxyz-0A66C2?style=flat-square&logo=linkedin)](https://www.linkedin.com/in/paulfxyz/)
