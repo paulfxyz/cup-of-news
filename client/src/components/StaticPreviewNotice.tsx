@@ -1,21 +1,15 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 
-const PREVIEW_NOTICE_STORAGE_KEY = "cofn_preview_notice_seen";
-
+// Intentionally NOT persisted to localStorage/sessionStorage. This notice
+// must reappear on every single load of the static OSS demo so visitors
+// are never confused into thinking app.cupof.news is a live, updating
+// digest — it's always a frozen snapshot. Do not add dismissal persistence
+// back without explicit sign-off; that was tried before and reverted.
 export function StaticPreviewNotice() {
-  const [open, setOpen] = useState(() => {
-    try {
-      return localStorage.getItem(PREVIEW_NOTICE_STORAGE_KEY) !== "1";
-    } catch {
-      return true;
-    }
-  });
+  const [open, setOpen] = useState(true);
 
   const dismiss = () => {
-    try {
-      localStorage.setItem(PREVIEW_NOTICE_STORAGE_KEY, "1");
-    } catch {}
     setOpen(false);
   };
 
